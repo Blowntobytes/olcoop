@@ -1,6 +1,17 @@
 # Changelog
 
-## 0.5.1-online (2026-10-04), UNTESTED in game (protocol 16: all players must run 0.5.1)
+## 0.5.2-online (2026-10-04), UNTESTED in game (all players must run 0.5.2)
+- Esc menu: LEAVE SESSION (joiner) / STOP HOSTING (host) under QUIT TO MAIN MENU. Quitting to the main menu now ends the
+  co-op session too: before, a joiner was reconnected to the host straight away and the host kept hosting.
+- Disconnects no longer break the other players' games: a Steam connection that is closed sends a goodbye first, so the other
+  side reacts at once; a joiner whose host is gone goes to the MAIN menu (the game's own handler sent it to the multiplayer
+  menu with the campaign level half torn down), for Steam and LAN joins.
+- Boost: 0.5.1 never reported a boost from anyone (13:33/13:44 logs). The owner's boost is now taken from every physics step
+  since the last frame and from the boost button (same conditions as the game), and sent reliably. [BOOST] "my boost" lines
+  log the first changes with the button/unlock/overheat state.
+- CO-OP screen: INVITE WITH THE STEAM OVERLAY renamed INVITE THROUGH STEAM.
+
+## 0.5.1-online (2026-10-04), 13:33-13:47 runs: no crash; boost still not visible; quitting to the menu kept players in the session; disconnects broke the other game (protocol 16: all players must run 0.5.1)
 - Disconnects: a player whose game closes, crashes or loses the connection is removed for everyone. Over Steam every player
   sends a small "still here" signal each second; 20 s of silence, or a goodbye when someone quits or leaves co-op, removes that
   player (the host removes the ship for all; joiners whose host is gone return to the main menu with THE HOST LEFT THE GAME).

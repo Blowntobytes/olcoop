@@ -609,13 +609,19 @@ namespace OlCoop.Session
     [HarmonyPatch(typeof(Client), "OnDisconnectMsg")]
     static class C2d_ClientOnDisconnect
     {
-        static void Postfix()
+        /// 0.5.2: the stock handler sends a disconnected player to the MULTIPLAYER menu (ExitMultiplayerToMainMenu -> MP_MENU) with the
+        /// campaign level half torn down - "breaks the game". In co-op go to the main menu cleanly instead.
+        static bool Prefix()
         {
-            if (!CoopClient.Enabled || !CoopClient.ConnectIssued) return;
+            if (!CoopClient.Enabled || !CoopClient.ConnectIssued) return true;
             bool wasWelcomed = CoopClient.Welcomed;
             CoopClient.Welcomed = false;
             CoopLog.Write("JOIN", "disconnected from host" + (wasWelcomed ? "" : " (before handshake)"));
-            if (wasWelcomed) GameplayManager.AddHUDMessage("CO-OP: DISCONNECTED FROM HOST", -1, true);
+            if (!wasWelcomed) return false;
+            GameplayManager.AddHUDMessage("CO-OP: DISCONNECTED FROM HOST", -1, true);
+            GameplayManager.IsMultiplayerActive = false;
+            OlCoop.SteamNet.SteamLink.ReturnToMainMenu("disconnected from host");
+            return false;
         }
     }
 

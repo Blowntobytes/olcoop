@@ -88,7 +88,7 @@ namespace OlCoop.UI
             }
             if (CoopConfig.IsHost && steam && SteamLink.Lobby != CSteamID.Nil)
             {
-                uie.SelectAndDrawItem("INVITE WITH THE STEAM OVERLAY", pos, ID_OVERLAY, false, 1f, 0.75f);
+                uie.SelectAndDrawItem("INVITE THROUGH STEAM", pos, ID_OVERLAY, false, 1f, 0.75f);
                 pos.y += 62f;
             }
             if (CoopConfig.IsJoiner)
@@ -321,6 +321,70 @@ namespace OlCoop.World
             }
             CoopLog.Write("UI", "level briefing READY UP label: " + n + " button(s) patched");
             return list;
+        }
+    }
+}
+
+namespace OlCoop.UI
+{
+    /// 0.5.2: Esc menu entry under QUIT TO MAIN MENU: LEAVE SESSION (joiner) / STOP HOSTING (host). It runs the stock quit-to-menu
+    /// flow (with its ARE YOU SURE? step); quitting to the menu in co-op ends the session (Phase7Steam ST6/ST7).
+    public static class PauseLeave
+    {
+        public const int ItemId = 30;
+        public static bool Show { get { return CoopConfig.Active && !GameplayManager.IsMultiplayer && GameplayManager.LevelIsLoaded; } }
+        public static string Label { get { return CoopConfig.IsHost ? "STOP HOSTING" : "LEAVE SESSION"; } }
+
+        public static void Draw(UIElement uie, ref Vector2 pos)
+        {
+            if (!Show) return;
+            pos.y += 62f;
+            uie.SelectAndDrawItem(Label, pos, ItemId, false, 1f, 0.75f);
+        }
+    }
+
+    [HarmonyPatch(typeof(UIElement), "DrawPauseMenu")]
+    static class PM1_DrawLeaveItem
+    {
+        static readonly MethodInfo m_item = AccessTools.Method(typeof(UIElement), "SelectAndDrawItem");
+        static readonly MethodInfo m_ours = AccessTools.Method(typeof(PauseLeave), "Draw");
+        static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> code)
+        {
+            var list = new List<CodeInstruction>(code);
+            int done = 0;
+            for (int i = 0; i < list.Count && done == 0; i++)
+            {
+                if (list[i].opcode != OpCodes.Ldstr || (list[i].operand as string) != "QUIT TO MAIN MENU") continue;
+                // ldstr, call LS, ldloc <pos>, ..., call SelectAndDrawItem
+                object posLocal = null; OpCode posOp = OpCodes.Nop;
+                for (int k = i + 1; k < Math.Min(list.Count, i + 4); k++)
+                    if (list[k].opcode == OpCodes.Ldloc_0) { posLocal = 0; posOp = OpCodes.Ldloc_0; break; }
+                    else if (list[k].opcode == OpCodes.Ldloc_S || list[k].opcode == OpCodes.Ldloc) { posLocal = list[k].operand; posOp = list[k].opcode; break; }
+                if (posLocal == null) break;
+                for (int j = i; j < Math.Min(list.Count, i + 12); j++)
+                {
+                    if (!(list[j].opcode == OpCodes.Call && Equals(list[j].operand, m_item))) continue;
+                    var addr = posOp == OpCodes.Ldloc_0 ? new CodeInstruction(OpCodes.Ldloca_S, (byte)0) : new CodeInstruction(OpCodes.Ldloca_S, posLocal);
+                    list.InsertRange(j + 1, new[] { new CodeInstruction(OpCodes.Ldarg_0), addr, new CodeInstruction(OpCodes.Call, m_ours) });
+                    done++;
+                    break;
+                }
+            }
+            CoopLog.Write("UI", "Esc menu LEAVE SESSION / STOP HOSTING item " + (done == 1 ? "added" : "NOT added (menu code differs)"));
+            return list;
+        }
+    }
+
+    /// Selecting it = selecting QUIT TO MAIN MENU (same confirmation and exit; the session ends on the way out).
+    [HarmonyPatch(typeof(MenuManager), "PausedUpdate")]
+    static class PM2_LeaveSelect
+    {
+        static void Prefix()
+        {
+            if (!PauseLeave.Show || MenuManager.m_menu_sub_state != MenuSubState.ACTIVE || UIManager.m_menu_selection != PauseLeave.ItemId) return;
+            if (!UIManager.PushedSelect(-1)) return;
+            CoopLog.Write("UI", PauseLeave.Label + " chosen in the Esc menu");
+            UIManager.m_menu_selection = 10; // QUIT TO MAIN MENU
         }
     }
 }

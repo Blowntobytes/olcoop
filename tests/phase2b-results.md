@@ -130,3 +130,10 @@
   swapped at 12:58 and level changes worked over Steam (13:03:44 next level).
 - Host log ended 12:50:46 mid-level without a disconnect line. Crash report (D: PC, 12:51:10): access violation in
   steam_api64 SteamAPI_RunCallbacks. 0.5.1 stops the game's timer-thread Steam callbacks and adds disconnect detection.
+
+## Runs 13:33-13:47, 0.5.1 (logs show 0.5.1), two PCs over Steam
+- User: Esc -> quit to main menu keeps players in the session; boost still not visible; inappropriate disconnections break the
+  game for the other players.
+- Log: joiner quit to menu at 13:37:29 and was reconnected at once (auto-rejoin); joiner closed the game at 13:38:02 -> host
+  dropped it from the goodbye. [BOOST] only "off" for every ship in both sessions. No crash at quit (timer callbacks skipped).
+- Found in IL: the stock client disconnect handler sends the player to the multiplayer menu (MP_MENU). Fixed in 0.5.2.

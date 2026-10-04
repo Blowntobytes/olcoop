@@ -354,6 +354,8 @@ namespace OlCoop.SteamNet
             SteamNetworking.SendP2PPacket(to, s_ctl, 1, what == CTL_BYE ? EP2PSend.k_EP2PSendReliable : EP2PSend.k_EP2PSendUnreliableNoDelay, 1);
         }
 
+        public static void SendBye(CSteamID to) { try { SendCtl(to, CTL_BYE); } catch (Exception ex) { CoopLog.Error("SendBye", ex); } }
+
         /// Tell everyone we're leaving (quit, LEAVE, STOP HOSTING).
         public static void SayBye()
         {
@@ -382,12 +384,43 @@ namespace OlCoop.SteamNet
             var conn = s_client; s_client = null;
             CoopLog.Write("STEAM", "lost the host " + Name(conn.Peer) + ": " + why);
             try { SteamNetworking.CloseP2PSessionWithUser(conn.Peer); } catch { }
-            try { conn.InvokeHandlerNoData(MsgType.Disconnect); } catch (Exception ex) { CoopLog.Error("steam client disconnect", ex); }
+            // Not the stock disconnect handler: it sends the player to the MULTIPLAYER menu (ExitMultiplayerToMainMenu -> MP_MENU),
+            // with the campaign level half torn down.
+            OlCoop.Session.CoopClient.Welcomed = false; OlCoop.Session.CoopClient.ConnectIssued = false;
             try { if (Client.IsConnected()) Client.Disconnect(); } catch (Exception ex) { CoopLog.Error("steam client close", ex); }
             LeaveLobby();
             CoopConfig.ClearRole();
+            ReturnToMainMenu("the host left");
             LastStatus = "THE HOST LEFT THE GAME";
             GameplayManager.AddHUDMessage("CO-OP: THE HOST LEFT THE GAME", -1, true);
+        }
+
+        /// After the session ended: whatever this game was doing (level, end-of-level screens, waiting), go to the main menu cleanly.
+        public static void ReturnToMainMenu(string why)
+        {
+            try
+            {
+                OlCoop.World.PostLevel.Reset();
+                OlCoop.World.CoopStatus.Clear();
+                OlCoop.Death.Spectate.Stop(null);
+                PlayerShip.DeathPaused = false;
+                if (GameplayManager.LevelIsLoaded || GameManager.m_game_state == GameManager.GameState.GAMEPLAY)
+                {
+                    CoopLog.Write("STEAM", "leaving the level for the main menu (" + why + ")");
+                    GameplayManager.DoneLevel(GameplayManager.DoneReason.Quit);
+                    UIManager.DestroyAll(true);
+                    UIManager.SetScreenFade(0f);
+                    GameplayManager.SwitchToMenu(MenuState.MAIN_MENU);
+                }
+                else if (MenuManager.m_menu_state != MenuState.MAIN_MENU)
+                {
+                    CoopLog.Write("STEAM", "leaving " + MenuManager.m_menu_state + " for the main menu (" + why + ")");
+                    UIManager.DestroyAll(true);
+                    UIManager.SetScreenFade(0f);
+                    MenuManager.ChangeMenuState(MenuState.MAIN_MENU, true);
+                }
+            }
+            catch (Exception ex) { CoopLog.Error("ReturnToMainMenu", ex); }
         }
 
         static void Liveness()
@@ -564,6 +597,41 @@ namespace OlCoop.SteamNet
         }
     }
 
+    /// 0.5.2: quitting to the main menu (Esc menu QUIT TO MAIN MENU, or LEAVE SESSION / STOP HOSTING which use the same flow) ends
+    /// the co-op session. Before, a joiner was reconnected to the host straight away and the host kept its lobby.
+    public static class SessionEnd
+    {
+        public static bool FromPauseMenu { get { return MenuManager.m_menu_state == MenuState.PAUSE_MENU; } }
+
+        public static void Leave(string who)
+        {
+            CoopLog.Write("ROLE", who + " left the session from the Esc menu");
+            try { SteamLink.Leave(); } catch (Exception ex) { CoopLog.Error("SessionEnd", ex); }
+            CoopConfig.ClearRole();
+            SteamLink.LastStatus = who == "host" ? "STOPPED HOSTING" : "LEFT THE SESSION";
+        }
+    }
+
+    [HarmonyPatch(typeof(Client), "Disconnect")]
+    static class ST6_JoinerQuitLeaves
+    {
+        static void Prefix()
+        {
+            if (!CoopConfig.IsJoiner || !SessionEnd.FromPauseMenu) return;
+            SessionEnd.Leave("joiner");
+        }
+    }
+
+    [HarmonyPatch(typeof(Server), "DisconnectAllRemoteClients")]
+    static class ST7_HostQuitEnds
+    {
+        static void Prefix()
+        {
+            if (!CoopConfig.IsHost || !SessionEnd.FromPauseMenu) return;
+            SessionEnd.Leave("host");
+        }
+    }
+
     /// NetworkConnection.Disconnect on a Steam connection would call NetworkTransport.Disconnect for a connection the UDP transport
     /// doesn't have. Close the Steam session instead and do the rest of the stock work.
     [HarmonyPatch(typeof(NetworkConnection), "Disconnect")]
@@ -577,6 +645,9 @@ namespace OlCoop.SteamNet
             try
             {
                 sc.isReady = false;
+                // 0.5.2: tell the other end first (host quitting to the menu disconnects every joiner this way; a joiner quitting
+                // disconnects from the host). Without it the other side only noticed after the 20 s timeout - or never.
+                if (!SteamLink.ShuttingDown) { SteamLink.SendBye(sc.Peer); }
                 SteamNetworking.CloseP2PSessionWithUser(sc.Peer);
                 if (m_removeObservers != null) m_removeObservers.Invoke(sc, null);
                 CoopLog.Write("STEAM", "closed steam connection " + sc.connectionId + " (" + SteamLink.Name(sc.Peer) + ")");

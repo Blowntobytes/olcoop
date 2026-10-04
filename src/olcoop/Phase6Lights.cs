@@ -131,6 +131,15 @@ namespace OlCoop.Lights
         static bool s_last, s_have;
         static float s_next;
 
+        static bool s_seen_on, s_dbg_last; static int s_dbg_n;
+        /// Local ship, every physics step (not re-simulation): remember a boost even if it ended before the frame.
+        public static void SeenStep(PlayerShip s) { if (s.m_boosting) s_seen_on = true; }
+        static bool PressingBoost(PlayerShip s)
+        {
+            var p = s.c_player;
+            return p != null && p.m_unlock_boost && p.IsPressed(CCInput.USE_BOOST) && s.m_boost_overheat_timer <= 0f && !(bool)s.m_dying && !(bool)s.m_dead;
+        }
+
         public static bool Wanted(uint id, out bool on) { return s_want.TryGetValue(id, out on); }
 
         static PlayerShip ShipOf(uint netId)
@@ -164,13 +173,23 @@ namespace OlCoop.Lights
         {
             if (!CoopLights.Active) return;
             var me = GameManager.m_player_ship;
-            bool changed = me != null && (!s_have || me.m_boosting != s_last);
-            if (me != null) { s_last = me.m_boosting; s_have = true; }
+            // 0.5.2: 13:33/13:44 runs (0.5.1) never reported a boost ON from anyone - sampling m_boosting once per frame missed it.
+            // Use what the physics steps saw since the last frame, plus the boost button itself (same conditions as the game).
+            bool now = me != null && (s_seen_on || me.m_boosting || PressingBoost(me));
+            s_seen_on = false;
+            if (me != null && now != s_dbg_last && s_dbg_n < 8)
+            {
+                s_dbg_n++; s_dbg_last = now;
+                CoopLog.Write("BOOST", "my boost " + (now ? "ON" : "off") + " (flag=" + me.m_boosting + " button=" + me.c_player.IsPressed(CCInput.USE_BOOST) +
+                    " unlock=" + me.c_player.m_unlock_boost + " overheat=" + me.m_boost_overheat_timer.ToString("F1") + ")" + (s_dbg_n == 8 ? " (further changes not logged)" : ""));
+            }
+            bool changed = me != null && (!s_have || now != s_last);
+            if (me != null) { s_last = now; s_have = true; }
             if (!changed && Time.realtimeSinceStartup < s_next) return;
             s_next = Time.realtimeSinceStartup + 1f;
             if (OlCoop.World.CoopWorld.IsHost)
             {
-                if (me != null) s_want[me.c_player.netId.Value] = me.m_boosting;
+                if (me != null) s_want[me.c_player.netId.Value] = s_last;
                 foreach (var kv in s_want)
                 {
                     var m = new LightMsg { netId = kv.Key, on = kv.Value };
@@ -181,7 +200,7 @@ namespace OlCoop.Lights
             else if (OlCoop.World.CoopWorld.IsJoiner && me != null)
             {
                 var c = Client.GetClient();
-                if (c != null && Client.IsConnected()) c.SendUnreliable(HNet.BoostReport, new LightMsg { netId = me.c_player.netId.Value, on = me.m_boosting });
+                if (c != null && Client.IsConnected()) c.Send(HNet.BoostReport, new LightMsg { netId = me.c_player.netId.Value, on = s_last });
             }
         }
 
@@ -203,7 +222,7 @@ namespace OlCoop.Lights
             catch (Exception ex) { CoopLog.Error("Boost.OnState", ex); }
         }
 
-        public static void Reset() { s_want.Clear(); s_changes.Clear(); s_have = false; s_next = 0f; }
+        public static void Reset() { s_want.Clear(); s_changes.Clear(); s_have = false; s_next = 0f; s_dbg_n = 0; }
     }
 
     [HarmonyPatch(typeof(GameplayManager), "Update")]
@@ -233,7 +252,8 @@ namespace OlCoop.Lights
     {
         static void Postfix(PlayerShip __instance)
         {
-            if (__instance == null || __instance.isLocalPlayer || !OlCoop.World.CoopWorld.Active) return;
+            if (__instance == null || !OlCoop.World.CoopWorld.Active) return;
+            if (__instance.isLocalPlayer) { if (!NetworkSim.m_resimulating) CoopBoost.SeenStep(__instance); return; }
             bool on;
             if (__instance.c_player != null && CoopBoost.Wanted(__instance.c_player.netId.Value, out on)) __instance.m_boosting = on;
         }

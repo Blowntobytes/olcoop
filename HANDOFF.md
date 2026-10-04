@@ -10,7 +10,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   `Overload_Data\Managed\Assembly-CSharp.dll` locally if needed. Build references the game's Managed DLLs + GameMod.dll staged from the game folder.
 
 ## Build + delivery rules (user is strict about these)
-- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.5.1 online"). Protocol = 16 (in build.sh). Current build folder: build-online.
+- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.5.2 online"). Protocol = 16 (in build.sh). Current build folder: build-online.
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 146 patches, 0 problems; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b (current). Bug fixes overwrite the current phase
   folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
@@ -243,3 +243,19 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   (first 6 changes per ship).
 - Repo renamed to github.com/Blowntobytes/olcoop. Bundle is now publish/olcoop-latest.bundle (the old
   olmodcoop-latest.bundle in the user's publish folder is obsolete).
+
+## 0.5.2 status (2026-10-04 14:13) - installed, UNTESTED
+- Installed SHA1 89e80ff79bb7d88f4bb6639234191fa9a5ff20d2 (206336 bytes), verified in game folder + build-online. Protocol 16
+  (handshake also compares the full version). Tag v0.5.2. 186 patches, 0 problems. Friend zip dist/olcoop-0.5.2-online.zip
+  (SHA1 034791ec7453313f1d4844c37454655d4ece2689).
+- 13:33 run (user host): joiner quit to menu at 13:37:29 and was re-verified at once (CoopClient.MenuTick rejoin); joiner closed
+  the game 13:38:02 -> host got BYE and dropped conn 20 (works). Only "boost off" ever logged for every ship.
+- Stock Client.OnDisconnectMsg -> Player.ExitMultiplayerToMainMenu -> SwitchToMenu(MP_MENU=61): wrong for co-op. C2d is now a
+  prefix that replaces it for welcomed joiners with SteamLink.ReturnToMainMenu (PostLevel.Reset, CoopStatus.Clear, Spectate.Stop,
+  DoneLevel(Quit) + SwitchToMenu(MAIN_MENU) if in a level, else ChangeMenuState(MAIN_MENU)). HostGone uses it too.
+- ST2 (Steam NetworkConnection.Disconnect) sends BYE before closing; stock host quit (Server.DisconnectAllRemoteClients) and joiner
+  quit (Client.Disconnect) from the PAUSE_MENU state end the session (ST6/ST7 -> SessionEnd.Leave: SteamLink.Leave + ClearRole).
+- Esc menu item id 30 (PM1 transpiler after the QUIT TO MAIN MENU item, position local by ref, +62); PM2 maps it to selection 10
+  so the stock quit flow + ARE YOU SURE? runs.
+- Boost owner side: FixedUpdateProcessControlsInternal postfix latches m_boosting for the local ship (not while resimulating);
+  owner state = latch || m_boosting || (USE_BOOST pressed && m_unlock_boost && overheat <= 0). Report 192 is now reliable.
