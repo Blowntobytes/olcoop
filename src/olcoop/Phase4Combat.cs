@@ -1,4 +1,4 @@
-// olcoop 0.4.11: combat parity.
+// olcoop 0.4.11-0.4.12: combat parity.
 //  - Melee robots (claw/blade "Shredder", detonator, charger) damage the ship they actually hit, not always the host.
 //  - Joiner loadout (weapons, upgrade levels, ammo, missiles, energy) is applied to the host's copy of that joiner, so the host
 //    stops refusing the joiner's ammo-weapon and missile shots.
@@ -75,6 +75,7 @@ namespace OlCoop.Combat
         public byte weapon, missile;
         public byte[] wlevel, mlevel; public bool[] wpicked;
         public int ammo; public int[] mammo; public float energy;
+        public bool[] unlocks; // CoopLoadout.UnlockFieldNames order (ship upgrades: boost, boost speed/heatsink, headlight, ...)
         public override void Serialize(NetworkWriter w)
         {
             w.Write(weapon); w.Write(missile);
@@ -82,6 +83,7 @@ namespace OlCoop.Combat
             w.Write((byte)mlevel.Length); foreach (var b in mlevel) w.Write(b);
             w.Write((byte)wpicked.Length); foreach (var b in wpicked) w.Write(b);
             w.Write(ammo); w.Write((byte)mammo.Length); foreach (var a in mammo) w.Write(a); w.Write(energy);
+            w.Write((byte)unlocks.Length); foreach (var b in unlocks) w.Write(b);
         }
         public override void Deserialize(NetworkReader r)
         {
@@ -91,17 +93,45 @@ namespace OlCoop.Combat
             wpicked = new bool[r.ReadByte()]; for (int i = 0; i < wpicked.Length; i++) wpicked[i] = r.ReadBoolean();
             ammo = r.ReadInt32(); mammo = new int[r.ReadByte()]; for (int i = 0; i < mammo.Length; i++) mammo[i] = r.ReadInt32();
             energy = r.ReadSingle();
+            unlocks = new bool[r.ReadByte()]; for (int i = 0; i < unlocks.Length; i++) unlocks[i] = r.ReadBoolean();
         }
         public string Describe()
         {
             return "weapon=" + (WeaponType)weapon + " missile=" + (MissileType)missile + " wlevel=[" + string.Join(",", Array.ConvertAll(wlevel, b => b.ToString())) +
                    "] mlevel=[" + string.Join(",", Array.ConvertAll(mlevel, b => b.ToString())) + "] ammo=" + ammo +
-                   " missiles=[" + string.Join(",", Array.ConvertAll(mammo, a => a.ToString())) + "] energy=" + energy.ToString("F0");
+                   " missiles=[" + string.Join(",", Array.ConvertAll(mammo, a => a.ToString())) + "] energy=" + energy.ToString("F0") + " upgrades=" + CoopLoadout.UnlockNames(unlocks);
         }
     }
 
     public static class CoopLoadout
     {
+        /// Ship upgrades (Player.m_unlock_*). The host simulates every ship, and boosting is gated by m_unlock_boost in
+        /// PlayerShip.FixedUpdateProcessControlsInternal: without it the host never boosts a joiner, so no one sees the joiner's boost
+        /// (RpcSetBoosting is only sent when the host's copy boosts) and the joiner's own boost is corrected away.
+        public static readonly string[] UnlockFieldNames = {
+            "m_unlock_boost", "m_unlock_boost_speed", "m_unlock_boost_heatsink", "m_unlock_headlight", "m_unlock_accessory_free",
+            "m_unlock_headlight_red", "m_unlock_flare_sticky", "m_unlock_selfdamage_reduction", "m_unlock_item_duration",
+            "m_unlock_smash_damage", "m_unlock_fast_forward", "m_unlock_blast_damage" };
+        static FieldInfo[] s_unlock_fields;
+        static FieldInfo[] UnlockFields
+        {
+            get
+            {
+                if (s_unlock_fields == null)
+                {
+                    s_unlock_fields = new FieldInfo[UnlockFieldNames.Length];
+                    for (int i = 0; i < UnlockFieldNames.Length; i++) s_unlock_fields[i] = AccessTools.Field(typeof(Player), UnlockFieldNames[i]);
+                }
+                return s_unlock_fields;
+            }
+        }
+        public static string UnlockNames(bool[] u)
+        {
+            var on = new List<string>();
+            for (int i = 0; u != null && i < u.Length && i < UnlockFieldNames.Length; i++) if (u[i]) on.Add(UnlockFieldNames[i].Substring(9));
+            return on.Count == 0 ? "none" : string.Join(",", on.ToArray());
+        }
+
         // ------------------------------------------------------------ joiner
         static float s_send_at = -1f;
 
@@ -132,6 +162,8 @@ namespace OlCoop.Combat
             for (int i = 0; i < m.wlevel.Length; i++) m.wlevel[i] = (byte)p.m_weapon_level[i];
             for (int i = 0; i < m.mlevel.Length; i++) m.mlevel[i] = (byte)p.m_missile_level[i];
             for (int i = 0; i < m.mammo.Length; i++) m.mammo[i] = (int)p.m_missile_ammo[i];
+            var uf = UnlockFields; m.unlocks = new bool[uf.Length];
+            for (int i = 0; i < uf.Length; i++) m.unlocks[i] = uf[i] != null && (bool)uf[i].GetValue(p);
             return m;
         }
 
@@ -151,6 +183,8 @@ namespace OlCoop.Combat
                 for (int i = 0; i < Math.Min(m.mlevel.Length, target.m_missile_level.Length); i++) target.m_missile_level[i] = (WeaponUnlock)m.mlevel[i];
                 for (int i = 0; i < Math.Min(m.wpicked.Length, target.m_weapon_picked_up.Length); i++) target.m_weapon_picked_up[i] = m.wpicked[i];
                 for (int i = 0; i < Math.Min(m.mammo.Length, target.m_missile_ammo.Length); i++) target.m_missile_ammo[i] = m.mammo[i];
+                var uf = UnlockFields;
+                for (int i = 0; i < Math.Min(m.unlocks.Length, uf.Length); i++) if (uf[i] != null) uf[i].SetValue(target, m.unlocks[i]);
                 target.m_ammo = m.ammo;
                 target.m_energy = m.energy;
                 target.Networkm_weapon_type = (WeaponType)m.weapon;

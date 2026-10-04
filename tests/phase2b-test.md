@@ -1,7 +1,7 @@
-# Phase 2b world sync test (build 0.4.11)
+# Phase 2b world sync test (build 0.4.12)
 
 Host + 1 joiner, a level with keys, a shootable button that opens a door, and comm (voice) messages, e.g. the first Cronus levels.
-Both windows must show OLCOOP 0.4.11-WORLD at the top-left of the main menu.
+Both windows must show OLCOOP 0.4.12-WORLD at the top-left of the main menu.
 
 1. **Keys:** the host picks up a security key. Both get "SECURITY ACCESS GRANTED!" (the joiner's says "BY A TEAMMATE"), and the joiner
    can open that key's door. Repeat with the joiner picking up a key.
@@ -37,4 +37,6 @@ Both windows must show OLCOOP 0.4.11-WORLD at the top-left of the main menu.
 15. **Melee:** let a Shredder / claw robot hit a joiner: the joiner loses shield/health, the host doesn't.
 16. **Joiner ammo weapons and missiles:** a joiner fires an ammo weapon (e.g. driller/cyclone) and a missile at a robot: the robot takes
     damage and can die; the joiner's ammo and missile counts go down normally and match what the host sees.
-17. Note anything out of sync: what, where, and which window.
+17. **Boost:** each player boosts in turn: everyone else sees the boost flames on that ship, and the boosting joiner gets full boost
+    speed (no rubber-banding back to normal speed).
+18. Note anything out of sync: what, where, and which window.

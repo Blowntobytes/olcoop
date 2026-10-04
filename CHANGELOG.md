@@ -1,6 +1,14 @@
 # Changelog
 
-## 0.4.11-world (2026-10-04), UNTESTED in game
+## 0.4.12-world (2026-10-04), UNTESTED in game
+- Fix: other players never saw a joiner's boost, and a joiner's boost was corrected back to normal speed. The host simulates every
+  ship, and the game only lets a ship boost when its pilot has the boost upgrade (Player.m_unlock_boost). The host's copy of a joiner
+  had no upgrades, so it never boosted and never sent the "boosting" state that shows the boost effect on other screens. The joiner's
+  loadout message now includes its ship upgrades (boost, boost speed, boost heatsink, headlight, red headlight, sticky flares, free
+  accessories, self-damage reduction, item duration, smash damage, fast forward, blast damage).
+- Protocol 12 (loadout message carries the upgrades).
+
+## 0.4.11-world (2026-10-04), replaced by 0.4.12 before testing
 - Fix: the Goliath boss lockdown started the moment a joiner joined (07:13 run: a joiner spawned inside the boss room's trigger). Spawns,
   respawns and lockdown teleports no longer place a ship within 2.5 units of a level trigger (script/lockdown triggers, warpers, wind
   tunnels, exit doors, alien warps), so events start only when someone flies in.

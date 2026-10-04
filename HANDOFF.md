@@ -10,7 +10,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   `Overload_Data\Managed\Assembly-CSharp.dll` locally if needed. Build references the game's Managed DLLs + GameMod.dll staged from the game folder.
 
 ## Build + delivery rules (user is strict about these)
-- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.4.11 world"). Protocol = 11 (in build.sh).
+- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.4.12 world"). Protocol = 12 (in build.sh).
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 146 patches, 0 problems; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b (current). Bug fixes overwrite the current phase
   folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
@@ -111,3 +111,9 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 - Loadout: msg 170 J->H sent 1 s after the joiner's OnStartLocalPlayer; host applies weapon/missile levels, picked-up flags, ammo,
   missile ammo, energy, current weapon/missile to its copy. Ammo/energy then follow stock server sync (Player.Update RpcSetAmmo/Energy).
   Log [COMBAT] joiner: sent loadout / host: applied loadout. Not covered: boost/headlight unlocks; loadout on later respawns (D9 keeps ammo).
+
+## 0.4.12 status (2026-10-04 07:46) - installed, UNTESTED (0.4.11 replaced before testing)
+- Installed SHA1 b8a488f4c515e014dff22a6885c82c4d83262f51 (152576 bytes), verified in game folder + build-phase2b. Protocol 12. Tag v0.4.12. 153 patches, 0 problems.
+- Loadout msg 170 now also carries the 12 Player.m_unlock_* ship upgrades. Boost needs m_unlock_boost
+  (FixedUpdateProcessControlsInternal); the host's copy only boosts, and Player.Update only sends RpcSetBoosting, with it.
+  Remote boost flames: PlayerShip.Update -> UpdateThrusters (m_remote_player) scales thrusters while m_boosting.
