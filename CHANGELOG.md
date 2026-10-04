@@ -1,6 +1,19 @@
 # Changelog
 
-## 0.4.5-world (2026-10-03), UNTESTED in game
+## 0.4.6-world (2026-10-03), UNTESTED in game
+- Exit regroup: when anyone reaches the exit door or an alien warp, the host first moves every other player's ship next to whoever got
+  there, then starts the exit. The exit message (186) now carries that position, so every player plays the same exit/teleport sequence
+  from the same spot. On a joiner-triggered exit the host also moves its own ship next to that joiner first. Dead players are not moved
+  but still get the exit.
+- Lockdown regroup: when a lockdown starts on the host (ScriptLockdownMaster / ScriptLockdownBoss), every other living player more than
+  25 units away is teleported next to the player who set it off (the last ship to hit a trigger within 10 s, otherwise the living player
+  nearest the lockdown script). Joiners see "CO-OP: LOCKDOWN - TELEPORTED TO YOUR TEAMMATE", the host "CO-OP: LOCKDOWN - TEAM REGROUPED".
+  Each lockdown regroups once per level.
+- Fix: the boss lockdown (ScriptLockdownBoss) ran only on the host (seen on the Goliath level with 0.4.5). It is no longer host-only, so
+  joiners run it on the host's word like other replicated scripts.
+- Protocol 9 (exit message 186 is now a position message; new message 187 = lockdown teleport).
+
+## 0.4.5-world (2026-10-03), replaced by 0.4.6 before testing
 - Fix: audio logs (log entry pickups) only played for one player. Real pickups run only on the host in co-op, so `PickupLogEntry` (chime +
   voice/text) never ran on joiners. The host now sends each log pickup and joiners play the same log.
 - Exits together: when anyone reaches the exit door or an alien warp, every player plays the same exit/teleport sequence. Joiners ask the

@@ -13,3 +13,6 @@
   and the joiner replayed the destruction. The host sees joiner shots by itself; the 0.4.2 forwarding wasn't needed for that.
 - User (run 3): the host's shots aren't visible to the joiner. Cause: stock FireProjectile only sends player shots to clients when
   GameplayManager.IsMultiplayer. Fixed in 0.4.4 (W7).
+
+## Goliath run (0.4.5, log only, ~22:16)
+- Exit sync fired (22:16:57). The boss lockdown ran only on the host: ScriptLockdownBoss was on the host-only list. Fixed in 0.4.6.
