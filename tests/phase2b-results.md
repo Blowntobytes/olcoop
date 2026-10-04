@@ -50,3 +50,8 @@
   sp_titan_06 (06:42:21, both (-5.0, 9.0, -67.9)), respawn (06:37:19), lockdown (06:40:41), exit (06:41:29: all spots rejected,
   blind fallback 4 u behind the host). In the levels with stacked spawns both joiners barely moved for minutes; in the 06:35 load
   (spawns 3 u apart) they flew normally. 0.4.10 adds an occupancy check and removes the blind fallback.
+
+## Runs 06:55 (0.4.10, 3 players) and 07:03/07:07 (A/B: 0.4.10 and 0.4.9, host alone): "every ship can only rotate slowly, not move"
+- Not the mod: 0.4.9 behaved the same, also with the host alone. All affected windows used pilot TESTEE (host pilot was OBSERVERB2B in
+  every earlier run). Control bindings are per pilot (testee.xconfigmod). Also explains the 06:33 run's 2nd joiner (TESTEE).
+- The stacked-spawn fix in 0.4.10 is still valid (stacking is in the logs), but its effect on "stuck" ships was over-claimed.

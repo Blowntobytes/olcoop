@@ -96,3 +96,8 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 ## A/B test (2026-10-04 07:07)
 - 0.4.9 rebuilt from tag v0.4.9 installed in the game folder only (SHA1 e375d85a197de85aed85e9bd16aa5e5e75577cd7, 139776 bytes) to test the
   0.4.10 "every ship can only rotate, not move" report. build-phase2b still holds 0.4.10. Reinstall the A/B winner afterwards.
+- A/B RESULT (07:10): 0.4.9 froze too, even host alone in sp_outer_02. Cause is NOT the mod: the pilot profile changed from OBSERVERB2B
+  (host in every run up to 06:45) to TESTEE (06:55 on). Controls load per pilot (testee.xconfigmod; its stored device list is
+  Tetherscript/3Dconnexion/Generic USB - not plugged-in hardware), so TESTEE has no working thrust bindings on this PC. The 06:33 run's
+  "second joiner could only spin" was the joiner using TESTEE. 0.4.10 reinstalled (SHA1 928e31d3...). Use the same pilot (with working
+  bindings) in every window; worth a launcher check that warns when a pilot has no thrust binding.
