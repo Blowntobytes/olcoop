@@ -85,3 +85,10 @@
 - Hunter pickups: host +2 -> 10 and joiner 8 -> 10 (no double count).
 - Melee: "melee CLAWBOTA hits netId=91/92 (not the host)" (08:31:30-39, 08:42:02-08).
 - 0 "Fire packet dropped". Only exception: olmod MPTweaks KeyNotFoundException once per joiner connect (8x), no visible effect.
+
+## Run 09:44-09:50, 0.4.15 (all logs 0.4.15-world protocol 13), 3 players
+- Exit 09:47:36 (joiner first), both joiners ran the end-of-level screens (09:47:51 / 09:47:54), reached the gate and kept their
+  upgraded loadouts (09:49:14: weapon levels 2,2,1,0,1,2; 09:49:19: missile levels 1,1,2,2). User: mostly worked.
+- Host loaded sp_titan_06 09:49:25, removed the joiners' old ships 09:49:28, sent the scene 09:49:33.586. Joiners: "Unknown message
+  ID 36" (UNET NotReady from SetClientNotReady, no client handler) - UNET drops the rest of that batch (config, level info, 48, 49).
+  No retry: CoopClient.AwaitTick runs from GameplayManager.Update, which doesn't tick in the menus. Joiners stuck on WAITING.

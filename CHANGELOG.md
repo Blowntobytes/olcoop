@@ -1,6 +1,14 @@
 # Changelog
 
-## 0.4.15-world (2026-10-04), UNTESTED in game
+## 0.4.16-world (2026-10-04), UNTESTED in game
+- Fix: after the end-of-level screens, joiners stayed on "WAITING FOR THE HOST'S NEXT LEVEL" when the host started the next level.
+  The host's level hand-off starts with a "not ready" network message that Overload clients have no handler for, and the network
+  layer then throws away the rest of that batch - which held the level itself. Inside the old level the joiner asked again every
+  3 s and got it the second time; in the menus that retry didn't run. Joiners now accept the "not ready" message (so the batch
+  arrives), and the waiting screen runs the retry as well. (This also removes the dropped first level message seen in Hardcore
+  restarts back in 0.3.9/0.3.10.)
+
+## 0.4.15-world (2026-10-04), 09:44 run: joiner end-of-level screens and upgrades worked; joiners stuck on "waiting" after the host's next level started
 - New: joiners get the end-of-level screens like the host (results/stats, upgrade menu, briefing). The joiner's game now finishes the
   level normally; when its menus reach "start next level" it does not load a level of its own. It shows "WAITING FOR THE HOST'S NEXT
   LEVEL" and loads the host's level. If the host's level is ready while a joiner is still in its menus, it waits until that joiner is

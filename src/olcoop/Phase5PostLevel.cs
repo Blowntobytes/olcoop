@@ -8,6 +8,7 @@ using System;
 using HarmonyLib;
 using Overload;
 using UnityEngine;
+using UnityEngine.Networking;
 
 namespace OlCoop.World
 {
@@ -54,7 +55,25 @@ namespace OlCoop.World
             }
             else if (s_pending != null) { var n = s_pending; s_pending = null; Overload.NetworkManager.LoadScene(n); }
             else if (Time.realtimeSinceStartup - s_gate_since > 70f && !Session.CoopClient.Awaiting) { s_gate_since = Time.realtimeSinceStartup; Session.CoopClient.AwaitLevel(); }
+            // The level-retry tick (CoopClient.AwaitTick) normally runs from GameplayManager.Update, which doesn't tick in the menus
+            // (09:44 run: both joiners sat on this screen with no retries). Run it from here while waiting.
+            Session.CoopClient.AwaitTick();
             return false;
+        }
+    }
+
+    /// UNET NotReady (msg 36) has no handler on Overload clients. The host's SendScene sends NotReady, then config/level-info/
+    /// SceneLoad (48)/SceneLoaded (49) in the same burst; UNET aborts a batch at an unknown message id, so everything after it was
+    /// dropped ("Unknown message ID 36", 09:49:33 - joiners never got the level; also the 0.3.10 "dropped scene message").
+    /// A no-op handler keeps the rest of the batch.
+    [HarmonyPatch(typeof(Client), "RegisterHandlers")]
+    static class P2_IgnoreNotReady
+    {
+        static void Postfix()
+        {
+            CoopConfig.EnsureInit();
+            if (!CoopConfig.IsJoiner || Client.GetClient() == null) return;
+            Client.GetClient().RegisterHandler(36, msg => { CoopLog.Write("JOIN", "host marked us not-ready (level change)"); });
         }
     }
 
