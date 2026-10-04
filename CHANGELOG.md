@@ -1,6 +1,16 @@
 # Changelog
 
-## 0.5.5-online (2026-10-04), UNTESTED in game (all players must run 0.5.5; protocol 17)
+## 0.5.6-online (2026-10-04), UNTESTED in game (all players must run 0.5.6; protocol 17)
+- HUD: co-op now shows the single-player score block (top right) instead of olmod's multiplayer PvP scoreboard: DESTROYED
+  on normal levels, OPERATORS remaining on kill-objective levels (Ymir Outpost), with the team's numbers from 0.5.5.
+- Security key investigation (Ymir Outpost, 15:07 run): the first key was picked up (team security level 1 at 15:13:29); the
+  second key's pickup never happened. All 17 campaign levels were checked from the level files: every security key is placed
+  the same way as every other pickup, and nothing in the level data is different for Ymir (both its keys sit behind secret
+  walls). This build logs every key on host and joiners ([KEY] lines: where it is, whether it is active, nearby doors, when
+  it disappears and why, who touches it, who picks it up, secret walls opened), so the next run shows what happens to it.
+- tools/levelscan.py: the level-file key scan, for re-checking levels.
+
+## 0.5.5-online (2026-10-04), not tested before 0.5.6 (all players must run 0.5.5; protocol 17)
 - Level objective counters for joiners: the HUD counter of levels with a kill objective (OPERATORS remaining, e.g. Ymir
   Outpost) and the CORES REMAINING counter now show the team's progress on every player. They counted only the robots/cores
   destroyed in each player's own game, and in co-op those are destroyed in the host's game, so joiners' counters never moved.

@@ -124,3 +124,34 @@ namespace OlCoop.World
         }
     }
 }
+
+namespace OlCoop.World
+{
+    /// <summary>
+    /// OB4 (0.5.6): single-player score block on the HUD in co-op.
+    /// UIElement.DrawHUDScoreInfo draws, when GameplayManager.IsMultiplayerActive, the MP block (match time, ping, anarchy/team
+    /// mini scoreboard; olmod's MPScoreboards prefix adds its PvP variants), otherwise the single-player block: the
+    /// DESTROYED counter (m_total_robots_killed) or, for LevelCustomInfo.Objective == DESTROY_BOTS, the OPERATORS counter.
+    /// Co-op needs IsMultiplayerActive for the player netcode, so it is switched off only for the duration of this call (same
+    /// pattern as Phase1Fixes SpRulesScope). With OB2 the counters show the host's (team) values.
+    /// </summary>
+    [HarmonyPatch(typeof(UIElement), "DrawHUDScoreInfo")]
+    [HarmonyPriority(Priority.First)]
+    static class OB4_SinglePlayerScoreInfo
+    {
+        static int s_logged;
+        static void Prefix(out bool __state)
+        {
+            __state = false;
+            if (!CoopConfig.Active || GameplayManager.IsMultiplayer || !GameplayManager.IsMultiplayerActive) return;
+            GameplayManager.IsMultiplayerActive = false;
+            __state = true;
+            if (s_logged++ == 0) CoopLog.Write("OBJ", "HUD: single-player score block in co-op (objective=" + (int)LevelCustomInfo.Objective + ")");
+        }
+
+        static void Finalizer(bool __state)
+        {
+            if (__state) GameplayManager.IsMultiplayerActive = true;
+        }
+    }
+}

@@ -1,4 +1,4 @@
-# olcoop handoff (state as of 2026-10-04 15:55 PT)
+# olcoop handoff (state as of 2026-10-04 17:00 PT)
 
 Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
@@ -10,8 +10,8 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   `Overload_Data\Managed\Assembly-CSharp.dll` locally if needed. Build references the game's Managed DLLs + GameMod.dll staged from the game folder.
 
 ## Build + delivery rules (user is strict about these)
-- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.5.5 online"). Protocol = 17 (in build.sh). Current build folder: build-online.
-- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 189 patches, 0 problems;
+- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.5.6 online"). Protocol = 17 (in build.sh). Current build folder: build-online.
+- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 195 patches, 0 problems;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b (current). Bug fixes overwrite the current phase
   folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
@@ -318,3 +318,34 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 - Installer sources are now tracked in dist/ (install.bat, uninstall.bat, olcoop*.bat, find-overload.ps1, README.txt, olcoop.ico);
   build-online holds the same files plus the DLL. Edit dist/ and copy to build-online (or the reverse) - keep them identical.
 - README: Known issues + Credits added on top of the user's GitHub edit e28d136 (fast-forwarded into local main).
+
+## 0.5.6 status (2026-10-04 17:00) - installed, UNTESTED (0.5.4/0.5.5 items still open)
+- Installed SHA1 f57efec9683dbc20cfb2e3183826ff6e214cc905 (217088 bytes), verified in game folder + build-online. Protocol 17 (no wire change; the handshake still
+  needs the same full version). Tag v0.5.6. 195 patches, 0 problems. Friend zip dist/olcoop-0.5.6-online.zip (SHA1 310ec4142566e2b77ea1ef56461d70246bf6a340).
+- User (16:16): the HUD shows olmod's MP PvP scoreboard in co-op. IL: UIElement.DrawHUD calls DrawHUDScoreInfo unless
+  GameplayManager.ShowMpScoreboard (held key -> DrawMpScoreboardRaw); DrawHUDScoreInfo draws the MP block (match time, ping,
+  anarchy/team mini scoreboard; olmod MPScoreboards prefix by MatchMode) when IsMultiplayerActive, else the SP block (bars,
+  DESTROYED / OPERATORS for Objective 1, with the OB2 team values). OB4 (Phase8Objectives.cs): DrawHUDScoreInfo prefix
+  (Priority.First) clears IsMultiplayerActive in co-op, finalizer restores. The held-key full scoreboard is still the PvP one.
+  A SCORE line, if drawn, is the local player's own score (joiners' kills happen on the host) - host-sent scores if needed.
+- Key report (16:30): "Ymir Outpost: the security key does not exist". Ymir = sp_outer_01 (Objective DESTROY_BOTS, count 40).
+  15:07 run (0.5.4, host log pid1920): first key picked up 15:13:29 (ScriptDeactivateObject 13 = ScriptOnPickup chain, team level 1);
+  the second key's ScriptOnPickup (-> ScriptActivateObject) never fired. Not a team-key bug: ApplyKeys raises every copy to the team
+  level, AddKey then increments from it.
+- Static scan (tools/levelscan.py, UnityPy + TypeTreeGeneratorAPI on Overload_Data/levelN; scene index -> name from
+  globalgamemanagers BuildSettings: 5 sp_outer_02, 7 outer_03, 8 outer_04, 11-14 titan_06-09, 21 outer_05, 22 outer_01, 25 secret_01,
+  26 titan_10, 27-28 inner_11-12, 29 alien_14, 30 alien_13, 31-32 alien_15-16): every key in all 17 levels is a placed Item
+  (m_type 25, m_amount 1) with NetworkIdentity + SmoothSync, inactive in the file (UNET scene object, activated by
+  NetworkServer.SpawnObjects in Server.OnSceneLoad like every pickup), under <scene>/_container_placed_entities/ITEM, parents
+  active; watched only by ScriptOnPickup. Alien levels and sp_secret_01 have no keys. Objectives: outer_01 = 1, inner_12 = 2,
+  alien_13/14/15 = 3, alien_16 = 4, rest 0. Ymir keys: #3020 at (10,-24,38) near secret wall omwall18a#507 (unlocked by
+  switch_onetime#160 -> ScriptOnDestroy#4741 -> ScriptDoorUnlock#5599); #2593 at (-1,-93,104) near secret wall omwall19a#2788
+  (no unlock script; secret doors open on collision, DoorAnimating.OnCollisionEnter -> OpenDoor). Placement is not the difference.
+- Checked and ruled out: olmod UpdateDynamicManager_AddItem prefix (destroys items with netId 0 while IsMultiplayerActive - the
+  host is a UNET server at scene load, netServer=True, so placed items have netIds), MPClassic MaybeDespawnPowerup (spewed only),
+  Item.MaybeDespawnPowerup (spewed only), NGPAlterItemSpawns (New Game+ only), CTF (match mode CTF only), Robot carried drops
+  (no MP gate).
+- KeyTrace (Phase9KeyTrace.cs): [KEY] census 3 s after level start (netId, activeSelf/inHierarchy, pos, segment, nearest 4 doors
+  within 45u: SECRET/open), 10-s diff (APPEARED / changed / GONE), Item.OnDestroy of keys with stack, Item.OnTriggerEnter of keys
+  (who, server, throttled 2 s), Player.AddKey postfix, secret DoorAnimating.OpenDoor (first per door). Next run on sp_outer_01
+  decides the fix; remove or reduce KeyTrace afterwards.
