@@ -389,7 +389,13 @@ namespace OlCoop.World
         {
             if (CoopWorld.IsHost) { try { CoopWorld.HostNoteHit(__instance, di); } catch { } return true; }
             if (!(CoopWorld.IsJoiner && CoopWorld.Matched)) return true;
-            try { CoopWorld.SendHit(__instance, di); } catch (Exception ex) { CoopLog.Error("W2", ex); }
+            try
+            {
+                var me = GameManager.m_player_ship;
+                bool mine = me != null && di.owner != null && (di.owner == me.gameObject || di.owner.transform.IsChildOf(me.transform));
+                if (mine) CoopWorld.SendHit(__instance, di); // other players' shots are applied on the host already
+            }
+            catch (Exception ex) { CoopLog.Error("W2", ex); }
             return false;
         }
     }
@@ -445,6 +451,42 @@ namespace OlCoop.World
             c.RegisterHandler(WNet.Script, m => { if (CoopWorld.Matched) CoopWorld.ApplyScript(m.ReadMessage<IdMsg>().id, false); });
             c.RegisterHandler(WNet.Destroy, m => { if (CoopWorld.Matched) CoopWorld.ApplyDestroy(m.ReadMessage<IdMsg>().id, false); });
             c.RegisterHandler(WNet.Keys, m => { int k = m.ReadMessage<IntegerMessage>().value; CoopLog.Write("WORLD", "joiner: team security level " + k); CoopWorld.ApplyKeys(k, true); });
+        }
+    }
+
+    /// W7: player shots to the other players. Stock ProjectileManager.FireProjectile only calls Server.SendProjectileFiredToClients when
+    /// GameplayManager.IsMultiplayer (game type MULTIPLAYER); co-op is a campaign game, so joiners never saw the host's shots (and with 3
+    /// players, joiners wouldn't see each other's). The host now sends every player shot (msg 70, as stock MP/olmod "sniper packets") to
+    /// everyone except the shooter, who already shows its own. Robot shots are separate (Phase 2a FireBatch).
+    [HarmonyPatch(typeof(ProjectileManager), "FireProjectile")]
+    static class W7_ShareShots
+    {
+        static ConstructorInfo s_ctor;
+        static int s_logged;
+
+        static void Postfix(object[] __args)
+        {
+            if (!CoopWorld.IsHost) return;
+            try
+            {
+                var owner = __args[3] as GameObject;
+                if (owner == null) return;
+                var shooter = owner.GetComponent<Player>();
+                if (shooter == null) return; // robots, turrets etc.
+                if (s_ctor == null) s_ctor = typeof(FireProjectileToClientMessage).GetConstructors().FirstOrDefault(c => c.GetParameters().Length == 7);
+                if (s_ctor == null) return;
+                var msg = (MessageBase)s_ctor.Invoke(new object[] { shooter.netId, __args[0], __args[1], __args[2], __args[6], __args[7], -1 });
+                int sent = 0;
+                foreach (var p in Overload.NetworkManager.m_Players)
+                {
+                    if (p == null || p.isLocalPlayer || p.m_spectator || p == shooter || p.connectionToClient == null) continue;
+                    if (!Session.CoopHost.Verified.Contains(p.connectionToClient.connectionId)) continue;
+                    p.connectionToClient.SendByChannel(70, msg, 2);
+                    sent++;
+                }
+                if (sent > 0 && s_logged++ < 10) CoopLog.Write("WORLD", "host: shared shot " + __args[0] + " from netId=" + shooter.netId.Value + " with " + sent + " player(s)");
+            }
+            catch (Exception ex) { if (s_logged++ < 10) CoopLog.Error("W7", ex); }
         }
     }
 }

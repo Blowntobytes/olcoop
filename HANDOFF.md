@@ -10,7 +10,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   `Overload_Data\Managed\Assembly-CSharp.dll` locally if needed. Build references the game's Managed DLLs + GameMod.dll staged from the game folder.
 
 ## Build + delivery rules (user is strict about these)
-- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.4.3 world"). Protocol = 7 (in build.sh).
+- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.4.4 world"). Protocol = 7 (in build.sh).
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 89 patches, 0 problems).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b (current). Bug fixes overwrite the current phase
   folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
@@ -25,7 +25,8 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   `olmodcoop\publish\` next to Publish-ToGitHub.cmd/.ps1. The user double-clicks Publish-ToGitHub.cmd, which pushes with their own login.
 
 ## Current status
-- 0.4.3-world (phase 2b) installed 2026-10-03 20:34 (121856 bytes, SHA1 d3085943…, verified), NOT tested. Folder build-phase2b.
+- 0.4.4-world (phase 2b) installed 2026-10-03 20:54 (123392 bytes, SHA1 5f161ca5…, verified), NOT tested. Folder build-phase2b.
+  0.4.4: W7 host sends player shots (msg 70) to other players (stock gate is IsMultiplayer). Runs 2-3 (0.4.2/0.4.3): joiner shot breaks buttons via host.
   0.4.3 = 0.4.2 + map key re-enabled (S4, stock ignores VIEW_MAP when IsMultiplayerActive) + host death tick runs in AUTOMAP/MENUS.
   Version shown on main menu (top-left) and CO-OP OPTIONS (since 0.4.1). 0.4.2: joiner button hits forwarded to host (msg 179), key sound on joiners.
   2b run 1 (0.4.0, 19:46-19:55): host-side button breaks, script doors, comm messages replicated correctly; joiner shots never hit host buttons.

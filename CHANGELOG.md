@@ -1,6 +1,12 @@
 # Changelog
 
-## 0.4.3-world (2026-10-03), UNTESTED in game
+## 0.4.4-world (2026-10-03), UNTESTED in game
+- Fix: the joiner couldn't see the host's shots. The game only sends player shots to other machines in a real multiplayer match (game type
+  check), and co-op runs as a campaign game. The host now sends every player shot (its own and the joiners' it simulates) to every other
+  player except the shooter, the same way stock multiplayer does (message 70). This also covers joiners seeing each other's shots with 3 players.
+- Destroyable hit forwarding (0.4.2) now only sends the joiner's own hits, so replicated shots of other players aren't counted twice.
+
+## 0.4.3-world (2026-10-03): run 3, map key not reported on; host shots invisible on the joiner
 - Fix: the map key did nothing in co-op (since Phase 1). Stock code ignores the map key whenever multiplayer netcode is on, which co-op
   needs. The map opens again in co-op levels; it never pauses the game in co-op.
 - Host death logic (respawn countdown, team resets) now keeps running while the host has the map or the Esc menu open. It used to wait
