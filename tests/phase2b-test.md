@@ -1,7 +1,7 @@
-# Phase 2b world sync test (build 0.4.18)
+# Phase 2b world sync test (build 0.4.19)
 
 Host + 1 joiner, a level with keys, a shootable button that opens a door, and comm (voice) messages, e.g. the first Cronus levels.
-Both windows must show OLCOOP 0.4.18-WORLD at the top-left of the main menu.
+Both windows must show OLCOOP 0.4.19-WORLD at the top-left of the main menu.
 
 1. **Keys:** the host picks up a security key. Both get "SECURITY ACCESS GRANTED!" (the joiner's says "BY A TEAMMATE"), and the joiner
    can open that key's door. Repeat with the joiner picking up a key.
@@ -48,4 +48,8 @@ Both windows must show OLCOOP 0.4.18-WORLD at the top-left of the main menu.
     is there in the next level. Also try a joiner that stays in the upgrade menu for a while after the host has started the next level.
 22. **Dead joiner at the exit:** a joiner is dead (respawn countdown) when another player exits: that joiner also gets the end-of-level
     screens and then the host's next level.
-23. Note anything out of sync: what, where, and which window.
+23. **Dead at the exit (all cases):** with a joiner dead, then with the host dead (respawn and hardcore modes), another player exits:
+    the dead player comes back next to the exit and plays the exit cutscene with the others, then gets the end-of-level screens.
+24. **Ready check:** a joiner stays on the upgrade screen while the host finishes its screens: the host shows "WAITING FOR PLAYERS -
+    n OF m READY" and only starts the next level once every joiner is done.
+25. Note anything out of sync: what, where, and which window.

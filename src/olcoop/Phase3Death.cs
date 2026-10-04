@@ -129,13 +129,16 @@ namespace OlCoop.Death
         static readonly HashSet<uint> s_timer_sent = new HashSet<uint>();
         static float s_reset_at = -1f;
         static bool s_reset_latched;
+        /// 0.4.19: an exit has started this level. Exits win over deaths: no respawn timers, no hardcore/team-wipe restart; dead
+        /// players are revived next to the exit by CoopFlow instead.
+        public static bool ExitInProgress;
 
         // local display
         static float s_local_respawn_at = -1f; static int s_last_shown = -1;
 
         public static void ResetForLevel()
         {
-            s_death_time.Clear(); s_timer_sent.Clear(); s_reset_at = -1f; s_reset_latched = false;
+            s_death_time.Clear(); s_timer_sent.Clear(); s_reset_at = -1f; s_reset_latched = false; ExitInProgress = false;
             s_local_respawn_at = -1f; s_last_shown = -1;
             Hud.CoopHud.ClearRespawn();
             Spectate.Stop(null);
@@ -154,7 +157,7 @@ namespace OlCoop.Death
         public static void HostTick()
         {
             // Not PLAYING-only: the host may have the map (AUTOMAP) or the Esc menu (MENUS) open; nothing is paused in co-op.
-            if (!IsHost || !GameplayManager.LevelIsLoaded || GameplayManager.m_gameplay_state == GameplayState.EXIT) return;
+            if (!IsHost || !GameplayManager.LevelIsLoaded || GameplayManager.m_gameplay_state == GameplayState.EXIT || ExitInProgress) return;
             float now = Time.time;
             var ships = Ships();
             int alive = 0;
@@ -217,6 +220,35 @@ namespace OlCoop.Death
             s.m_death_stats_recorded = false;
             Server.RespawnPlayer(s.c_player, sp.position, sp.orientation);
             CoopLog.Write("DEATH", "respawned netId=" + s.c_player.netId.Value + " near netId=" + anchor.c_player.netId.Value + " at " + sp.position.ToString("F1"));
+        }
+
+        /// Host: an exit started. Cancel a pending hardcore/team-wipe restart and stop death handling for the rest of the level.
+        public static void CancelForExit()
+        {
+            if (ExitInProgress) return;
+            ExitInProgress = true;
+            if (s_reset_at >= 0f) CoopLog.Write("DEATH", "level restart cancelled: the team is exiting");
+            s_reset_at = -1f; s_reset_latched = true;
+        }
+
+        /// Host: bring a dead ship back at an exact spot (used to put dead players into the exit sequence).
+        public static void RespawnAt(PlayerShip s, Vector3 pos, Quaternion rot, string why)
+        {
+            s.c_transform.position = pos; s.c_transform.rotation = rot;
+            NetworkSpawnPlayer.StartSpawnInvul(s.c_player);
+            s.c_player.m_input_deficit = 0;
+            s.m_death_stats_recorded = false;
+            Server.RespawnPlayer(s.c_player, pos, rot);
+            s_death_time.Remove(s.c_player.netId.Value); s_timer_sent.Remove(s.c_player.netId.Value);
+            CoopLog.Write("DEATH", "revived netId=" + s.c_player.netId.Value + " at " + pos.ToString("F1") + " (" + why + ")");
+        }
+
+        /// Joiner: the team is exiting; don't leave for a restart that the host has cancelled.
+        public static void CancelLeave()
+        {
+            if (s_leave_at < 0f) return;
+            s_leave_at = -1f;
+            CoopLog.Write("DEATH", "restart leave cancelled: the team is exiting");
         }
 
         static void SendTimer(uint netId, float seconds)

@@ -36,20 +36,50 @@ namespace OlCoop.World
             CoopLog.Write("FLOW", "joiner: the team exited while we were dead; finishing the level (end-of-level screens)");
             try
             {
-                OlCoop.Death.Spectate.Stop(null);
-                // 10:18 run (0.4.17): the dead joiner reached the results screen but it never responded. MenuManager.Update skips menu
-                // handling while PlayerShip.DeathPaused is set (set by StartDying, normally cleared on respawn). Clear the death state
-                // the way the game does when leaving its death menu, and drop our respawn countdown overlay.
-                PlayerShip.DeathPaused = false;
-                try { OlCoop.Hud.CoopHud.ClearRespawn(); UIManager.ClearOverlayElement(1); } catch { }
-                try { UIManager.SetScreenFade(0f); } catch { }
-                try { AccessTools.Method(typeof(MenuManager), "RecoverFromDeathMenu").Invoke(null, new object[] { false, false }); }
-                catch (Exception ex) { CoopLog.Write("FLOW", "joiner: RecoverFromDeathMenu failed: " + ex.GetType().Name); }
+                ClearDeathForMenus("joiner");
                 GameplayManager.EscapeLevel();   // F6 lets it run and calls Begin()
                 PlayerShip.DeathPaused = false;
                 CoopLog.Write("FLOW", "joiner: death state cleared for the end-of-level screens (DeathPaused=" + PlayerShip.DeathPaused + ")");
             }
             catch (Exception ex) { CoopLog.Error("DeadJoinerExit", ex); CoopFlow.ShowWaiting(); }
+        }
+
+        /// 10:18 run (0.4.17): a dead player reached the results screen but it never responded. MenuManager.Update skips menu handling
+        /// while PlayerShip.DeathPaused is set (set by StartDying, normally cleared on respawn). Clear the death state the way the game
+        /// does when leaving its death menu, and drop our respawn countdown overlay. Used for joiners and (0.4.19) the host.
+        public static void ClearDeathForMenus(string who)
+        {
+            OlCoop.Death.Spectate.Stop(null);
+            PlayerShip.DeathPaused = false;
+            try { OlCoop.Hud.CoopHud.ClearRespawn(); UIManager.ClearOverlayElement(1); } catch { }
+            try { UIManager.SetScreenFade(0f); } catch { }
+            try { AccessTools.Method(typeof(MenuManager), "RecoverFromDeathMenu").Invoke(null, new object[] { false, false }); }
+            catch (Exception ex) { CoopLog.Write("FLOW", who + ": RecoverFromDeathMenu failed: " + ex.GetType().Name); }
+            if (who == "host") HostReady.DeadFinish = true;
+        }
+
+        // ---------------- 0.4.19: joiner tells the host it's done with its end-of-level screens
+        static float s_ready_next;
+        static int s_ready_sent;
+
+        /// Joiner, every menu frame: once past the end-of-level screens (at the PLAY_GAME gate, or dropped to the main menu), or holding black after an
+        /// exit without menus, tell the host we're ready. Repeated every 3 s until the next level loads (cheap; survives a lost message).
+        public static void ReadyTick()
+        {
+            if (!CoopConfig.IsJoiner) return;
+            bool ready = s_at_gate || (s_active && MenuManager.m_menu_state == MenuState.MAIN_MENU) || (!s_active && CoopFlow.Waiting);
+            if (!ready || Time.realtimeSinceStartup < s_ready_next) return;
+            var c = Client.GetClient();
+            if (c == null || !Client.IsConnected()) return;
+            s_ready_next = Time.realtimeSinceStartup + 3f;
+            c.Send(FNet.Ready, new UnityEngine.Networking.NetworkSystem.IntegerMessage(1));
+            if (s_ready_sent++ == 0) CoopLog.Write("FLOW", "joiner: told the host we're ready for the next level (menu " + MenuManager.m_menu_state + ")");
+        }
+
+        /// Host: a joiner is ready.
+        public static void OnReady(NetworkMessage msg)
+        {
+            try { HostReady.Mark(msg.conn.connectionId); } catch (Exception ex) { CoopLog.Error("OnReady", ex); }
         }
 
         public static void Begin()
@@ -59,7 +89,7 @@ namespace OlCoop.World
             CoopLog.Write("FLOW", "joiner: level complete - running the end-of-level screens (results, upgrades)");
         }
 
-        public static void Reset() { s_active = false; s_at_gate = false; s_pending = null; AllowPlay = false; }
+        public static void Reset() { s_active = false; s_at_gate = false; s_pending = null; AllowPlay = false; s_ready_sent = 0; s_ready_next = 0f; }
 
         /// C1: host's level arrived. Hold it while the joiner is still in its end-of-level menus.
         public static bool ShouldDefer(string name)
@@ -99,6 +129,50 @@ namespace OlCoop.World
         }
     }
 
+    /// 0.4.19: the host doesn't start the next level until every connected joiner has finished its end-of-level screens.
+    public static class HostReady
+    {
+        static bool s_on;
+        static readonly System.Collections.Generic.HashSet<int> s_ready = new System.Collections.Generic.HashSet<int>();
+        static int s_shown_ready = -1, s_shown_total = -1;
+        /// Host finished the level dead (fallback path): keep its menus unfrozen.
+        public static bool DeadFinish;
+        public static bool On { get { return s_on; } }
+
+        public static void Begin() { s_on = true; s_ready.Clear(); s_shown_ready = -1; s_shown_total = -1; CoopLog.Write("FLOW", "host: level done; the next level waits until every joiner is ready"); }
+        public static void End() { if (s_on || DeadFinish) { s_on = false; DeadFinish = false; s_ready.Clear(); CoopStatus.Clear(); } }
+
+        public static void Mark(int conn)
+        {
+            if (!s_on || !s_ready.Add(conn)) return;
+            CoopLog.Write("FLOW", "host: joiner conn " + conn + " is ready for the next level");
+        }
+
+        /// MenuManager.PlayGameUpdate on the host after a level end. False = hold on this screen.
+        public static bool Gate()
+        {
+            if (!s_on) return true;
+            int total = 0, ready = 0;
+            foreach (var c in NetworkServer.connections)
+            {
+                if (c == null || c.connectionId == 0 || !c.isConnected || !Session.CoopHost.Verified.Contains(c.connectionId)) continue;
+                total++; if (s_ready.Contains(c.connectionId)) ready++;
+            }
+            if (ready >= total)
+            {
+                CoopLog.Write("FLOW", "host: all joiners ready (" + ready + "/" + total + "); starting the next level");
+                s_on = false; CoopStatus.Clear();
+                return true;
+            }
+            if (ready != s_shown_ready || total != s_shown_total)
+            {
+                s_shown_ready = ready; s_shown_total = total;
+                CoopStatus.Set(0, "WAITING FOR PLAYERS - " + ready + " OF " + total + " READY");
+            }
+            return false;
+        }
+    }
+
     /// UNET NotReady (msg 36) has no handler on Overload clients. The host's SendScene sends NotReady, then config/level-info/
     /// SceneLoad (48)/SceneLoaded (49) in the same burst; UNET aborts a batch at an unknown message id, so everything after it was
     /// dropped ("Unknown message ID 36", 09:49:33 - joiners never got the level; also the 0.3.10 "dropped scene message").
@@ -122,9 +196,12 @@ namespace OlCoop.World
         static bool s_logged;
         static void Prefix()
         {
-            if (!PostLevel.Active || !PlayerShip.DeathPaused) return;
+            try { PostLevel.ReadyTick(); } catch (Exception ex) { CoopLog.Error("ReadyTick", ex); }
+            if (HostReady.On && MenuManager.m_menu_state == MenuState.MAIN_MENU) { CoopLog.Write("FLOW", "host: back at the main menu; ready check dropped"); HostReady.End(); }
+            bool post = PostLevel.Active || (CoopWorld.IsHost && (HostReady.On || HostReady.DeadFinish));
+            if (!post || !PlayerShip.DeathPaused) return;
             PlayerShip.DeathPaused = false;
-            if (!s_logged) { s_logged = true; CoopLog.Write("FLOW", "joiner: cleared a leftover death pause on the end-of-level screens"); }
+            if (!s_logged) { s_logged = true; CoopLog.Write("FLOW", "cleared a leftover death pause on the end-of-level screens"); }
         }
     }
 
@@ -133,7 +210,9 @@ namespace OlCoop.World
     {
         static bool Prefix()
         {
-            if (!CoopWorld.Active || !CoopConfig.IsJoiner) return true;
+            if (!CoopWorld.Active) return true;
+            if (CoopWorld.IsHost) { try { return HostReady.Gate(); } catch (Exception ex) { CoopLog.Error("P1 host", ex); return true; } }
+            if (!CoopConfig.IsJoiner) return true;
             try { return PostLevel.Gate(); } catch (Exception ex) { CoopLog.Error("P1", ex); return true; }
         }
     }

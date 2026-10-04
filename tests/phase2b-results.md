@@ -105,3 +105,9 @@
 - Joiner 3112 (dead 10:18:11, respawn overlay created, never cleared): exit 10:18:14 -> "finishing the level", DoneLevel(Escaped),
   MENUS. Still LEVEL_RESULTS at 10:19:09, then nothing. User: their game breaks. IL: MenuManager.Update skips menu handling while
   PlayerShip.DeathPaused (set by StartDying, cleared on respawn / RecoverFromDeathMenu).
+
+## Runs 10:31-10:48, 0.4.18 (all logs show 0.4.18), host + 2 joiners
+- 10:38 Goliath exit (all alive): joiner-triggered exit, line-up 4/7/10 u, all three exit flights, end screens, next level loaded (log).
+- 10:45 hardcore: host died 10:45:52 (restart scheduled), joiner reached the exit 10:45:56. Host finished the level dead without the
+  exit flight; its log stops at MENUS (menus frozen), user restarted the host. User: dead host or joiner at the exit still breaks.
+  0.4.19: dead players are revived into the exit; the exit cancels the restart; host waits for joiners to be ready.

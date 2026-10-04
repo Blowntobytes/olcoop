@@ -10,7 +10,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   `Overload_Data\Managed\Assembly-CSharp.dll` locally if needed. Build references the game's Managed DLLs + GameMod.dll staged from the game folder.
 
 ## Build + delivery rules (user is strict about these)
-- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.4.18 world"). Protocol = 13 (in build.sh).
+- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.4.19 world"). Protocol = 14 (in build.sh).
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 146 patches, 0 problems; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b (current). Bug fixes overwrite the current phase
   folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
@@ -169,3 +169,19 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 - DeadJoinerExit: Spectate.Stop, DeathPaused=false, CoopHud.ClearRespawn + ClearOverlayElement(1), SetScreenFade(0),
   MenuManager.RecoverFromDeathMenu(false,false) (reflection), then EscapeLevel. P3: MenuManager.Update prefix keeps DeathPaused off
   while PostLevel.Active.
+
+## 0.4.19 status (2026-10-04 10:55) - installed, UNTESTED
+- Installed SHA1 beaed599a6394ee8faee72fd39b2b4330b3f94b5 (168448 bytes), verified in game folder + build-phase2b. Protocol 14. Tag v0.4.19. 164 patches, 0 problems.
+- 10:44 run (0.4.18, hardcore): host died 10:45:52 (reset scheduled), joiner exited 10:45:56; host took the old dead path (EscapeLevel
+  without flight), log stops at MENUS - frozen menus (DeathPaused), user restarted the host.
+- Exit revive (CoopFlow): Regroup queues dead/dying ships (QueueRevive) instead of skipping them; OnExitRequest with a dead host
+  sends the exit and queues the host. CoopFlow.HostTick (F11, host, every frame): m_dead ship -> SpotNear lane spot ->
+  CoopDeath.RespawnAt (Server.RespawnPlayer); once alive: host -> ExitSequenceStart/TeleportSequenceStart, joiner -> Exit PoseMsg.
+  8 s timeout -> old path (host: PostLevel.ClearDeathForMenus("host") + EscapeLevel; joiner: Exit with pos zero).
+- Joiner OnExit while dead: pending exit, waits up to 3 s for the respawn, then DeadJoinerExit. OnExit also cancels a pending
+  hardcore leave (CoopDeath.CancelLeave). Host SendExit -> CoopDeath.CancelForExit (ExitInProgress: no timers, no restart).
+- Ready check: FNet.Ready=189 (J->H). Joiner PostLevel.ReadyTick (from P3, MenuManager.Update) sends every 3 s while at the PLAY_GAME
+  gate, in MAIN_MENU after the level, or holding black (CoopFlow.Waiting). Host HostReady: Begin on DoneLevel(Escaped) (F15), Gate in
+  MenuManager.PlayGameUpdate (P1) holds until all verified connected joiners are ready, banner on overlay slot 3; End on LoadLevel (F16)
+  or MAIN_MENU. No timeout (user: host must not continue without them).
+- Known race: hardcore death, joiner leaves for the restart 2 s after the death message; an exit 2-4 s after a death can come too late.

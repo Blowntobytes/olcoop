@@ -36,4 +36,5 @@ Targets unless noted: Overload 1.1.1886, olmod 0.5.14.
 | 0.4.15-world | 13 | 10-04 09:28 | tested (09:44 run) | **joiners get results + upgrade screens** (user: mostly worked); upgrades captured (joiner 1 weapon levels 2,2,..; joiner 2 missile levels 2,2) (log) | joiners stuck on WAITING after the host started the next level | tag v0.4.15 |
 | 0.4.16-world | 13 | 10-04 09:53 | tested (09:56 run) | NotReady handled; host's level reached a joiner on the first send (log) | joiner dead at the exit: no end-of-level screens; a joiner that landed in the main menu after the results never loaded the host's level | tag v0.4.16 |
 | 0.4.17-world | 13 | 10-04 10:10 | tested (10:15 run) | living joiner: end screens, held host level, loaded it when done (log) | dead joiner at the exit: results screen frozen | tag v0.4.17 |
-| 0.4.18-world | 13 | 10-04 10:22 | untested | - | - | tag v0.4.18, build-phase2b |
+| 0.4.18-world | 13 | 10-04 10:22 | tested (10:31-10:48 runs) | 3-player exit + end screens + next level (log) | host dead (hardcore) when a joiner exited: host finished dead, menus froze | tag v0.4.18 |
+| 0.4.19-world | 14 | 10-04 10:55 | untested | - | - | tag v0.4.19, build-phase2b |

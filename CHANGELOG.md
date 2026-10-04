@@ -1,6 +1,16 @@
 # Changelog
 
-## 0.4.18-world (2026-10-04), UNTESTED in game
+## 0.4.19-world (2026-10-04), UNTESTED in game (protocol 14: all windows must run 0.4.19)
+- Dead players are put into the exit: when anyone exits while a player (joiner or host) is dead or dying, the host revives that player
+  in the exit line-up behind the exiting player and starts its exit flight, so everyone gets the cutscene and the end-of-level screens.
+  If a revive doesn't happen within 8 s (host) / 3 s (joiner), the old path (finish the level from the death screen) is the fallback.
+- Fix: a host who was dead when a joiner exited (10:45 run, hardcore) finished the level without the exit flight and its menus froze.
+  The host is now revived into the exit; on the fallback path its death pause is cleared so the menus respond.
+- An exit cancels a pending hardcore / team-wipe restart (10:45 run: a death 4 s before the exit had scheduled a restart).
+- Ready check: the host's next level doesn't start until every connected joiner has finished its end-of-level screens. The host sees
+  "WAITING FOR PLAYERS - n OF m READY". A joiner that disconnects no longer counts.
+
+## 0.4.18-world (2026-10-04), 10:31-10:48 runs: living exits OK; host dead at a joiner's exit froze the host (fixed in 0.4.19)
 - Fix: a joiner who was dead when the team exited reached the results screen, but the screen didn't respond (game "broken"). Overload
   stops handling its menus while the death pause from dying is still on, and that pause normally only ends on respawn. The dead joiner
   now leaves the death state like the game does when leaving its own death menu (death pause off, camera restored, respawn countdown

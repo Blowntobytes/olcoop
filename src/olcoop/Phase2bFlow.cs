@@ -22,6 +22,7 @@ namespace OlCoop.World
         public const short ExitRequest = 185; // J->H byte kind
         public const short Exit = 186;        // H->J PoseMsg: kind + where to put your ship before the exit sequence
         public const short Teleport = 187;    // H->J PoseMsg: regroup (lockdown) - move your ship here
+        public const short Ready = 189;       // J->H IntegerMessage 1: end-of-level screens done, ready for the next level
         public const short Status = 188;      // H->J IntegerMessage: 1 = host on the level summary, 2 = host loading the next level
         public const byte KindDoor = 0, KindWarp = 1, KindTeleport = 2;
     }
@@ -90,7 +91,11 @@ namespace OlCoop.World
                         p.connectionToClient.Send(msgType, new PoseMsg { kind = kind, pos = ship.c_transform.position, rot = ship.c_transform.rotation });
                     continue;
                 }
-                if (!Alive(ship)) continue;
+                if (!Alive(ship))
+                {
+                    if (msgType == FNet.Exit) QueueRevive(ship);
+                    continue;
+                }
                 if (minDist > 0f && (ship.c_transform.position - anchor.c_transform.position).magnitude < minDist) continue;
                 LevelData.SpawnPoint sp;
                 if (!SpotNear(anchor, ship, idx++, out sp, msgType == FNet.Exit))
@@ -106,13 +111,7 @@ namespace OlCoop.World
                 moved++;
                 CoopLog.Write("FLOW", "host: " + why + ": moved netId=" + p.netId.Value + " next to netId=" + anchor.c_player.netId.Value + " at " + sp.position.ToString("F1"));
             }
-            if (msgType == FNet.Exit)
-            {
-                // joiners that were not moved (dead, or the anchor itself handled above) still need the exit message
-                foreach (var p in Overload.NetworkManager.m_Players)
-                    if (p != null && !p.isLocalPlayer && p.connectionToClient != null && p.c_player_ship != null && p.c_player_ship != anchor && !Alive(p.c_player_ship))
-                        p.connectionToClient.Send(msgType, new PoseMsg { kind = kind, pos = anchor.c_transform.position, rot = anchor.c_transform.rotation });
-            }
+            // dead players (joiners and the host) are revived next to the exit and sent into it by HostTick
             if (msgType == FNet.Teleport && moved > 0) GameplayManager.AddHUDMessage("CO-OP: LOCKDOWN - TEAM REGROUPED", -1, true);
         }
 
@@ -153,7 +152,7 @@ namespace OlCoop.World
         static bool s_requested, s_exit_sent, s_wait_shown;
         public static bool Waiting { get { return s_wait_shown; } }
 
-        public static void ResetForLevel() { PostLevel.Reset(); if (s_wait_shown) { try { UIManager.SetScreenFade(0f); } catch { } } CoopStatus.Clear(); s_lockdowns_done.Clear(); s_last_trigger_ship = null; s_exit_anchor = null; s_pending_pose = null; s_pending_exit = -1; s_requested = false; s_exit_sent = false; s_wait_shown = false; ApplyingExit = false; ApplyingLog = false; }
+        public static void ResetForLevel() { PostLevel.Reset(); if (s_wait_shown) { try { UIManager.SetScreenFade(0f); } catch { } } CoopStatus.Clear(); s_lockdowns_done.Clear(); s_last_trigger_ship = null; s_exit_anchor = null; s_pending_pose = null; s_pending_exit = -1; s_dead_wait_until = -1f; s_revive.Clear(); s_revive_anchor = null; s_revive_until = -1f; s_requested = false; s_exit_sent = false; s_wait_shown = false; ApplyingExit = false; ApplyingLog = false; }
 
         static bool LocalAlive()
         {
@@ -206,18 +205,19 @@ namespace OlCoop.World
                 byte kind = (byte)msg.ReadMessage<IntegerMessage>().value;
                 CoopLog.Write("FLOW", "host: joiner conn " + msg.conn.connectionId + " reached " + KindName(kind) + "; gameplay=" + GameplayManager.m_gameplay_state + " hostAlive=" + LocalAlive());
                 if (GameplayManager.m_gameplay_state == GameplayState.EXIT || s_exit_sent) return;
-                if (!LocalAlive())
-                {
-                    // ExitSequenceStart refuses a dying/dead ship (e.g. host spectating): send the exit to joiners and finish the level directly.
-                    SendExit(kind);
-                    CoopLog.Write("FLOW", "host: dead/spectating, finishing the level without the exit flight");
-                    GameplayManager.EscapeLevel();
-                    return;
-                }
                 PlayerShip anchor = null;
                 foreach (var p in Overload.NetworkManager.m_Players)
                     if (p != null && p.connectionToClient != null && p.connectionToClient.connectionId == msg.conn.connectionId) anchor = p.c_player_ship;
                 s_exit_anchor = anchor;
+                if (!LocalAlive())
+                {
+                    // 0.4.19: host dead/spectating (10:45 run: the host finished the level dead and its menus froze). ExitSequenceStart
+                    // refuses a dead ship, so send the joiners out now and revive the host next to the exit; HostTick starts its exit flight.
+                    CoopLog.Write("FLOW", "host: dead when a joiner reached the exit; reviving the host into the exit sequence");
+                    SendExit(kind);
+                    QueueRevive(GameManager.m_player_ship);
+                    return;
+                }
                 if (kind == FNet.KindDoor) GameplayManager.ExitSequenceStart();
                 else GameplayManager.TeleportSequenceStart(kind == FNet.KindWarp);
             }
@@ -231,7 +231,9 @@ namespace OlCoop.World
         {
             if (s_exit_sent) return;
             s_exit_sent = true;
+            try { OlCoop.Death.CoopDeath.CancelForExit(); } catch (Exception ex) { CoopLog.Error("CancelForExit", ex); }
             var anchor = s_exit_anchor != null ? s_exit_anchor : GameManager.m_player_ship;
+            s_revive_anchor = anchor; s_revive_kind = kind;
             if (anchor == null) { SendAll(FNet.Exit, new PoseMsg { kind = kind }); return; }
             Regroup(anchor, FNet.Exit, kind, 0f, KindName(kind));
             CoopLog.Write("FLOW", "host: " + KindName(kind) + " sequence started at netId=" + anchor.c_player.netId.Value + "; told joiners to exit too");
@@ -256,8 +258,15 @@ namespace OlCoop.World
                 var pm = msg.ReadMessage<PoseMsg>();
                 byte kind = pm.kind;
                 CoopLog.Write("FLOW", "joiner: host started " + KindName(kind) + "; gameplay=" + GameplayManager.m_gameplay_state + " alive=" + LocalAlive() + " moveTo=" + pm.pos.ToString("F1"));
+                try { OlCoop.Death.CoopDeath.CancelLeave(); } catch { }
                 if (GameplayManager.m_gameplay_state == GameplayState.EXIT) return;
-                if (!LocalAlive()) { PostLevel.DeadJoinerExit(); return; }
+                if (!LocalAlive())
+                {
+                    // 0.4.19: the host revives us next to the exit right before this message; wait for the respawn, then exit.
+                    s_pending_exit = kind; s_pending_pose = pm; s_dead_wait_until = Time.realtimeSinceStartup + 3f;
+                    CoopLog.Write("FLOW", "joiner: exit while dead; waiting for the host's revive");
+                    return;
+                }
                 if (GameplayManager.m_gameplay_state != GameplayState.PLAYING)
                 {
                     // map or menu open: start the exit as soon as the player is back in normal play
@@ -285,12 +294,91 @@ namespace OlCoop.World
         /// Joiner tick: run a deferred exit once back in normal play.
         public static void Tick()
         {
-            if (s_pending_exit < 0 || GameplayManager.m_gameplay_state != GameplayState.PLAYING) return;
-            byte k = (byte)s_pending_exit; s_pending_exit = -1;
-            if (!LocalAlive()) { PostLevel.DeadJoinerExit(); return; }
+            if (s_pending_exit < 0) return;
+            if (!LocalAlive())
+            {
+                if (s_dead_wait_until < 0f) s_dead_wait_until = Time.realtimeSinceStartup + 3f;
+                if (Time.realtimeSinceStartup < s_dead_wait_until) return;
+                s_pending_exit = -1; s_dead_wait_until = -1f;
+                CoopLog.Write("FLOW", "joiner: not revived in time for the exit; finishing the level from the death screen");
+                PostLevel.DeadJoinerExit();
+                return;
+            }
+            if (GameplayManager.m_gameplay_state != GameplayState.PLAYING) return;
+            byte k = (byte)s_pending_exit; s_pending_exit = -1; s_dead_wait_until = -1f;
             CoopLog.Write("FLOW", "joiner: running the deferred " + KindName(k));
             if (s_pending_pose != null && s_pending_pose.pos != Vector3.zero) MoveShip(GameManager.m_player_ship, s_pending_pose.pos, s_pending_pose.rot);
             RunExit(k);
+        }
+
+        // ------------------------------------------------------------ 0.4.19: dead players are revived into the exit
+        static float s_dead_wait_until = -1f;
+        static readonly System.Collections.Generic.List<PlayerShip> s_revive = new System.Collections.Generic.List<PlayerShip>();
+        static readonly System.Collections.Generic.HashSet<PlayerShip> s_revived = new System.Collections.Generic.HashSet<PlayerShip>();
+        static PlayerShip s_revive_anchor; static byte s_revive_kind; static float s_revive_until = -1f;
+
+        static void QueueRevive(PlayerShip s)
+        {
+            if (s == null || s_revive.Contains(s)) return;
+            s_revive.Add(s); s_revived.Remove(s);
+            s_revive_until = Time.realtimeSinceStartup + 8f; // dying ships finish their death animation first
+            CoopLog.Write("FLOW", "host: netId=" + s.c_player.netId.Value + " is dead at the exit; reviving it into the exit sequence");
+        }
+
+        static PlayerShip LivingAnchor(PlayerShip not)
+        {
+            if (Alive(s_revive_anchor) && s_revive_anchor != not) return s_revive_anchor;
+            foreach (var p in Overload.NetworkManager.m_Players)
+                if (p != null && p.c_player_ship != not && Alive(p.c_player_ship)) return p.c_player_ship;
+            return null;
+        }
+
+        /// Host, every frame (any gameplay state): revive queued dead ships next to the exit and start their exit.
+        public static void HostTick()
+        {
+            if (s_revive.Count == 0) return;
+            bool timeout = Time.realtimeSinceStartup > s_revive_until;
+            for (int i = s_revive.Count - 1; i >= 0; i--)
+            {
+                var s = s_revive[i];
+                if (s == null || s.c_player == null) { s_revive.RemoveAt(i); continue; }
+                bool local = s.isLocalPlayer;
+                if (Alive(s) && s_revived.Contains(s))
+                {
+                    s_revive.RemoveAt(i);
+                    if (local)
+                    {
+                        if (GameplayManager.m_gameplay_state == GameplayState.EXIT) continue;
+                        CoopLog.Write("FLOW", "host: revived; starting our own " + KindName(s_revive_kind));
+                        if (s_revive_kind == FNet.KindDoor) GameplayManager.ExitSequenceStart();
+                        else GameplayManager.TeleportSequenceStart(s_revive_kind == FNet.KindWarp);
+                    }
+                    else if (s.c_player.connectionToClient != null)
+                    {
+                        s.c_player.connectionToClient.Send(FNet.Exit, new PoseMsg { kind = s_revive_kind, pos = s.c_transform.position, rot = s.c_transform.rotation });
+                        CoopLog.Write("FLOW", "host: revived netId=" + s.c_player.netId.Value + " sent into the " + KindName(s_revive_kind));
+                    }
+                    continue;
+                }
+                if (!s_revived.Contains(s) && (bool)s.m_dead)
+                {
+                    var anchor = LivingAnchor(s);
+                    if (anchor != null)
+                    {
+                        LevelData.SpawnPoint sp;
+                        if (!SpotNear(anchor, s, i, out sp, true)) sp = new LevelData.SpawnPoint(anchor.c_transform.position - anchor.c_transform.forward * 4f, anchor.c_transform.rotation, 0);
+                        try { OlCoop.Death.CoopDeath.RespawnAt(s, sp.position, sp.orientation, "exit"); s_revived.Add(s); }
+                        catch (Exception ex) { CoopLog.Error("revive for exit", ex); }
+                        continue;
+                    }
+                }
+                if (!timeout) continue;
+                // could not revive in time: old behaviour (finish the level from the death screen)
+                s_revive.RemoveAt(i);
+                CoopLog.Write("FLOW", "host: could not revive netId=" + s.c_player.netId.Value + " for the exit (dying=" + (bool)s.m_dying + " dead=" + (bool)s.m_dead + "); finishing without the exit flight");
+                if (local) { PostLevel.ClearDeathForMenus("host"); GameplayManager.EscapeLevel(); }
+                else if (s.c_player.connectionToClient != null) s.c_player.connectionToClient.Send(FNet.Exit, new PoseMsg { kind = s_revive_kind });
+            }
         }
 
         public static void ShowWaiting()
@@ -470,6 +558,7 @@ namespace OlCoop.World
     {
         static void Postfix()
         {
+            if (CoopWorld.IsHost) { try { CoopFlow.HostTick(); } catch (Exception ex) { CoopLog.Error("F11 host", ex); } return; }
             if (!CoopWorld.IsJoiner) return;
             try { CoopFlow.Tick(); } catch (Exception ex) { CoopLog.Error("F11", ex); }
         }
@@ -483,6 +572,7 @@ namespace OlCoop.World
             CoopConfig.EnsureInit();
             if (!CoopConfig.IsHost) return;
             NetworkServer.RegisterHandler(FNet.ExitRequest, CoopFlow.OnExitRequest);
+            NetworkServer.RegisterHandler(FNet.Ready, PostLevel.OnReady);
         }
     }
 
@@ -572,7 +662,7 @@ namespace OlCoop.World
         static void Prefix(GameplayManager.DoneReason reason)
         {
             if (!CoopWorld.IsHost || reason != GameplayManager.DoneReason.Escaped) return;
-            try { CoopFlow.HostSendStatus(1); } catch (Exception ex) { CoopLog.Error("F15", ex); }
+            try { CoopFlow.HostSendStatus(1); HostReady.Begin(); } catch (Exception ex) { CoopLog.Error("F15", ex); }
         }
     }
 
@@ -582,7 +672,7 @@ namespace OlCoop.World
         static void Prefix()
         {
             if (!CoopWorld.IsHost) return;
-            try { CoopFlow.HostSendStatus(2); } catch (Exception ex) { CoopLog.Error("F16", ex); }
+            try { HostReady.End(); CoopFlow.HostSendStatus(2); } catch (Exception ex) { CoopLog.Error("F16", ex); }
         }
     }
 
