@@ -15,6 +15,21 @@ static class V {
         var args = at.ConstructorArguments;
         if (args.Count == 0) {
           // [HarmonyPatch] + TargetMethod(): class must declare const OlmodTarget = "Namespace.Type[+Nested]:Method".
+          // [HarmonyPatch] + TargetMethods(): run it; every target must be a real method and Prefix/Postfix params must exist on each.
+          var tms = t.GetMethod("TargetMethods", BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Static);
+          if (tms != null) {
+            var targets = ((System.Collections.IEnumerable)tms.Invoke(null, null)).Cast<MethodBase>().ToList();
+            if (targets.Count == 0) { Console.WriteLine("BAD  {0}: TargetMethods returned nothing", t.Name); bad++; continue; }
+            foreach (var tm in targets) {
+              var tpn = tm.GetParameters().Select(p => p.Name).ToList();
+              foreach (var hm in t.GetMethods(BindingFlags.Static|BindingFlags.NonPublic|BindingFlags.Public).Where(m => m.Name=="Prefix"||m.Name=="Postfix"))
+                foreach (var p in hm.GetParameters())
+                  if (!p.Name.StartsWith("__") && !tpn.Contains(p.Name)) { Console.WriteLine("BAD  {0}.{1}: param '{2}' not on {3}.{4}", t.Name, hm.Name, p.Name, tm.DeclaringType.Name, tm.Name); bad++; }
+              ok++;
+            }
+            Console.WriteLine("ok   {0}: {1} targets via TargetMethods", t.Name, targets.Count);
+            continue;
+          }
           var tf = t.GetField("OlmodTarget", BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Static);
           if (tf == null) { Console.WriteLine("BAD  {0}: no OlmodTarget const", t.Name); bad++; continue; }
           var spec = (string)tf.GetRawConstantValue(); var parts = spec.Split(':');

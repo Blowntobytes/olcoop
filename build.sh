@@ -26,7 +26,7 @@ namespace OlCoop
         public const string Built = "$(date -u +%Y-%m-%dT%H:%MZ)";
         public static string Full { get { return "olcoop $VER-$PHASE"; } }
         /// <summary>Wire-protocol version. Host and clients must match exactly.</summary>
-        public const int Protocol = 5;
+        public const int Protocol = 6;
     }
 }
 EOV

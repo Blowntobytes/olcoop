@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.4.0-world (2026-10-03), UNTESTED in game. New phase 2b, folder build-phase2b
+- Host-authoritative level logic (`docs/phase2b-design.md`, `src/olcoop/Phase2bWorld.cs`): the host runs triggers, switches, pickups and
+  every level script; joiners run only what the host tells them (doors, comm/voice messages, objective text, music, forcefields, lights,
+  objects). Robot, counter, save and level-flow scripts are host-only. Voice messages should now play once, at the same time, for everyone.
+- Fix: security keys out of sync. Only the host does real pickups in co-op, so a joiner never got the key. The team's best key level now
+  applies to every player on every machine (with a "KEY ACQUIRED BY A TEAMMATE" popup on joiners).
+- Fix: destroyable buttons out of sync. Destroyables are damaged and destroyed only on the host; joiners replay the destruction, so the
+  doors they open match.
+- Late joiners catch up on broken buttons, opened doors and the key level. World registry hash check; mismatch falls back to old behaviour.
+- Protocol 6 (messages 177/178/180/182/183). 126 patches verified (the verifier now runs TargetMethods patches).
+- Not yet tested: 0.3.10 Hardcore restart fix (carried over).
+
 ## 0.3.10-coop-options (2026-10-03), UNTESTED in game
 - Hardcore / team-wipe restart reworked after run 7:
   - The joiner no longer tries to leave the level by itself (in 0.3.9 that left a frozen picture, not the main menu). It stays in the old
