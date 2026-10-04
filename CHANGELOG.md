@@ -1,6 +1,13 @@
 # Changelog
 
-## 0.4.2-world (2026-10-03), UNTESTED in game
+## 0.4.3-world (2026-10-03), UNTESTED in game
+- Fix: the map key did nothing in co-op (since Phase 1). Stock code ignores the map key whenever multiplayer netcode is on, which co-op
+  needs. The map opens again in co-op levels; it never pauses the game in co-op.
+- Host death logic (respawn countdown, team resets) now keeps running while the host has the map or the Esc menu open. It used to wait
+  for PLAYING. Sending the level to a joiner also works while the host's map is open.
+- Otherwise identical to 0.4.2 (joiner button hits, key sound), which was replaced before testing.
+
+## 0.4.2-world (2026-10-03), replaced by 0.4.3 before testing
 - Fix: a joiner couldn't break destroyable buttons (run 1 of phase 2b, 0.4.0). Only the host applies button damage, and the host never got
   the joiner's hits. The joiner now sends its button hits to the host, which applies them credited to the joiner's ship. The host also logs
   every button hit and whose shot it was (`[WORLD] host: destroyable ... hit ... by netId=`).

@@ -35,7 +35,7 @@ namespace OlCoop.Session
 
         public static void FlushPending()
         {
-            if (Pending.Count == 0 || !GameplayManager.LevelIsLoaded || GameplayManager.m_gameplay_state != GameplayState.PLAYING) return;
+            if (Pending.Count == 0 || !GameplayManager.LevelIsLoaded || !(GameplayManager.m_gameplay_state == GameplayState.PLAYING || GameplayManager.m_gameplay_state == GameplayState.AUTOMAP)) return;
             foreach (var id in new List<int>(Pending))
             {
                 float nb; if (s_not_before.TryGetValue(id, out nb) && Time.realtimeSinceStartup < nb) continue;
@@ -57,7 +57,7 @@ namespace OlCoop.Session
         public static void SendScene(NetworkConnection conn)
         {
             var li = GameplayManager.m_level_info;
-            if (li == null || !GameplayManager.LevelIsLoaded || GameplayManager.m_gameplay_state != GameplayState.PLAYING)
+            if (li == null || !GameplayManager.LevelIsLoaded || !(GameplayManager.m_gameplay_state == GameplayState.PLAYING || GameplayManager.m_gameplay_state == GameplayState.AUTOMAP))
             {
                 if (Pending.Add(conn.connectionId)) CoopLog.Write("HOST", "conn " + conn.connectionId + " verified; host not in a level yet, will send scene once the level is playing");
                 return;
@@ -580,6 +580,26 @@ namespace OlCoop.Session
         {
             if (!CoopClient.Enabled || Server.IsActive()) return;
             try { CoopClient.RetargetRobotsToLocalShip(); } catch (Exception ex) { CoopLog.Error("C4", ex); }
+        }
+    }
+
+    /// S4: the map key. Stock UpdateReadImmediateControls ignores VIEW_MAP whenever IsMultiplayerActive, which co-op sets for the
+    /// netcode, so the automap was unreachable. Re-open it in co-op levels (the map never pauses the game in co-op).
+    [HarmonyPatch(typeof(PlayerShip), "UpdateReadImmediateControls")]
+    static class S4_CoopAutomap
+    {
+        static void Postfix(PlayerShip __instance)
+        {
+            try
+            {
+                if (!CoopConfig.Active || GameplayManager.IsMultiplayer || !CoopSession.InLevel || !__instance.isLocalPlayer) return;
+                if ((int)__instance.m_wheel_select_state != 0 || (bool)__instance.m_dying || (bool)__instance.m_dead) return;
+                if (GameplayManager.m_gameplay_state != GameplayState.PLAYING || GameplayManager.m_automap == null) return;
+                if (!Controls.JustPressed(CCInput.VIEW_MAP)) return;
+                CoopLog.Write("NET", "map key: opening automap (co-op)");
+                GameplayManager.OpenAutomap();
+            }
+            catch (Exception ex) { CoopLog.Error("S4", ex); }
         }
     }
 }

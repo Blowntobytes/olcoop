@@ -20,4 +20,5 @@ Targets unless noted: Overload 1.1.1886, olmod 0.5.14.
 | 0.3.10 | 5 | 10-03 16:58 | untested | - | - | tag v0.3.10, build-coop-options |
 | 0.4.0-world | 6 | 10-03 19:47 | tested (2b run 1) | host-broken buttons + script doors + comm messages sync to joiner | joiner can't break buttons; key sound host-only | tag v0.4.0 |
 | 0.4.1-world | 6 | 10-03 19:49 | not tested (version display only) | - | - | tag v0.4.1 |
-| 0.4.2-world | 7 | 10-03 19:59 | untested | - | - | tag v0.4.2, build-phase2b |
+| 0.4.2-world | 7 | 10-03 19:59 | replaced before test | - | - | tag v0.4.2 |
+| 0.4.3-world | 7 | 10-03 20:34 | untested | - | - | tag v0.4.3, build-phase2b |

@@ -153,7 +153,8 @@ namespace OlCoop.Death
         // ---------------- host tick
         public static void HostTick()
         {
-            if (!IsHost || !GameplayManager.LevelIsLoaded || GameplayManager.m_gameplay_state != GameplayState.PLAYING) return;
+            // Not PLAYING-only: the host may have the map (AUTOMAP) or the Esc menu (MENUS) open; nothing is paused in co-op.
+            if (!IsHost || !GameplayManager.LevelIsLoaded || GameplayManager.m_gameplay_state == GameplayState.EXIT) return;
             float now = Time.time;
             var ships = Ships();
             int alive = 0;
