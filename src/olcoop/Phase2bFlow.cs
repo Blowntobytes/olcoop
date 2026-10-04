@@ -22,6 +22,7 @@ namespace OlCoop.World
         public const short ExitRequest = 185; // J->H byte kind
         public const short Exit = 186;        // H->J PoseMsg: kind + where to put your ship before the exit sequence
         public const short Teleport = 187;    // H->J PoseMsg: regroup (lockdown) - move your ship here
+        public const short Status = 188;      // H->J IntegerMessage: 1 = host on the level summary, 2 = host loading the next level
         public const byte KindDoor = 0, KindWarp = 1, KindTeleport = 2;
     }
 
@@ -119,7 +120,7 @@ namespace OlCoop.World
             }
             if (anchor == null) { CoopLog.Write("FLOW", "host: lockdown " + s.GetType().Name + " but no living player to regroup at"); return; }
             CoopLog.Write("FLOW", "host: lockdown " + s.GetType().Name + " '" + s.gameObject.name + "' triggered near netId=" + anchor.c_player.netId.Value + "; regrouping");
-            Regroup(anchor, FNet.Teleport, 0, 25f, "lockdown");
+            Regroup(anchor, FNet.Teleport, 0, 0f, "lockdown");
         }
 
         public static void OnTeleport(NetworkMessage msg)
@@ -138,7 +139,7 @@ namespace OlCoop.World
         public static bool ApplyingExit, ApplyingLog;
         static bool s_requested, s_exit_sent, s_wait_shown;
 
-        public static void ResetForLevel() { s_lockdowns_done.Clear(); s_last_trigger_ship = null; s_exit_anchor = null; s_pending_pose = null; s_pending_exit = -1; s_requested = false; s_exit_sent = false; s_wait_shown = false; ApplyingExit = false; ApplyingLog = false; }
+        public static void ResetForLevel() { CoopStatus.Clear(); s_lockdowns_done.Clear(); s_last_trigger_ship = null; s_exit_anchor = null; s_pending_pose = null; s_pending_exit = -1; s_requested = false; s_exit_sent = false; s_wait_shown = false; ApplyingExit = false; ApplyingLog = false; }
 
         static bool LocalAlive()
         {
@@ -282,7 +283,33 @@ namespace OlCoop.World
             if (s_wait_shown) return;
             s_wait_shown = true;
             GameplayManager.AddHUDMessage("LEVEL COMPLETE - WAITING FOR THE HOST", -1, true);
+            if (CoopStatus.Code < 1) CoopStatus.Set(0, "LEVEL COMPLETE - WAITING FOR THE HOST");
             CoopLog.Write("FLOW", "joiner: level complete; waiting for the host's next level (own EscapeLevel blocked)");
+        }
+
+        // ------------------------------------------------------------ host status while joiners wait between levels
+        public static void HostSendStatus(int code)
+        {
+            if (!CoopWorld.IsHost) return;
+            SendAll(FNet.Status, new IntegerMessage(code));
+            CoopLog.Write("FLOW", "host: told joiners status " + code + (code == 1 ? " (level summary)" : " (loading next level)"));
+        }
+
+        public static void OnStatus(NetworkMessage msg)
+        {
+            try
+            {
+                int code = msg.ReadMessage<IntegerMessage>().value;
+                CoopLog.Write("FLOW", "joiner: host status " + code);
+                if (code == 1) CoopStatus.Set(1, "LEVEL COMPLETE - THE HOST IS ON THE LEVEL SUMMARY");
+                else if (code == 2)
+                {
+                    CoopStatus.Set(2, "THE HOST IS STARTING THE NEXT LEVEL...");
+                    GameplayManager.AddHUDMessage("CO-OP: THE HOST IS STARTING THE NEXT LEVEL", -1, true);
+                    if (!Session.CoopClient.Awaiting) Session.CoopClient.AwaitLevel();
+                }
+            }
+            catch (Exception ex) { CoopLog.Error("OnStatus", ex); }
         }
 
         public static bool IsLocalShip(Collider other)
@@ -453,6 +480,92 @@ namespace OlCoop.World
             c.RegisterHandler(FNet.LogEntry, CoopFlow.OnLogEntry);
             c.RegisterHandler(FNet.Exit, CoopFlow.OnExit);
             c.RegisterHandler(FNet.Teleport, CoopFlow.OnTeleport);
+            c.RegisterHandler(FNet.Status, CoopFlow.OnStatus);
+        }
+    }
+
+    /// Persistent status line for joiners between levels (overlay slot 3, drawn like the respawn timer so it shows over the exit fade).
+    public static class CoopStatus
+    {
+        public static readonly UIElementType uiStatusOverlay = (UIElementType)122;
+        const int Slot = 3;
+        public static int Code = -1;
+        static string s_text;
+        static bool s_on, s_logged;
+
+        public static void Set(int code, string text)
+        {
+            Code = code; s_text = text; s_logged = false;
+            CoopLog.Write("HUD", "status banner: " + text);
+            Ensure();
+        }
+        public static void Clear() { Code = -1; s_text = null; Ensure(); }
+        public static void Ensure()
+        {
+            bool want = s_text != null;
+            if (want && !s_on) { UIManager.CreateOverlayElement(Vector2.zero, Slot, uiStatusOverlay, -1f); s_on = true; }
+            else if (!want && s_on) { UIManager.ClearOverlayElement(Slot); s_on = false; }
+        }
+        public static void Draw(UIElement uie)
+        {
+            if (s_text == null) return;
+            float pulse = 0.75f + 0.25f * Mathf.Sin(Time.realtimeSinceStartup * 3f);
+            uie.DrawStringSmall(s_text, new Vector2(0f, -200f), 0.75f, StringOffset.CENTER, UIManager.m_col_hi5, pulse, -1f);
+            if (!s_logged) { s_logged = true; CoopLog.Write("HUD", "drawing status banner"); }
+        }
+    }
+
+    [HarmonyPatch(typeof(UIElement), "Draw")]
+    static class F13_StatusDraw
+    {
+        static void Postfix(UIElement __instance)
+        {
+            if (__instance.m_type != CoopStatus.uiStatusOverlay) return;
+            try { CoopStatus.Draw(__instance); } catch (Exception ex) { CoopLog.Error("F13", ex); }
+        }
+    }
+
+    /// F14: joiner exit flight. Every physics tick stock code rewinds the local ship to the host's copy and replays inputs
+    /// (PlayerShip.FixedUpdateAll -> Client.ReconcileServerPlayerState). The host's copy doesn't fly the exit path, so the joiner's exit
+    /// sequence was dragged back until the host left the level (0.4.6 Goliath run: 26.6 s vs 14.4 s). Skip reconciliation during EXIT.
+    [HarmonyPatch(typeof(Client), "ReconcileServerPlayerState")]
+    static class F14_NoReconcileInExit
+    {
+        static System.Reflection.FieldInfo s_q;
+        static bool s_logged;
+        static bool Prefix()
+        {
+            if (!CoopWorld.IsJoiner || GameplayManager.m_gameplay_state != GameplayState.EXIT) { s_logged = false; return true; }
+            try
+            {
+                if (s_q == null) s_q = AccessTools.Field(typeof(Client), "m_PendingPlayerStateMessages");
+                var q = s_q.GetValue(null);
+                if (q != null) q.GetType().GetMethod("Clear").Invoke(q, null);
+                if (!s_logged) { s_logged = true; CoopLog.Write("FLOW", "joiner: exit flight - host position corrections paused"); }
+            }
+            catch (Exception ex) { CoopLog.Error("F14", ex); }
+            return false;
+        }
+    }
+
+    /// F15: host tells waiting joiners where it is between levels.
+    [HarmonyPatch(typeof(GameplayManager), "DoneLevel")]
+    static class F15_HostDoneLevel
+    {
+        static void Prefix(GameplayManager.DoneReason reason)
+        {
+            if (!CoopWorld.IsHost || reason != GameplayManager.DoneReason.Escaped) return;
+            try { CoopFlow.HostSendStatus(1); } catch (Exception ex) { CoopLog.Error("F15", ex); }
+        }
+    }
+
+    [HarmonyPatch(typeof(GameplayManager), "LoadLevel")]
+    static class F16_HostLoadLevel
+    {
+        static void Prefix()
+        {
+            if (!CoopWorld.IsHost) return;
+            try { CoopFlow.HostSendStatus(2); } catch (Exception ex) { CoopLog.Error("F16", ex); }
         }
     }
 }

@@ -220,7 +220,9 @@ namespace OlCoop.Instrumentation
     [HarmonyPatch(typeof(GameplayManager), "EscapeLevel")]
     static class P0_EscapeLevel
     {
-        static void Prefix() { CoopLog.Write("OBJ", "EscapeLevel"); }
+        static float s_last;
+        // the joiner's blocked EscapeLevel is retried every frame while it waits for the host: log it at most once per 10 s
+        static void Prefix() { if (Time.realtimeSinceStartup - s_last < 10f) return; s_last = Time.realtimeSinceStartup; CoopLog.Write("OBJ", "EscapeLevel"); }
     }
 
     [HarmonyPatch(typeof(GameplayManager), "DoneLevel")]

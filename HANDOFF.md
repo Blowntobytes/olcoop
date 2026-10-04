@@ -10,8 +10,8 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   `Overload_Data\Managed\Assembly-CSharp.dll` locally if needed. Build references the game's Managed DLLs + GameMod.dll staged from the game folder.
 
 ## Build + delivery rules (user is strict about these)
-- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.4.6 world"). Protocol = 9 (in build.sh).
-- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 89 patches, 0 problems).
+- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.4.7 world"). Protocol = 10 (in build.sh).
+- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 146 patches, 0 problems; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b (current). Bug fixes overwrite the current phase
   folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
 - Also install the DLL directly into the game folder via the device bridge and verify size/mtime (user's install.bat runs proved unreliable).
@@ -64,3 +64,11 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 - Lockdown regroup: ScriptLockdownMaster/Boss on host -> CoopFlow.HostLockdown teleports others (>25u) next to last trigger ship (10 s) or nearest; msg 187.
 - ScriptLockdownBoss removed from HostOnly (Goliath run on 0.4.5 showed it host-only; exit sync fired 22:16:57).
 - CHANGELOG/BUILDS/tests updated for 0.4.6 (docs-only commit, DLL unchanged). Awaiting user tests: exit both orders, lockdown while apart, Goliath exit.
+
+## 0.4.7 status (2026-10-03 22:52) - installed, UNTESTED
+- Installed SHA1 892331e1d856ae50dc614c40c6d0f17d1925c750 (136704 bytes), verified in game folder + build-phase2b. Protocol 10. Tag v0.4.7.
+- Lockdown regroup: no distance limit (user requirement: anyone anywhere goes into the locked room).
+- F14: joiner skips Client.ReconcileServerPlayerState while gameplay state is EXIT (exit flight was dragged back by host corrections).
+- Host status 188 (1 = DoneLevel Escaped, 2 = LoadLevel) -> CoopStatus banner on overlay slot 3 (element type 122); status 2 also starts
+  CoopClient.AwaitLevel. Banner visibility during EXIT / over the fade is unverified.
+- Build env in cloud: apt-get install mono-mcs mono-runtime; stage the game's Managed DLLs + GameMod.dll; `bash build.sh`.

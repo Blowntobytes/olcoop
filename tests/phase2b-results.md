@@ -16,3 +16,13 @@
 
 ## Goliath run (0.4.5, log only, ~22:16)
 - Exit sync fired (22:16:57). The boss lockdown ran only on the host: ScriptLockdownBoss was on the host-only list. Fixed in 0.4.6.
+
+## Goliath run (0.4.6, 22:27-22:30; both logs show 0.4.6-world protocol 9)
+- Boss lockdown: host ran ScriptLockdownBoss and the joiner ran it on the host's word (22:27:38). The regroup logged "regrouping" but moved
+  nobody: the joiner was inside the 25-unit limit. User: distance must not matter, or a player can be locked out of the room. 0.4.7.
+- Exit: host started the exit at 22:29:17.9 and moved the joiner next to itself; the joiner started the same sequence 20 ms later.
+  Host finished in 14.4 s, joiner in 26.6 s ("Took this long to exit the level"). The joiner's flight only completed ~13.7 s after the
+  host's netcode went off (22:29:32): Client.ReconcileServerPlayerState kept rewinding the joiner's ship to the host's copy. User: it
+  didn't play properly at first, then did. 0.4.7 skips reconciliation on joiners during EXIT.
+- After the exit the host sat on the level summary (MENUS from 22:29:32) and the joiner got no notification. 0.4.7 adds host status 188
+  and a persistent status line.

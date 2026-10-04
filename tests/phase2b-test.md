@@ -1,7 +1,7 @@
-# Phase 2b world sync test (build 0.4.6)
+# Phase 2b world sync test (build 0.4.7)
 
 Host + 1 joiner, a level with keys, a shootable button that opens a door, and comm (voice) messages, e.g. the first Cronus levels.
-Both windows must show OLCOOP 0.4.6-WORLD at the top-left of the main menu.
+Both windows must show OLCOOP 0.4.7-WORLD at the top-left of the main menu.
 
 1. **Keys:** the host picks up a security key. Both get "SECURITY ACCESS GRANTED!" (the joiner's says "BY A TEAMMATE"), and the joiner
    can open that key's door. Repeat with the joiner picking up a key.
@@ -16,9 +16,12 @@ Both windows must show OLCOOP 0.4.6-WORLD at the top-left of the main menu.
    both play the same exit flight from that spot; the joiner shows "WAITING FOR THE HOST" until the host's next level loads.
    Next level: the host exits first, with the joiner far away: the joiner jumps next to the host. Also try an alien warp if the level has one,
    and one exit while the other player is dead.
+   The joiner's exit flight must play smoothly from the start, the same length as the host's. Afterwards the joiner keeps a status line on
+   screen: "WAITING FOR THE HOST", then "THE HOST IS ON THE LEVEL SUMMARY", then "THE HOST IS STARTING THE NEXT LEVEL...", and then
+   the joiner loads into the next level.
 8. **Map:** open the map: the other player's ship is shown on it.
-9. **Lockdown regroup:** stay far apart (more than a room) and let one player set off a lockdown (robot ambush that seals the doors).
-   The other player is teleported next to them with "CO-OP: LOCKDOWN - TELEPORTED TO YOUR TEAMMATE" (joiner) / "TEAM REGROUPED" (host).
-   Repeat with the other player triggering it. If you're already together, nobody should move.
+9. **Lockdown regroup:** let one player set off a lockdown (robot ambush that seals the doors) while the other is anywhere else, near or far.
+   The other player is teleported next to them, inside the locked room, with "CO-OP: LOCKDOWN - TELEPORTED TO YOUR TEAMMATE" (joiner) /
+   "TEAM REGROUPED" (host). Repeat with the other player triggering it.
 10. **Boss level (Goliath):** the boss lockdown starts on both screens (doors seal, music), and the exit after the boss works for both.
 11. Note anything out of sync: what, where, and which window.

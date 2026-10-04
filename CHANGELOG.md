@@ -1,6 +1,18 @@
 # Changelog
 
-## 0.4.6-world (2026-10-03), UNTESTED in game
+## 0.4.7-world (2026-10-03), UNTESTED in game
+- Lockdown regroup now ignores distance: every other living player is teleported next to whoever set the lockdown off, wherever they
+  are, so nobody gets locked out of the room. (0.4.6 skipped anyone within 25 units; on the Goliath run the joiner wasn't moved.)
+- Fix: the joiner's exit flight didn't play properly at first (Goliath run: 26.6 s on the joiner vs 14.4 s on the host). Every physics
+  tick the game pulls the joiner's own ship back to the host's copy of it, which doesn't fly the exit path, so the joiner's flight only
+  played properly once the host had left the level. Joiners now ignore those corrections during the exit sequence.
+- Joiners now see where the host is after an exit, as a status line that stays on screen: "LEVEL COMPLETE - WAITING FOR THE HOST",
+  then "THE HOST IS ON THE LEVEL SUMMARY" when the host finishes the level, then "THE HOST IS STARTING THE NEXT LEVEL..." when the
+  host loads the next one (the joiner also starts asking for it). It clears when the joiner's next level loads.
+- The joiner's log no longer gets an EscapeLevel line every frame while it waits (at most one per 10 s).
+- Protocol 10 (message 188 = host status).
+
+## 0.4.6-world (2026-10-03), Goliath run: boss lockdown ran on both; regroup skipped the joiner (25-unit limit); joiner exit glitchy
 - Exit regroup: when anyone reaches the exit door or an alien warp, the host first moves every other player's ship next to whoever got
   there, then starts the exit. The exit message (186) now carries that position, so every player plays the same exit/teleport sequence
   from the same spot. On a joiner-triggered exit the host also moves its own ship next to that joiner first. Dead players are not moved
