@@ -1,0 +1,11 @@
+refs/
+lib/game/
+build/
+*.log
+src/olcoop/Generated/
+# never commit game or olmod binaries; built DLLs go to GitHub Releases
+Assembly-CSharp*.dll
+UnityEngine*.dll
+GameMod.dll
+build-*/
+releases/
