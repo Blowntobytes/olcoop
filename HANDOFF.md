@@ -92,3 +92,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   in the last 3 s. TrySegments: same check, tight tier (1.0 u room) as fallback. CoopFlow.SpotNear returns false instead of a blind spot;
   Regroup then leaves the ship (exit msg with pos zero), HostPlaceSelfForExit leaves the host.
 - Still to confirm: that the "only spin" control loss was the overlap (if it recurs without overlapping spawns, look at input/reconcile).
+
+## A/B test (2026-10-04 07:07)
+- 0.4.9 rebuilt from tag v0.4.9 installed in the game folder only (SHA1 e375d85a197de85aed85e9bd16aa5e5e75577cd7, 139776 bytes) to test the
+  0.4.10 "every ship can only rotate, not move" report. build-phase2b still holds 0.4.10. Reinstall the A/B winner afterwards.
