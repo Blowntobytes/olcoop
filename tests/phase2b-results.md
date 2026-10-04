@@ -137,3 +137,9 @@
 - Log: joiner quit to menu at 13:37:29 and was reconnected at once (auto-rejoin); joiner closed the game at 13:38:02 -> host
   dropped it from the goodbye. [BOOST] only "off" for every ship in both sessions. No crash at quit (timer callbacks skipped).
 - Found in IL: the stock client disconnect handler sends the player to the multiplayer menu (MP_MENU). Fixed in 0.5.2.
+
+## Run 14:04-14:08, 0.5.2 (logs show 0.5.2), two PCs over Steam (user BlownToBits host, PeetzaGuest joiner)
+- User: the LEAVE SESSION and STOP HOSTING buttons are there but do nothing when clicked.
+- Log: both chosen several times, no effect (mouse re-selection in PausedUpdate). Host's boost: "my boost ON/off" on the host,
+  "netId=2 boost ON/off (host)" on the joiner. Host closed the game at 14:08:55; joiner got the goodbye at 14:08:56 and left
+  the level, but as a dead player it then got a death screen. Fixed in 0.5.3.

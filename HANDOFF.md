@@ -10,7 +10,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   `Overload_Data\Managed\Assembly-CSharp.dll` locally if needed. Build references the game's Managed DLLs + GameMod.dll staged from the game folder.
 
 ## Build + delivery rules (user is strict about these)
-- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.5.2 online"). Protocol = 16 (in build.sh). Current build folder: build-online.
+- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.5.3 online"). Protocol = 16 (in build.sh). Current build folder: build-online.
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 146 patches, 0 problems; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b (current). Bug fixes overwrite the current phase
   folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
@@ -262,3 +262,15 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 - Installer (14:20): install.bat calls find-overload.ps1 (registry SteamPath/InstallPath -> libraryfolders.vdf paths, plus
   <drive>:\SteamLibrary, Steam, Program Files (x86)\Steam, Program Files\Steam, Games\Steam, Games\SteamLibrary, Games on every
   drive; Overload.exe required, olmod.exe preferred). Not run on Windows yet (no PowerShell in the cloud workspace).
+
+## 0.5.3 status (2026-10-04 14:20) - installed, UNTESTED
+- Installed SHA1 af2212f147cd23342fc99b6841fe4e85f1070bb2 (207360 bytes), verified in game folder + build-online. Protocol 16.
+  Tag v0.5.3. 186 patches, 0 problems. Friend zip dist/olcoop-0.5.3-online.zip (SHA1 4d2176e21ef871c4c90984f848221fe3e72ecee6).
+- 14:04 run (0.5.2, both logs supplied by the user): "[UI] LEAVE SESSION chosen" x9 / "STOP HOSTING chosen" x4, nothing else.
+  PausedUpdate calls UIManager.MouseSelectUpdate() before its switch, which puts the mouse-hovered id (30) back, so the redirect
+  to 10 never reached case 10. PM2 is now a prefix that runs MouseSelectUpdate itself and, on our item, calls
+  SessionEnd.LeaveNow (ReturnToMainMenu while co-op is active -> SteamLink.Leave -> DisconnectAllRemoteClients / Client.Disconnect
+  -> ClearRole) and skips PausedUpdate that frame.
+- Boost: host log "my boost ON (flag=True button=True ...)" and joiner log "netId=2 boost ON (host)" - the state now flows.
+  Visual confirmation still pending (the joiner was dead/spectating at the time).
+- ReturnToMainMenu clears m_dead/m_dying on the local ship (14:08: PlayerHasDied -> DoneLevel(Died) after the host left).

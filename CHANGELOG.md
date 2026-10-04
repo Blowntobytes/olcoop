@@ -1,6 +1,13 @@
 # Changelog
 
-## 0.5.2-online (2026-10-04), UNTESTED in game (all players must run 0.5.2)
+## 0.5.3-online (2026-10-04), UNTESTED in game (all players must run 0.5.3)
+- Fix: LEAVE SESSION / STOP HOSTING did nothing when clicked (14:07 run: logged as chosen 3-9 times each). 0.5.2 passed the click
+  on to QUIT TO MAIN MENU, but the game re-selects the entry under the mouse in the same frame, so nothing happened. The entry
+  now ends the session itself: back to the main menu, the other players are told, the Steam lobby is left.
+- Fix: a dead player whose host left went through the game's own death sequence after leaving the level (14:08 run:
+  PlayerHasDied -> death screen). The ship is now cleared first, and the level is left while co-op is still active.
+
+## 0.5.2-online (2026-10-04), 14:04 run: Esc entries shown but did nothing; host's boost reached the joiner (log) (all players must run 0.5.2)
 - Esc menu: LEAVE SESSION (joiner) / STOP HOSTING (host) under QUIT TO MAIN MENU. Quitting to the main menu now ends the
   co-op session too: before, a joiner was reconnected to the host straight away and the host kept hosting.
 - Disconnects no longer break the other players' games: a Steam connection that is closed sends a goodbye first, so the other

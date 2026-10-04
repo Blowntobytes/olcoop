@@ -379,12 +379,15 @@ namespace OlCoop.UI
     [HarmonyPatch(typeof(MenuManager), "PausedUpdate")]
     static class PM2_LeaveSelect
     {
-        static void Prefix()
+        static bool Prefix()
         {
-            if (!PauseLeave.Show || MenuManager.m_menu_sub_state != MenuSubState.ACTIVE || UIManager.m_menu_selection != PauseLeave.ItemId) return;
-            if (!UIManager.PushedSelect(-1)) return;
+            if (!PauseLeave.Show || MenuManager.m_menu_sub_state != MenuSubState.ACTIVE) return true;
+            UIManager.MouseSelectUpdate(); // the hovered entry, as the stock code would see it this frame
+            if (UIManager.m_menu_selection != PauseLeave.ItemId || !UIManager.PushedSelect(-1)) return true;
             CoopLog.Write("UI", PauseLeave.Label + " chosen in the Esc menu");
-            UIManager.m_menu_selection = 10; // QUIT TO MAIN MENU
+            MenuManager.PlaySelectSound();
+            try { OlCoop.SteamNet.SessionEnd.LeaveNow(); } catch (Exception ex) { CoopLog.Error("PM2 leave", ex); }
+            return false;
         }
     }
 }

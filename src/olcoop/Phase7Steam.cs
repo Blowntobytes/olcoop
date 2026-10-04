@@ -388,9 +388,9 @@ namespace OlCoop.SteamNet
             // with the campaign level half torn down.
             OlCoop.Session.CoopClient.Welcomed = false; OlCoop.Session.CoopClient.ConnectIssued = false;
             try { if (Client.IsConnected()) Client.Disconnect(); } catch (Exception ex) { CoopLog.Error("steam client close", ex); }
+            ReturnToMainMenu("the host left"); // while co-op is still active (death handling etc.)
             LeaveLobby();
             CoopConfig.ClearRole();
-            ReturnToMainMenu("the host left");
             LastStatus = "THE HOST LEFT THE GAME";
             GameplayManager.AddHUDMessage("CO-OP: THE HOST LEFT THE GAME", -1, true);
         }
@@ -404,6 +404,10 @@ namespace OlCoop.SteamNet
                 OlCoop.World.CoopStatus.Clear();
                 OlCoop.Death.Spectate.Stop(null);
                 PlayerShip.DeathPaused = false;
+                // 14:08 run: a dead joiner whose host left ran the stock death flow after the level was quit (PlayerHasDied ->
+                // DoneLevel(Died) -> death screen). Leave as a living ship.
+                var me = GameManager.m_player_ship;
+                if (me != null && ((bool)me.m_dead || (bool)me.m_dying)) { me.m_dead = false; me.m_dying = false; me.m_dead_timer = -1f; }
                 if (GameplayManager.LevelIsLoaded || GameManager.m_game_state == GameManager.GameState.GAMEPLAY)
                 {
                     CoopLog.Write("STEAM", "leaving the level for the main menu (" + why + ")");
@@ -602,6 +606,27 @@ namespace OlCoop.SteamNet
     public static class SessionEnd
     {
         public static bool FromPauseMenu { get { return MenuManager.m_menu_state == MenuState.PAUSE_MENU; } }
+
+        /// Esc menu LEAVE SESSION / STOP HOSTING: end the session and go to the main menu at once.
+        /// (0.5.2 forwarded it to the stock QUIT TO MAIN MENU entry, but the mouse re-selects the hovered entry inside PausedUpdate,
+        /// so a mouse click did nothing - 14:07 run.)
+        public static void LeaveNow()
+        {
+            bool host = CoopConfig.IsHost;
+            CoopLog.Write("ROLE", (host ? "host: STOP HOSTING" : "joiner: LEAVE SESSION") + " from the Esc menu");
+            SteamLink.ReturnToMainMenu(host ? "stopped hosting" : "left the session");
+            try { SteamLink.Leave(); } catch (Exception ex) { CoopLog.Error("LeaveNow steam", ex); }
+            try
+            {
+                GameplayManager.IsMultiplayerActive = false;
+                if (host) Server.DisconnectAllRemoteClients();
+                else if (Client.IsConnected()) Client.Disconnect();
+            }
+            catch (Exception ex) { CoopLog.Error("LeaveNow disconnect", ex); }
+            CoopConfig.ClearRole();
+            MenuManager.m_game_paused = false;
+            SteamLink.LastStatus = host ? "STOPPED HOSTING" : "LEFT THE SESSION";
+        }
 
         public static void Leave(string who)
         {
