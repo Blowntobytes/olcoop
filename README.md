@@ -1,6 +1,6 @@
-# olcoop: co-op campaign for Overload (work in progress)
+# olmodcoop: co-op campaign for Overload (work in progress)
 
-olcoop is an olmod add-on whose goal is to let 2-3 players play the Cronus Frontier campaign together, with the host's game in charge.
+olmodcoop is an olmod add-on whose goal is to let 2-3 players play the Cronus Frontier campaign together, with the host's game in charge.
 **Current state: Phase 0.** It only adds read-only logging. There is no co-op yet.
 
 ## Install (players)
