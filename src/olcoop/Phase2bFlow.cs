@@ -138,8 +138,9 @@ namespace OlCoop.World
         }
         public static bool ApplyingExit, ApplyingLog;
         static bool s_requested, s_exit_sent, s_wait_shown;
+        public static bool Waiting { get { return s_wait_shown; } }
 
-        public static void ResetForLevel() { CoopStatus.Clear(); s_lockdowns_done.Clear(); s_last_trigger_ship = null; s_exit_anchor = null; s_pending_pose = null; s_pending_exit = -1; s_requested = false; s_exit_sent = false; s_wait_shown = false; ApplyingExit = false; ApplyingLog = false; }
+        public static void ResetForLevel() { if (s_wait_shown) { try { UIManager.SetScreenFade(0f); } catch { } } CoopStatus.Clear(); s_lockdowns_done.Clear(); s_last_trigger_ship = null; s_exit_anchor = null; s_pending_pose = null; s_pending_exit = -1; s_requested = false; s_exit_sent = false; s_wait_shown = false; ApplyingExit = false; ApplyingLog = false; }
 
         static bool LocalAlive()
         {
@@ -566,6 +567,29 @@ namespace OlCoop.World
         {
             if (!CoopWorld.IsHost) return;
             try { CoopFlow.HostSendStatus(2); } catch (Exception ex) { CoopLog.Error("F16", ex); }
+        }
+    }
+
+    /// F17: joiner after its exit flight. Stock ExitSequenceFrame, once the exit timer runs out, re-parents the camera to the ship, calls
+    /// EscapeLevel (blocked on joiners, F6), sets the screen fade back to 0 and keeps flying the ship along the exit path - every frame,
+    /// until the host's next level arrives. That left joiners watching a tumbling ship (user, 0.4.8; rough in VR). While waiting: hold a
+    /// black screen (the status line is on the overlay layer, above the fade) and keep the ship still.
+    [HarmonyPatch(typeof(GameplayManager), "ExitSequenceFrame")]
+    static class F17_JoinerHoldAfterExit
+    {
+        static bool s_logged;
+        static bool Prefix()
+        {
+            if (!CoopWorld.IsJoiner || !CoopFlow.Waiting) { s_logged = false; return true; }
+            try
+            {
+                UIManager.SetScreenFade(1f);
+                var ship = GameManager.m_player_ship;
+                if (ship != null && ship.c_rigidbody != null) { ship.c_rigidbody.velocity = Vector3.zero; ship.c_rigidbody.angularVelocity = Vector3.zero; }
+                if (!s_logged) { s_logged = true; CoopLog.Write("FLOW", "joiner: exit flight done; screen held black, ship held still until the host's next level"); }
+            }
+            catch (Exception ex) { CoopLog.Error("F17", ex); return true; }
+            return false;
         }
     }
 }

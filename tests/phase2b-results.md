@@ -34,3 +34,10 @@
 - Problem: the joiner spawned at the level start. The host continued a saved game, so its ship was at the checkpoint by the boss room
   (54, 2, 86); all 12 spawn offsets around it were rejected (6 outside level, 6 no room). User could not test the lockdown pull from far
   away as intended. 0.4.8 adds a segment-graph fallback near the host.
+
+## Run 23:18-23:21, 0.4.8 (both logs show 0.4.8-world protocol 10), Goliath from a saved game
+- User: "That worked pretty good." Joiner spawned at (50.7, 2.6, 86.6) next to the host at the checkpoint (close offsets, no fallback
+  needed this time). Lockdown regroup moved the joiner (23:19:07). Joiner-triggered exit: host moved itself next to the joiner, both
+  exited; status 1 then 2; next level sp_titan_06, joiner spawned next to the host.
+- User: after the cutscene the joiner keeps spinning after the ship exits the mine. Cause (IL, ExitSequenceFrame): when the exit timer
+  ends it re-parents the camera, calls EscapeLevel (blocked on joiners), sets fade 0 and keeps driving the ship, every frame. 0.4.9 F17.

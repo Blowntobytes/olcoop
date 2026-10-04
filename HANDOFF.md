@@ -10,7 +10,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   `Overload_Data\Managed\Assembly-CSharp.dll` locally if needed. Build references the game's Managed DLLs + GameMod.dll staged from the game folder.
 
 ## Build + delivery rules (user is strict about these)
-- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.4.8 world"). Protocol = 10 (in build.sh).
+- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.4.9 world"). Protocol = 10 (in build.sh).
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 146 patches, 0 problems; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b (current). Bug fixes overwrite the current phase
   folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
@@ -78,3 +78,9 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 - 0.4.7 run (23:00): exit flight fixed (user), status line + next-level hand-off worked, lockdown regroup moved the joiner.
 - CoopHost.FindNear = TryAround (12 close offsets) then TrySegments (BFS over portals from the anchor's segment, depth <= 4, no door
   portals, segment centre with 1.6u room). Used for joiner spawn near the host and for lockdown/exit regroup (SpotNear).
+
+## 0.4.9 status (2026-10-03 23:25) - installed, UNTESTED
+- Installed SHA1 93d77bb256f54ee5556dd47e2734584631f932df (139776 bytes), verified in game folder + build-phase2b. Protocol 10. Tag v0.4.9. 147 patches, 0 problems.
+- 0.4.8 passed the user's run (spawn near host at checkpoint, lockdown, exit, next level).
+- F17: joiner skips GameplayManager.ExitSequenceFrame once waiting (CoopFlow.Waiting), holds UIManager.SetScreenFade(1) and zeroes ship
+  velocity. ResetForLevel clears the fade if the joiner was waiting. Check: next level must not stay black.

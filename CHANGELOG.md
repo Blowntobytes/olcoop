@@ -1,6 +1,12 @@
 # Changelog
 
-## 0.4.8-world (2026-10-03), UNTESTED in game
+## 0.4.9-world (2026-10-03), UNTESTED in game
+- Fix: after the exit cutscene the joiner kept spinning (rough in VR and flat). Once the exit flight ends, the game re-attaches the
+  camera to the ship, clears the fade and keeps flying the ship every frame, waiting to finish a level that only the host can finish.
+  Joiners now hold a black screen and a still ship until the host's next level loads; the status line stays readable on top. The
+  fade is cleared when the next level starts.
+
+## 0.4.8-world (2026-10-03), run 23:18: user "worked pretty good"; joiner spawned next to the host at the checkpoint; joiner spun after the exit
 - Fix: a joiner could spawn at the level start instead of next to the host. When the host continues a saved game it starts at the
   checkpoint, and in a tight spot every close spawn offset around the host was in a wall or outside the level (run of 23:00: 12/12
   rejected, so the joiner went to the level start, far from the boss room). Now, when the close offsets fail, the joiner spawns at the
