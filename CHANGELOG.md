@@ -1,6 +1,11 @@
 # Changelog
 
-## 0.4.19-world (2026-10-04), UNTESTED in game (protocol 14: all windows must run 0.4.19)
+## 0.4.20-world (2026-10-04), UNTESTED in game
+- Spectating: the ship you follow now lights the level like your own ship would (its lights render at full quality instead of
+  competing for the few per-pixel light slots), and leftover death screen effects are cleared. The followed ship's light state is
+  logged so the cause can be confirmed if it's still dark.
+
+## 0.4.19-world (2026-10-04), 11:05 run: dead joiner revived into the exit (log); ready check held the host until 2/2 (log); spectators dark, no headlights
 - Dead players are put into the exit: when anyone exits while a player (joiner or host) is dead or dying, the host revives that player
   in the exit line-up behind the exiting player and starts its exit flight, so everyone gets the cutscene and the end-of-level screens.
   If a revive doesn't happen within 8 s (host) / 3 s (joiner), the old path (finish the level from the death screen) is the fallback.

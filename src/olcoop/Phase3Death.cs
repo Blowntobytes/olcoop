@@ -423,8 +423,56 @@ namespace OlCoop.Death
 
         public static bool On { get { return s_rig != null; } }
 
+        // 0.4.20: spectators saw a darker level and no headlights from the ship they followed (11:13 run). A remote ship's lights are
+        // ordinary Auto lights competing for the few per-pixel light slots, while our own ship's lights are dead/off. While following a
+        // ship, its lights render per-pixel and death screen effects are cleared; its light state is logged to confirm the cause.
+        static readonly List<KeyValuePair<Light, LightRenderMode>> s_lights = new List<KeyValuePair<Light, LightRenderMode>>();
+        static readonly FieldInfo f_blur = AccessTools.Field(typeof(Viewer), "m_damage_blur_strength");
+        static readonly FieldInfo f_over = AccessTools.Field(typeof(Viewer), "m_damage_overbrighten");
+
+        static void BoostLights(PlayerShip t)
+        {
+            RestoreLights();
+            if (t == null || t.c_lights == null) return;
+            foreach (var l in t.c_lights)
+                if (l != null) { s_lights.Add(new KeyValuePair<Light, LightRenderMode>(l, l.renderMode)); l.renderMode = LightRenderMode.ForcePixel; }
+            LogLights("following", t);
+        }
+
+        static void RestoreLights()
+        {
+            foreach (var kv in s_lights) if (kv.Key != null) kv.Key.renderMode = kv.Value;
+            s_lights.Clear();
+        }
+
+        static void KeepLights(PlayerShip t)
+        {
+            if (t == null || t.c_lights == null) return;
+            var v = GameManager.m_viewer;
+            if (v != null) { try { if (f_blur != null) f_blur.SetValue(v, 0f); if (f_over != null) f_over.SetValue(v, 0f); } catch { } }
+        }
+
+        static void LogLights(string why, PlayerShip t)
+        {
+            try
+            {
+                var sb = new System.Text.StringBuilder();
+                sb.Append(why).Append(" netId=").Append(t.c_player.netId.Value).Append(" headlightsOn=").Append(t.m_headlights_on)
+                  .Append(" unlock=").Append(t.c_player.m_unlock_headlight).Append(" pixelLights=").Append(QualitySettings.pixelLightCount).Append(" lights=");
+                for (int i = 0; i < t.c_lights.Length; i++)
+                {
+                    var l = t.c_lights[i];
+                    if (l == null) { sb.Append("[null]"); continue; }
+                    sb.Append("[").Append(i).Append(' ').Append(l.type).Append(" on=").Append(l.enabled && l.gameObject.activeInHierarchy)
+                      .Append(" i=").Append(l.intensity.ToString("F2")).Append(" r=").Append(l.range.ToString("F0")).Append(' ').Append(l.renderMode).Append("]");
+                }
+                CoopLog.Write("SPECT", sb.ToString());
+            }
+            catch (Exception ex) { CoopLog.Error("LogLights", ex); }
+        }
+
         static int s_last_frame = -1;
-        static float s_next_log;
+        static float s_next_log, s_next_light_log;
         static int s_reparents;
 
         static Transform Cam()
@@ -475,6 +523,7 @@ namespace OlCoop.Death
             }
             CoopLog.Write("SPECT", "stop");
             if (s_target != null) CoopDeath.HideShip(s_target, false);
+            RestoreLights();
             // Never destroy the game's camera with the rig: move anything still parented to it back to the ship first.
             var home = o != null ? (o.c_cam_controller != null ? o.c_cam_controller : o.m_camera_parent) : null;
             for (int i = s_rig.transform.childCount - 1; i >= 0; i--)
@@ -498,6 +547,7 @@ namespace OlCoop.Death
             if (s_target != null && s_target != t) CoopDeath.HideShip(s_target, false);
             s_target = t;
             CoopDeath.HideShip(s_target, true); // first-person view from inside their ship
+            BoostLights(s_target);
             GameplayManager.AddHUDMessage("SPECTATING " + Hud.CoopHud.NameOf(s_target.c_player), -1, true);
             CoopLog.Write("SPECT", "following netId=" + s_target.c_player.netId.Value);
         }
@@ -520,6 +570,8 @@ namespace OlCoop.Death
             if (s_target == null || (bool)s_target.m_dying || (bool)s_target.m_dead) { if (s_target != null) CoopDeath.HideShip(s_target, false); s_target = null; Next(+1); }
             if (Controls.JustPressed(CCInput.FIRE_WEAPON)) Next(+1);
             if (s_target == null) return;
+            KeepLights(s_target);
+            if (Time.time >= s_next_light_log) { s_next_light_log = Time.time + 15f; LogLights("tick", s_target); }
             s_rig.transform.position = s_target.c_transform.position;
             s_rig.transform.rotation = Quaternion.Slerp(s_rig.transform.rotation, s_target.c_transform.rotation, 0.35f);
         }

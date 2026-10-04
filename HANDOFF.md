@@ -10,7 +10,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   `Overload_Data\Managed\Assembly-CSharp.dll` locally if needed. Build references the game's Managed DLLs + GameMod.dll staged from the game folder.
 
 ## Build + delivery rules (user is strict about these)
-- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.4.19 world"). Protocol = 14 (in build.sh).
+- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.4.20 world"). Protocol = 14 (in build.sh).
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 146 patches, 0 problems; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b (current). Bug fixes overwrite the current phase
   folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
@@ -185,3 +185,13 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   MenuManager.PlayGameUpdate (P1) holds until all verified connected joiners are ready, banner on overlay slot 3; End on LoadLevel (F16)
   or MAIN_MENU. No timeout (user: host must not continue without them).
 - Known race: hardcore death, joiner leaves for the restart 2 s after the death message; an exit 2-4 s after a death can come too late.
+
+## 0.4.20 status (2026-10-04 11:30) - installed, UNTESTED
+- Installed SHA1 e3ffaa408b93bc01b754c3209a41826437fc5f13 (169984 bytes), verified in game folder + build-phase2b. Protocol 14. Tag v0.4.20. 164 patches, 0 problems.
+- User-confirmed working (11:05-11:18 runs): joiner Devastator, Shredder/claw melee, exit line-up, boss lockdown on entry, lockdown pull
+  from far away, status lines after the exit, teammate maps, switching the spectated player.
+- Spectate lighting (user: spectators darker, no headlights from the live player): Spectate.BoostLights sets the followed ship's
+  c_lights (0-2 headlights, 3 fill/boost, 4 thunderbolt) to LightRenderMode.ForcePixel, restored on switch/stop; Viewer damage
+  blur/overbright cleared each tick. [SPECT] lines log headlightsOn/unlock/pixelLightCount and each light's enabled/intensity/mode
+  (on follow and every 15 s) - check them if still dark (e.g. headlightsOn=False on the spectator's copy = headlight state not synced).
+- Open: revived/respawned ships log headlights=False after respawn (state not restored on remote copies).

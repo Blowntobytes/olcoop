@@ -1,7 +1,7 @@
-# Phase 2b world sync test (build 0.4.19)
+# Phase 2b world sync test (build 0.4.20)
 
 Host + 1 joiner, a level with keys, a shootable button that opens a door, and comm (voice) messages, e.g. the first Cronus levels.
-Both windows must show OLCOOP 0.4.19-WORLD at the top-left of the main menu.
+Both windows must show OLCOOP 0.4.20-WORLD at the top-left of the main menu.
 
 1. **Keys:** the host picks up a security key. Both get "SECURITY ACCESS GRANTED!" (the joiner's says "BY A TEAMMATE"), and the joiner
    can open that key's door. Repeat with the joiner picking up a key.
@@ -52,4 +52,6 @@ Both windows must show OLCOOP 0.4.19-WORLD at the top-left of the main menu.
     the dead player comes back next to the exit and plays the exit cutscene with the others, then gets the end-of-level screens.
 24. **Ready check:** a joiner stays on the upgrade screen while the host finishes its screens: the host shows "WAITING FOR PLAYERS -
     n OF m READY" and only starts the next level once every joiner is done.
-25. Note anything out of sync: what, where, and which window.
+25. **Spectate lighting:** spectate mode, one player dies while the live player has headlights on: the spectator sees the level lit like
+    the live player does, headlights included.
+26. Note anything out of sync: what, where, and which window.

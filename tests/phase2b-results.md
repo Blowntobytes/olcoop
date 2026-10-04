@@ -111,3 +111,10 @@
 - 10:45 hardcore: host died 10:45:52 (restart scheduled), joiner reached the exit 10:45:56. Host finished the level dead without the
   exit flight; its log stops at MENUS (menus frozen), user restarted the host. User: dead host or joiner at the exit still breaks.
   0.4.19: dead players are revived into the exit; the exit cancels the restart; host waits for joiners to be ready.
+
+## Runs 10:58-11:18, 0.4.19 (all logs show 0.4.19), host + 2 joiners
+- 11:07:47 joiner netId=92 died (respawn mode); exit at 11:07:53: host revived it in the exit line-up and sent it into the exit door (log).
+- 11:08:12 host level done; 11:10:59 "WAITING FOR PLAYERS - 0 OF 2 READY", 11:11:05 1/2, 11:11:12 2/2, next level started (log).
+- User: working - joiner Devastator, Shredder/claw melee, exit line-up, boss lockdown on entry, lockdown pull from far away, status lines
+  after the exit, teammate maps, switching who you spectate. Problem: spectators saw darker lighting and no headlights from the live
+  player (spectate mode, 11:13-11:17). 0.4.20 forces the followed ship's lights to per-pixel and logs their state.
