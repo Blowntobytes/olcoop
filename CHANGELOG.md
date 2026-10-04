@@ -1,6 +1,20 @@
 # Changelog
 
-## 0.4.10-world (2026-10-04), UNTESTED in game
+## 0.4.11-world (2026-10-04), UNTESTED in game
+- Fix: the Goliath boss lockdown started the moment a joiner joined (07:13 run: a joiner spawned inside the boss room's trigger). Spawns,
+  respawns and lockdown teleports no longer place a ship within 2.5 units of a level trigger (script/lockdown triggers, warpers, wind
+  tunnels, exit doors, alien warps), so events start only when someone flies in.
+- Exit regroup in narrow exit tunnels: the other players are lined up behind the player who reached the exit (4-20 units back along the
+  way they came, each on its own spot) before the exit flight starts. If that fails, the old spots next to them are tried, then
+  "exit from where you are".
+- Fix: melee robots (claw/blade "Shredder", detonators, chargers) only hurt the host. The game always applied melee damage to the local
+  ship, which on the host is the host. It now goes to the ship the robot actually hit.
+- Fix: joiner ammo weapons and missiles did nothing. The host's copy of a joiner started with an empty loadout (no ammo, no missiles, no
+  upgrades), so the host refused those shots. A joiner now sends its loadout (weapons, upgrade levels, ammo, missiles, energy) to the
+  host when its ship spawns; after that the game's own ammo/energy sync keeps both sides in step.
+- Protocol 11 (message 170 = joiner loadout).
+
+## 0.4.10-world (2026-10-04), 3-player run 07:13 (working pilots): spawns apart, all ships fly, all three exit; lockdown started on join
 - Fix (3 players): two joiners were put on exactly the same spot when joining a level, respawning, and on lockdown and exit regroups.
   Each placement rotated through the same short list of spots near the teammate, and in tight places only one spot was free, so both
   got it. Overlapping ships jam each other: in the 06:33 run both joiners barely moved after the level restart and in sp_titan_06

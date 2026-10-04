@@ -10,7 +10,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   `Overload_Data\Managed\Assembly-CSharp.dll` locally if needed. Build references the game's Managed DLLs + GameMod.dll staged from the game folder.
 
 ## Build + delivery rules (user is strict about these)
-- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.4.10 world"). Protocol = 10 (in build.sh).
+- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.4.11 world"). Protocol = 11 (in build.sh).
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 146 patches, 0 problems; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b (current). Bug fixes overwrite the current phase
   folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
@@ -101,3 +101,13 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   Tetherscript/3Dconnexion/Generic USB - not plugged-in hardware), so TESTEE has no working thrust bindings on this PC. The 06:33 run's
   "second joiner could only spin" was the joiner using TESTEE. 0.4.10 reinstalled (SHA1 928e31d3...). Use the same pilot (with working
   bindings) in every window; worth a launcher check that warns when a pilot has no thrust binding.
+
+## 0.4.11 status (2026-10-04 07:34) - installed, UNTESTED
+- Installed SHA1 34f2b0079740ce03a8fbaec4f21cf0113bdc1f5a (151040 bytes), verified in game folder + build-phase2b. Protocol 11. Tag v0.4.11. 153 patches, 0 problems.
+- CoopHost.InTrigger: OverlapSphere 2.5 u, Collide; rejects TriggerBase/DoorExit/AlienWarp volumes (AvoidTriggers, default on).
+- CoopHost.TryLane: exit regroup spots 4/7/10/13/16/20 u behind the anchor (LOS, 1.0 u room, occupancy, no trigger check).
+- src/olcoop/Phase4Combat.cs: M1 transpiler on Robot.ApplyClawImpulse/ApplyDetonatorImpulse/ApplyChargerImpulse (1 ldsfld
+  GameManager.m_player_ship each, the ApplyDamage receiver) -> MeleeVictim(robot) = target_rigidbody's PlayerShip. Log [COMBAT] melee.
+- Loadout: msg 170 J->H sent 1 s after the joiner's OnStartLocalPlayer; host applies weapon/missile levels, picked-up flags, ammo,
+  missile ammo, energy, current weapon/missile to its copy. Ammo/energy then follow stock server sync (Player.Update RpcSetAmmo/Energy).
+  Log [COMBAT] joiner: sent loadout / host: applied loadout. Not covered: boost/headlight unlocks; loadout on later respawns (D9 keeps ammo).

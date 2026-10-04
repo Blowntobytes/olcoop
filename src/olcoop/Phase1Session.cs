@@ -116,7 +116,56 @@ namespace OlCoop.Session
             if (Physics.Linecast(anchor, p, out hit, GEOM_MASK, QueryTriggerInteraction.Ignore)) { why = "blocked by " + hit.collider.name; return false; }
             if (Physics.CheckSphere(p, 1.6f, GEOM_MASK, QueryTriggerInteraction.Ignore)) { why = "no room"; return false; }
             if (Occupied(p, out why)) return false;
+            if (AvoidTriggers && InTrigger(p, out why)) return false;
             why = "seg " + seg; return true;
+        }
+
+        // ---------------------------------------------------------------- level triggers (0.4.11)
+        // 07:13 run: a joiner spawned inside the boss room's lockdown trigger and started the fight 26 ms after joining.
+        /// Placement avoids trigger volumes (TriggerBase: lockdowns, scripts, warpers, wind tunnels), exit doors and alien warps.
+        public static bool AvoidTriggers = true;
+        const float TRIGGER_CLEARANCE = 2.5f;
+        static readonly Collider[] s_overlap = new Collider[64];
+        static bool InTrigger(Vector3 p, out string why)
+        {
+            int n = Physics.OverlapSphereNonAlloc(p, TRIGGER_CLEARANCE, s_overlap, ~0, QueryTriggerInteraction.Collide);
+            for (int i = 0; i < n; i++)
+            {
+                var c = s_overlap[i];
+                if (c == null || !c.isTrigger) continue;
+                if (c.GetComponentInParent<TriggerBase>() != null || c.GetComponentInParent<DoorExit>() != null || c.GetComponentInParent<AlienWarp>() != null)
+                { why = "inside trigger " + c.gameObject.name; return true; }
+            }
+            why = null; return false;
+        }
+
+        // ---------------------------------------------------------------- exit lane (0.4.11)
+        // 07:15 run: at the Goliath exit tunnel no spot next to the exiting player had room, so everyone exited from where they were.
+        /// Spots behind the anchor, along the way it came (narrow exit tunnels), so all exit flights start together. Trigger check off:
+        /// the level is ending, and the anchor itself is in the exit trigger.
+        public static bool TryLane(string label, Vector3 anchor, Quaternion rot, ref LevelData.SpawnPoint result)
+        {
+            Vector3 back = -(rot * Vector3.forward);
+            float[] dists = { 4f, 7f, 10f, 13f, 16f, 20f };
+            foreach (float d in dists)
+            {
+                Vector3 p = anchor + back * d;
+                string why;
+                int seg = RobotManager.FindSegmentContainingWorldPosition(p, -1, false);
+                RaycastHit hit;
+                if (seg < 0) why = "outside level";
+                else if (Physics.Linecast(anchor, p, out hit, GEOM_MASK, QueryTriggerInteraction.Ignore)) why = "blocked by " + hit.collider.name;
+                else if (Physics.CheckSphere(p, 1.0f, GEOM_MASK, QueryTriggerInteraction.Ignore)) why = "no room";
+                else if (Occupied(p, out why)) { }
+                else
+                {
+                    Reserve(p); result = new LevelData.SpawnPoint(p, rot, 0);
+                    CoopLog.Write("HOST", "lane spot " + d + "u behind " + label + " at " + p.ToString("F1") + " (seg " + seg + ")");
+                    return true;
+                }
+                CoopLog.Write("HOST", "  lane spot " + d + "u behind " + label + ": rejected, " + why);
+            }
+            return false;
         }
 
         // ---------------------------------------------------------------- occupancy (0.4.10)
@@ -177,7 +226,8 @@ namespace OlCoop.Session
             {
                 int s = queue.Dequeue(); int d = depth[s];
                 var sd = segs[s];
-                if (sd != null && RobotManager.FindSegmentContainingWorldPosition(sd.Center, -1, false) >= 0 && !Occupied(sd.Center, out occ))
+                if (sd != null && RobotManager.FindSegmentContainingWorldPosition(sd.Center, -1, false) >= 0 && !Occupied(sd.Center, out occ)
+                    && !(AvoidTriggers && InTrigger(sd.Center, out occ)))
                 {
                     if (!Physics.CheckSphere(sd.Center, 1.6f, GEOM_MASK, QueryTriggerInteraction.Ignore)) found.Add(s);
                     else if (!Physics.CheckSphere(sd.Center, 1.0f, GEOM_MASK, QueryTriggerInteraction.Ignore)) loose.Add(s); // tight but open
