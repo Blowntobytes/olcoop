@@ -1,7 +1,7 @@
-# Phase 2b world sync test (build 0.4.13)
+# Phase 2b world sync test (build 0.4.14)
 
 Host + 1 joiner, a level with keys, a shootable button that opens a door, and comm (voice) messages, e.g. the first Cronus levels.
-Both windows must show OLCOOP 0.4.13-WORLD at the top-left of the main menu.
+Both windows must show OLCOOP 0.4.14-WORLD at the top-left of the main menu.
 
 1. **Keys:** the host picks up a security key. Both get "SECURITY ACCESS GRANTED!" (the joiner's says "BY A TEAMMATE"), and the joiner
    can open that key's door. Repeat with the joiner picking up a key.

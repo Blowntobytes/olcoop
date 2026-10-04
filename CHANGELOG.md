@@ -1,6 +1,15 @@
 # Changelog
 
-## 0.4.13-world (2026-10-04), UNTESTED in game
+## 0.4.14-world (2026-10-04), UNTESTED in game
+- Fix: a Devastator (or any missile) picked up by a joiner could not be selected. The pickup ran on the host, and the unlock reached the
+  joiner, but the missile ammo never did (08:09 run: Devastator unlocked with 0 rounds on the joiner; the game won't select a missile
+  with no ammo). The host now sends every missile pickup straight to that joiner (message 174).
+- Fix: the weapon carry-over replaced the new level's loadout and could take away a weapon the new level gives you (08:10 run: the
+  Flak). It now merges: unlocked weapons/missiles/upgrades are the best of both; ammo, missile counts, energy and the selected weapon
+  come from the previous level.
+- Protocol 13.
+
+## 0.4.13-world (2026-10-04), 08:01 run: no joiner shots dropped any more (0, was 278); carry-over worked (log); Devastator unselectable on a joiner (0 ammo)
 - Fix: the host dropped many joiner shots, missiles included (07:47 run: 278 dropped - impulse, missile pod, hunter, creeper, falcon -
   "Fire packet dropped, client is bursting"). olmod rate-checks each client shot against the multiplayer match clock, and that clock
   never runs in a campaign level, so shots looked like they all came at once. The clock now runs in co-op.

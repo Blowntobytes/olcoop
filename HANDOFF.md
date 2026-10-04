@@ -10,7 +10,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   `Overload_Data\Managed\Assembly-CSharp.dll` locally if needed. Build references the game's Managed DLLs + GameMod.dll staged from the game folder.
 
 ## Build + delivery rules (user is strict about these)
-- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.4.12 world"). Protocol = 12 (in build.sh).
+- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.4.14 world"). Protocol = 13 (in build.sh).
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 146 patches, 0 problems; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b (current). Bug fixes overwrite the current phase
   folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
@@ -130,3 +130,11 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 - Diagnostics: [COMBAT] joiner: local loadout now ... (on change, 1 Hz poll); host: unlocked missile/+ammo/unlock weapon/selected missile.
 - User asked (07:52): joiners should get the end-of-level stats + upgrade screen like the host. Not started; needs the post-level menu
   flow on joiners (stock DoneLevel(Escaped) path) with "continue" replaced by waiting for the host's next level.
+
+## 0.4.14 status (2026-10-04 08:23) - installed, UNTESTED
+- Installed SHA1 99f1794354a3f01fea68c3446be8b8e149c49d10 (158720 bytes), verified in game folder + build-phase2b. Protocol 13. Tag v0.4.14. 161 patches, 0 problems.
+- 0.4.13 run: olmod drops gone (0), carry-over works; Devastator: unlock reached joiner, missile ammo didn't.
+- D2 (Player.AddMissileAmmo, host, remote player): delta -> msg 174 MissileGrant to that joiner; joiner adds it (clamped to
+  GetMaxMissileAmmo) and unlocks the missile if still LOCKED. Watch for double-adding if olmod's own path ever starts delivering.
+- Carry-over now Merge(): levels/picked-up/upgrades = max; counts/energy/selection = carried.
+- Not checked yet: weapon pickups (UnlockWeapon -> RpcUnlockWeaponClient) and ammo/energy pickups on joiners under olmod sniper.

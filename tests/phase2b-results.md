@@ -71,3 +71,10 @@
   .OnSniperPacket times shots with NetworkMatch.m_match_elapsed_seconds, which only ProcessPlaying advances, and only in an MP scene.
 - User: a picked-up Devastator was in the joiner's inventory but could not be selected. No log covered missile state; 0.4.13 adds it.
   IL: pickup on the host calls UnlockMissile (-> RpcSetMissileLevel) + AddMissileAmmo (olmod sniper: PlayerAddResourceMessage 135).
+
+## Run 08:01-08:11, 0.4.13 (all three logs 0.4.13-world protocol 12), 3 players
+- unity-host.log: 0 "Fire packet dropped" (07:47 run: 278). Match clock fix works.
+- Devastator (user: not selectable on a joiner): host 08:09:14 "netId=92 unlocked missile DEVASTATOR level=LEVEL_0", "+1 DEVASTATOR -> 1".
+  Joiner: mlevel slot 5 went 0->1 at 08:09:14 (unlock arrived) but missile ammo slot 5 stayed 0 all level. Ammo didn't arrive.
+- Carry-over: joiner kept DEVASTATOR selected/creeper 2/energy 92 into the next level, but the new level had unlocked FLAK
+  (wlevel 1,1,1,0,1,1,0,0) and the restore overwrote it (1,1,1,0,1,0,0,0). 0.4.14 merges.

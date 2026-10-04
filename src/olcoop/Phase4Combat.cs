@@ -1,4 +1,4 @@
-// olcoop 0.4.11-0.4.13: combat parity.
+// olcoop 0.4.11-0.4.14: combat parity.
 //  - Melee robots (claw/blade "Shredder", detonator, charger) damage the ship they actually hit, not always the host.
 //  - Joiner loadout (weapons, upgrade levels, ammo, missiles, energy) is applied to the host's copy of that joiner, so the host
 //    stops refusing the joiner's ammo-weapon and missile shots.
@@ -68,7 +68,14 @@ namespace OlCoop.Combat
     }
 
     // ===================================================================== loadout
-    public static class LNet { public const short Loadout = 170; } // J->H LoadoutMsg (once per spawn)
+    public static class LNet { public const short Loadout = 170; public const short MissileGrant = 174; } // 170 J->H loadout; 174 H->J missile pickup
+
+    public class MissileGrantMsg : MessageBase
+    {
+        public byte mt; public int delta;
+        public override void Serialize(NetworkWriter w) { w.Write(mt); w.Write(delta); }
+        public override void Deserialize(NetworkReader r) { mt = r.ReadByte(); delta = r.ReadInt32(); }
+    }
 
     public class LoadoutMsg : MessageBase
     {
@@ -162,7 +169,7 @@ namespace OlCoop.Combat
             if (p == null || c == null || !c.isConnected) return;
             if (s_carry != null)
             {
-                Apply(p, s_carry, true);
+                Merge(p, s_carry);
                 CoopLog.Write("COMBAT", "joiner: restored loadout from the previous level: " + s_carry.Describe());
                 s_carry = null;
             }
@@ -203,6 +210,53 @@ namespace OlCoop.Combat
             if (st == s_last_state) return;
             s_last_state = st;
             CoopLog.Write("COMBAT", "joiner: local loadout now " + st);
+        }
+
+        /// Joiner, next level: keep what the new level gave us AND what we carried (08:10 run: the restore wiped the Flak the new level
+        /// had unlocked). Unlock levels / picked-up flags / ship upgrades: the higher of the two. Ammo, missile counts, energy and the
+        /// selected weapon/missile: the carried values (the campaign carries them; it doesn't refill).
+        static void Merge(Player p, LoadoutMsg c)
+        {
+            for (int i = 0; i < Math.Min(c.wlevel.Length, p.m_weapon_level.Length); i++) if (c.wlevel[i] > (byte)p.m_weapon_level[i]) p.m_weapon_level[i] = (WeaponUnlock)c.wlevel[i];
+            for (int i = 0; i < Math.Min(c.mlevel.Length, p.m_missile_level.Length); i++) if (c.mlevel[i] > (byte)p.m_missile_level[i]) p.m_missile_level[i] = (WeaponUnlock)c.mlevel[i];
+            for (int i = 0; i < Math.Min(c.wpicked.Length, p.m_weapon_picked_up.Length); i++) if (c.wpicked[i]) p.m_weapon_picked_up[i] = true;
+            var uf = UnlockFields;
+            for (int i = 0; i < Math.Min(c.unlocks.Length, uf.Length); i++) if (uf[i] != null && c.unlocks[i]) uf[i].SetValue(p, true);
+            for (int i = 0; i < Math.Min(c.mammo.Length, p.m_missile_ammo.Length); i++) p.m_missile_ammo[i] = c.mammo[i];
+            p.m_ammo = c.ammo;
+            p.m_energy = c.energy;
+            if (p.m_weapon_level[c.weapon] != WeaponUnlock.LOCKED) p.m_weapon_type = (WeaponType)c.weapon;
+            if (p.m_missile_level[c.missile] != WeaponUnlock.LOCKED) p.m_missile_type = (MissileType)c.missile;
+            try { p.UpdateCurrentWeaponName(); p.UpdateCurrentMissileName(); } catch { }
+        }
+
+        // ------------------------------------------------------------ missile pickups (0.4.14)
+        // 08:09 run: a joiner picked up a Devastator. The host unlocked it and added 1 (host copy), the unlock (RpcSetMissileLevel)
+        // reached the joiner, but the ammo never did (olmod's sniper path for missile ammo didn't deliver), so the joiner had
+        // Devastator unlocked with 0 rounds and the game wouldn't select it. The host now sends missile pickups to the joiner itself.
+        public static void HostMissileAdded(Player p, MissileType mt, int delta)
+        {
+            if (p == null || p.isLocalPlayer || p.connectionToClient == null || delta <= 0) return;
+            p.connectionToClient.Send(LNet.MissileGrant, new MissileGrantMsg { mt = (byte)mt, delta = delta });
+            CoopLog.Write("COMBAT", "host: sent " + delta + " " + mt + " to netId=" + p.netId.Value);
+        }
+
+        public static void OnMissileGrant(NetworkMessage msg)
+        {
+            try
+            {
+                var m = msg.ReadMessage<MissileGrantMsg>();
+                var p = GameManager.m_local_player;
+                if (p == null) return;
+                int i = m.mt; if (i < 0 || i >= p.m_missile_ammo.Length) return;
+                if (p.m_missile_level[i] == WeaponUnlock.LOCKED) p.m_missile_level[i] = WeaponUnlock.LEVEL_0;
+                int before = (int)p.m_missile_ammo[i];
+                int max = 999; try { max = p.GetMaxMissileAmmo((MissileType)i); } catch { }
+                p.m_missile_ammo[i] = Math.Min(max, before + m.delta);
+                try { p.UpdateCurrentMissileName(); } catch { }
+                CoopLog.Write("COMBAT", "joiner: picked up " + m.delta + " " + (MissileType)i + ": " + before + " -> " + (int)p.m_missile_ammo[i]);
+            }
+            catch (Exception ex) { CoopLog.Error("OnMissileGrant", ex); }
         }
 
         /// Write a loadout into a Player (joiner: its own; host: its copy of that joiner).
@@ -278,6 +332,17 @@ namespace OlCoop.Combat
         }
     }
 
+    [HarmonyPatch(typeof(Client), "RegisterHandlers")]
+    static class L4_ClientHandlers
+    {
+        static void Postfix()
+        {
+            CoopConfig.EnsureInit();
+            if (!CoopConfig.IsJoiner || Client.GetClient() == null) return;
+            Client.GetClient().RegisterHandler(LNet.MissileGrant, CoopLoadout.OnMissileGrant);
+        }
+    }
+
     // ===================================================================== olmod sniper-packet clock
     /// olmod's sniper packets (client-side shots) rate-check every shot on the server against NetworkMatch.m_match_elapsed_seconds
     /// (MPSniperPacketsServerHandlers.OnSniperPacket). That clock only advances in NetworkMatch.ProcessPlaying, which returns at once
@@ -340,10 +405,20 @@ namespace OlCoop.Combat
     }
 
     [HarmonyPatch(typeof(Player), "AddMissileAmmo")]
-    static class D2_LogAddMissileAmmo
+    static class D2_MissilePickup
     {
-        static void Postfix(Player __instance, int amt, MissileType mt)
-        { if (CoopConfig.Active && !__instance.isLocalPlayer && Server.IsActive()) CoopLog.Write("COMBAT", "host: netId=" + __instance.netId.Value + " +" + amt + " " + mt + " -> " + (int)__instance.m_missile_ammo[(int)mt]); }
+        static void Prefix(Player __instance, MissileType mt, out int __state) { __state = (int)__instance.m_missile_ammo[(int)mt]; }
+        static void Postfix(Player __instance, int amt, MissileType mt, int __state)
+        {
+            if (!CoopConfig.Active || GameplayManager.IsMultiplayer || __instance.isLocalPlayer || !Server.IsActive()) return;
+            try
+            {
+                int now = (int)__instance.m_missile_ammo[(int)mt];
+                CoopLog.Write("COMBAT", "host: netId=" + __instance.netId.Value + " +" + amt + " " + mt + " -> " + now);
+                CoopLoadout.HostMissileAdded(__instance, mt, now - __state);
+            }
+            catch (Exception ex) { CoopLog.Error("D2", ex); }
+        }
     }
 
     [HarmonyPatch(typeof(Player), "UnlockWeapon")]
