@@ -1,4 +1,4 @@
-# olcoop handoff (state as of 2026-10-03 17:00 PT)
+# olcoop handoff (state as of 2026-10-04 15:55 PT)
 
 Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
@@ -10,8 +10,9 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   `Overload_Data\Managed\Assembly-CSharp.dll` locally if needed. Build references the game's Managed DLLs + GameMod.dll staged from the game folder.
 
 ## Build + delivery rules (user is strict about these)
-- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.5.4 online"). Protocol = 16 (in build.sh). Current build folder: build-online.
-- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 146 patches, 0 problems; run `mono vp.exe <dll> <Managed dir> <game dir>`).
+- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.5.5 online"). Protocol = 17 (in build.sh). Current build folder: build-online.
+- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 189 patches, 0 problems;
+  it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b (current). Bug fixes overwrite the current phase
   folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
 - Also install the DLL directly into the game folder via the device bridge and verify size/mtime (user's install.bat runs proved unreliable).
@@ -23,6 +24,15 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   Do NOT push anything to GitHub from a cloud session unless the user asks; main + tags are published by the user's script.
 - After each build: commit `<version>: description`, tag `v<version>`, `git bundle create publish/olcoop-latest.bundle main --tags`, deliver it to
   `olmodcoop\publish\` next to Publish-ToGitHub.cmd/.ps1. The user double-clicks Publish-ToGitHub.cmd, which pushes with their own login.
+- The user also edits README.md on github.com (first: commit e28d136 "Revise README for clarity and details", 2026-10-04 15:35).
+  Before a release, check GitHub main for commits that aren't in the bundle (add_repo Blowntobytes/olcoop, clone, compare) and
+  fast-forward local main onto them (`git fetch <clone> main && git merge --ff-only FETCH_HEAD`) - never re-author or squash them -
+  so Publish-ToGitHub.cmd fast-forwards instead of offering a force-push that would delete the user's edit.
+- README.md is the user's text: keep their wording ("early alpha", "joiners (up to 2)", "pickups is per instance, not per
+  player yet (WIP)", start olcoop.bat IN THE GAME FOLDER). Sections required by the user: Known issues (some power-ups not showing
+  up for all players; destructibles not synchronizing between all players) and Credits - the olmod team / Overload Development
+  Community (https://github.com/overload-development-community/olmod) FIRST, then Blowntobytes. Update Known issues as bugs are
+  fixed or found; only the user decides wording beyond that.
 
 ## Current status
 - 0.4.5-world (phase 2b) installed 2026-10-03 21:50 (129536 bytes, SHA1 1241fafb…, verified), NOT tested. Folder build-phase2b.
@@ -287,3 +297,24 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   flame scale, +1.75 when m_boosting) only if c_player.m_remote_player && !m_pregame. m_remote_player is set by
   Player.PrepareForMP (NetworkSpawnPlayer, MP only). LT8 (PlayerShip.Update prefix, non-local ships in co-op) sets
   m_remote_player = true, m_pregame = false, logs once per ship. m_remote_player has no other reader in PlayerShip.
+
+## 0.5.5 status (2026-10-04 15:55) - installed, UNTESTED (0.5.4 was never tested; its items are still open)
+- Installed SHA1 a3cdcdb4980029a5fa9c343f8a429cc1acd42cff (210432 bytes), verified in game folder + build-online. Protocol 17.
+  Tag v0.5.5. 189 patches, 0 problems. Friend zip dist/olcoop-0.5.5-online.zip (SHA1 46a8dee0201342e43ea20592531990d57e9d53f2).
+- Objective counters (src/olcoop/Phase8Objectives.cs). IL: UIElement.DrawHUD -> DrawHUDScoreInfo draws, for
+  LevelCustomInfo.Objective == DESTROY_BOTS (1), CustomCount - GameplayManager.m_total_robots_killed ("OPERATORS"); DrawHUD draws
+  CustomCount for ALIEN_WARP (3) ("CORES REMAINING"). m_total_robots_killed only grows in AddStatsRobotKilled (where the robot dies =
+  host); CustomCount-- in AlienPower.OnCollisionEnter. Enum: NORMAL 0, DESTROY_BOTS 1, SECURE_CRASH 2, ALIEN_WARP 3, LEVEL_16 4,
+  TRAINING 5. OB1 (GameplayManager.Update postfix, host): msg 194 ObjMsg {killed, custom, objective} on change + 1 Hz to verified
+  joiners. OB2 (UIElement.DrawHUD prefix/finalizer, joiner): swaps in the host values only while DrawHUD runs, if a 194 arrived
+  in the last 5 s (joiner stats untouched). [OBJ] log lines (host on change; joiner with its local values for comparison).
+- Already fine (checked): ScriptOnRobotKills is host-only and its links (ScriptObjectiveMessage popups) replay on joiners;
+  boss/reactor escape (MustEscape/EscapeTimer) reached joiners in the 0.4.6 and 0.4.10 runs (joiner logs show the host's timer).
+  ScriptLevel1 (kill counts + "near the surface" checks on m_player_ship = host's ship only) stays host-only.
+- Icon: art/olcoop.ico (16-256 px, olmod-style pixel art, black + orange "OL / COOP"; art/make_icon.py regenerates it).
+  install.bat copies it to the game folder and creates olcoop.lnk (Desktop + game folder, target olcoop.bat, WScript.Shell via
+  PowerShell); uninstall.bat removes both. Not run on Windows yet. The user's own game folder got olcoop.ico copied by the bridge
+  but no shortcut (no shell on the PC): rerun install.bat from build-online or the zip to get it.
+- Installer sources are now tracked in dist/ (install.bat, uninstall.bat, olcoop*.bat, find-overload.ps1, README.txt, olcoop.ico);
+  build-online holds the same files plus the DLL. Edit dist/ and copy to build-online (or the reverse) - keep them identical.
+- README: Known issues + Credits added on top of the user's GitHub edit e28d136 (fast-forwarded into local main).

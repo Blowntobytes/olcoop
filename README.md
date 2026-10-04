@@ -16,6 +16,10 @@ ships in it. Works flat-screen and in VR.
   joiner has pressed READY UP.
 - Online through Steam: the host invites friends from the game; no port forwarding.
 
+## Known issues
+- Some power-ups don't show up for all players.
+- Destructibles don't synchronize between all players.
+
 ## Install (players)
 Requirements: Overload on Steam, Steam running, and olmod 0.5.14 in the Overload folder. Every player needs the same olcoop version.
 1. Download the release zip and unzip it anywhere.
@@ -40,5 +44,10 @@ Options: `-coopnolog` turns logging off, `-coopdump <sec>` sets the state-dump i
 - `HANDOFF.md`: how the mod works, version by version, and the working rules.
 - `BUILDS.md`, `CHANGELOG.md`: every build and what changed.
 - `docs/`: design notes and research. `tests/`: manual test scripts and results.
+
+## Credits
+- The olmod team and contributors at the [Overload Development Community](https://github.com/overload-development-community/olmod):
+  olcoop is built on olmod and would not exist without it.
+- olcoop by Blowntobytes ([github.com/Blowntobytes](https://github.com/Blowntobytes)).
 
 Licence: MIT, like olmod. The mod contains no Overload code or assets.

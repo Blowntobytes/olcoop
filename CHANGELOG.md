@@ -1,6 +1,18 @@
 # Changelog
 
-## 0.5.4-online (2026-10-04), UNTESTED in game (all players must run 0.5.4)
+## 0.5.5-online (2026-10-04), UNTESTED in game (all players must run 0.5.5; protocol 17)
+- Level objective counters for joiners: the HUD counter of levels with a kill objective (OPERATORS remaining, e.g. Ymir
+  Outpost) and the CORES REMAINING counter now show the team's progress on every player. They counted only the robots/cores
+  destroyed in each player's own game, and in co-op those are destroyed in the host's game, so joiners' counters never moved.
+  The host now sends its counts; joiners' own end-of-level stats are unchanged. Objective popups (e.g. "5 AUTONOMOUS-OPERATORS
+  REMAINING") were already shared, and the boss/reactor escape countdown already reached joiners (0.4.6/0.4.10 logs).
+- Installer: creates an "olcoop" shortcut with an orange and black olcoop icon (olmod style) on the Desktop and in the
+  Overload folder; it starts olcoop.bat. Uninstall removes it. (A .bat file can't have its own icon in Windows.)
+- README: known issues (some power-ups not showing for all players, destructibles not synchronized) and credits (the
+  olmod team at the Overload Development Community, then Blowntobytes), on top of the GitHub README edit (e28d136).
+- Installer files (install.bat, uninstall.bat, find-overload.ps1, README.txt, olcoop.ico) are now tracked in dist/.
+
+## 0.5.4-online (2026-10-04), not tested before 0.5.5 (all players must run 0.5.4)
 - Boost and thruster flames on other players' ships: the game only draws another ship's thrusters (and makes them bigger when it
   boosts) for ships marked as remote players, a mark the multiplayer spawn sets and co-op ships never got. The boost state was
   already arriving (14:18 logs); now other ships are marked, so their thrusters and boost flames are drawn. This is the same

@@ -43,4 +43,5 @@ Targets unless noted: Overload 1.1.1886, olmod 0.5.14.
 | 0.5.1-online | 16 | 10-04 13:52 | tested (13:33-13:47, two PCs over Steam) | goodbye on quit dropped the joiner at once (13:38:02); no crash at quit | boost never reported ON; quit to menu kept the session; disconnects broke the other game | tag v0.5.1 |
 | 0.5.2-online | 16 | 10-04 14:13 | tested (14:04-14:08, two PCs over Steam) | Esc entries shown; host's boost ON/off reported and relayed to the joiner (log); host quit -> joiner left the level at once | LEAVE SESSION / STOP HOSTING did nothing when clicked; dead joiner got a death screen after the host left | tag v0.5.2 |
 | 0.5.3-online | 16 | 10-04 14:20 | tested (14:16-14:23, two PCs over Steam) | LEAVE SESSION and STOP HOSTING work (user); boost ON/off reaches the other side both ways (log) | other side noticed the leave 10-15 s late; no boost flames; rejoin right after leaving dropped | tag v0.5.3 |
-| 0.5.4-online | 16 | 10-04 14:38 | untested | - | - | tag v0.5.4, build-online, dist/olcoop-0.5.4-online.zip |
+| 0.5.4-online | 16 | 10-04 14:38 | not tested (replaced by 0.5.5) | - | - | tag v0.5.4 |
+| 0.5.5-online | 17 | 10-04 15:55 | untested | - | - | tag v0.5.5, build-online, dist/olcoop-0.5.5-online.zip |
