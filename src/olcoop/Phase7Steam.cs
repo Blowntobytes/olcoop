@@ -227,6 +227,8 @@ namespace OlCoop.SteamNet
             if (NetworkServer.active) NetworkServer.Shutdown();
             if (Client.IsConnected()) Client.Disconnect();
             CloseClient();
+            CancelClose(host);
+            s_last_heard[hostId] = Time.realtimeSinceStartup; // 14:20 run: a stale time from the previous session dropped the rejoin at once
             var topo = Topology();
             var conn = new SteamConnection();
             conn.Setup(host, "steam:" + hostId, SteamHostIdMarker, 1, topo);
@@ -242,7 +244,7 @@ namespace OlCoop.SteamNet
         static void CloseClient()
         {
             if (s_client == null) return;
-            try { SteamNetworking.CloseP2PSessionWithUser(s_client.Peer); } catch { }
+            CloseLater(s_client.Peer);
             s_client = null;
         }
 
@@ -300,6 +302,8 @@ namespace OlCoop.SteamNet
                 CoopLog.Write("STEAM", "server restarted; re-adding " + Name(peer));
             }
             int hostId = NetworkServer.serverHostId >= 0 ? NetworkServer.serverHostId : 0;
+            CancelClose(peer);
+            s_last_heard[peer.m_SteamID] = Time.realtimeSinceStartup;
             c = new SteamConnection();
             c.Setup(peer, "steam:" + peer.m_SteamID, hostId, NextServerConnId(), Topology());
             s_server[peer.m_SteamID] = c;
@@ -318,7 +322,7 @@ namespace OlCoop.SteamNet
             s_server.Remove(c.Peer.m_SteamID);
             s_last_heard.Remove(c.Peer.m_SteamID);
             CoopLog.Write("STEAM", "dropping conn " + c.connectionId + " (" + Name(c.Peer) + "): " + why);
-            try { SteamNetworking.CloseP2PSessionWithUser(c.Peer); } catch { }
+            CloseLater(c.Peer);
             try
             {
                 if (NetworkServer.connections.Contains(c))
@@ -354,7 +358,29 @@ namespace OlCoop.SteamNet
             SteamNetworking.SendP2PPacket(to, s_ctl, 1, what == CTL_BYE ? EP2PSend.k_EP2PSendReliable : EP2PSend.k_EP2PSendUnreliableNoDelay, 1);
         }
 
-        public static void SendBye(CSteamID to) { try { SendCtl(to, CTL_BYE); } catch (Exception ex) { CoopLog.Error("SendBye", ex); } }
+        // 0.5.4: closing the Steam session right after the goodbye threw the goodbye away (14:20 run: the host noticed a joiner's
+        // LEAVE SESSION only 14 s later, from Steam's own session timeout). Sessions are now closed 2 s after the goodbye.
+        static readonly Dictionary<ulong, float> s_close_at = new Dictionary<ulong, float>();
+        public static void CloseLater(CSteamID peer) { s_close_at[peer.m_SteamID] = Time.realtimeSinceStartup + 2f; }
+        static void CancelClose(CSteamID peer) { s_close_at.Remove(peer.m_SteamID); }
+        static void ClosePending()
+        {
+            if (s_close_at.Count == 0) return;
+            float now = Time.realtimeSinceStartup;
+            foreach (var id in new List<ulong>(s_close_at.Keys))
+            {
+                if (now < s_close_at[id]) continue;
+                s_close_at.Remove(id);
+                bool inUse = (s_client != null && s_client.Peer.m_SteamID == id) || s_server.ContainsKey(id);
+                if (!inUse) { try { SteamNetworking.CloseP2PSessionWithUser(new CSteamID(id)); } catch { } }
+            }
+        }
+
+        public static void SendBye(CSteamID to)
+        {
+            try { SendCtl(to, CTL_BYE); s_ctl[0] = CTL_BYE; SteamNetworking.SendP2PPacket(to, s_ctl, 1, EP2PSend.k_EP2PSendUnreliableNoDelay, 1); }
+            catch (Exception ex) { CoopLog.Error("SendBye", ex); }
+        }
 
         /// Tell everyone we're leaving (quit, LEAVE, STOP HOSTING).
         public static void SayBye()
@@ -362,8 +388,8 @@ namespace OlCoop.SteamNet
             if (!s_init || ShuttingDown) return;
             try
             {
-                if (s_client != null) SendCtl(s_client.Peer, CTL_BYE);
-                foreach (var c in s_server.Values) SendCtl(c.Peer, CTL_BYE);
+                if (s_client != null) SendBye(s_client.Peer);
+                foreach (var c in s_server.Values) SendBye(c.Peer);
                 if (s_client != null || s_server.Count > 0) CoopLog.Write("STEAM", "told the other players we're leaving");
             }
             catch (Exception ex) { CoopLog.Error("SayBye", ex); }
@@ -383,7 +409,7 @@ namespace OlCoop.SteamNet
         {
             var conn = s_client; s_client = null;
             CoopLog.Write("STEAM", "lost the host " + Name(conn.Peer) + ": " + why);
-            try { SteamNetworking.CloseP2PSessionWithUser(conn.Peer); } catch { }
+            CloseLater(conn.Peer);
             // Not the stock disconnect handler: it sends the player to the MULTIPLAYER menu (ExitMultiplayerToMainMenu -> MP_MENU),
             // with the campaign level half torn down.
             OlCoop.Session.CoopClient.Welcomed = false; OlCoop.Session.CoopClient.ConnectIssued = false;
@@ -466,6 +492,7 @@ namespace OlCoop.SteamNet
             if (ShuttingDown) return;
             if (!s_init) { if (!Available) return; Init(); }
             PumpControl();
+            ClosePending();
             uint size;
             int guard = 0;
             while (SteamNetworking.IsP2PPacketAvailable(out size, 0) && guard++ < 2000)
@@ -673,7 +700,7 @@ namespace OlCoop.SteamNet
                 // 0.5.2: tell the other end first (host quitting to the menu disconnects every joiner this way; a joiner quitting
                 // disconnects from the host). Without it the other side only noticed after the 20 s timeout - or never.
                 if (!SteamLink.ShuttingDown) { SteamLink.SendBye(sc.Peer); }
-                SteamNetworking.CloseP2PSessionWithUser(sc.Peer);
+                SteamLink.CloseLater(sc.Peer);
                 if (m_removeObservers != null) m_removeObservers.Invoke(sc, null);
                 CoopLog.Write("STEAM", "closed steam connection " + sc.connectionId + " (" + SteamLink.Name(sc.Peer) + ")");
             }

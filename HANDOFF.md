@@ -10,7 +10,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   `Overload_Data\Managed\Assembly-CSharp.dll` locally if needed. Build references the game's Managed DLLs + GameMod.dll staged from the game folder.
 
 ## Build + delivery rules (user is strict about these)
-- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.5.3 online"). Protocol = 16 (in build.sh). Current build folder: build-online.
+- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.5.4 online"). Protocol = 16 (in build.sh). Current build folder: build-online.
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 146 patches, 0 problems; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b (current). Bug fixes overwrite the current phase
   folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
@@ -274,3 +274,16 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 - Boost: host log "my boost ON (flag=True button=True ...)" and joiner log "netId=2 boost ON (host)" - the state now flows.
   Visual confirmation still pending (the joiner was dead/spectating at the time).
 - ReturnToMainMenu clears m_dead/m_dying on the local ship (14:08: PlayerHasDied -> DoneLevel(Died) after the host left).
+
+## 0.5.4 status (2026-10-04 14:38) - installed, UNTESTED
+- Installed SHA1 584874ccbd9f919d33e998065baf3dc74fc81cbf (207872 bytes), verified in game folder + build-online. Protocol 16.
+  Tag v0.5.4. 186 patches, 0 problems. Friend zip dist/olcoop-0.5.4-online.zip (SHA1 3a14569daed6a22328812d7b60373e8f6b070bd3).
+- 14:16 run (0.5.3, both logs): user confirmed LEAVE SESSION / STOP HOSTING work. Joiner left 14:20:01; host dropped it 14:20:15
+  via P2PSessionConnectFail (error 4), not the BYE: CloseP2PSessionWithUser right after the reliable BYE discards it. Now
+  SteamLink.CloseLater (2 s, skipped if the peer is in use again) everywhere; BYE sent reliable + unreliable.
+- Rejoin 14:20:26: "lost the host: no packets for 20 s" 10 ms after connecting - s_last_heard kept the old session's time.
+  ClientConnect / ServerConn now reset it.
+- Boost: [BOOST] ON/off reached the other side both ways, still no flames. IL: PlayerShip.Update calls UpdateThrusters (thruster
+  flame scale, +1.75 when m_boosting) only if c_player.m_remote_player && !m_pregame. m_remote_player is set by
+  Player.PrepareForMP (NetworkSpawnPlayer, MP only). LT8 (PlayerShip.Update prefix, non-local ships in co-op) sets
+  m_remote_player = true, m_pregame = false, logs once per ship. m_remote_player has no other reader in PlayerShip.

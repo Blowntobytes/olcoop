@@ -263,9 +263,20 @@ namespace OlCoop.Lights
     [HarmonyPatch(typeof(PlayerShip), "Update")]
     static class LT8_BoostVisuals
     {
+        static readonly HashSet<uint> s_logged = new HashSet<uint>();
         static void Prefix(PlayerShip __instance)
         {
             if (__instance == null || __instance.isLocalPlayer || __instance.c_player == null || !OlCoop.World.CoopWorld.Active) return;
+            // 0.5.4: PlayerShip.Update only draws a ship's thruster flames (and their boost size) when c_player.m_remote_player is set
+            // and m_pregame is not. Stock sets m_remote_player in Player.PrepareForMP (multiplayer spawn), which co-op ships don't go
+            // through, so other players' ships never showed thrusters or boost flames (14:18 run: boost state arrived, nothing drawn).
+            var p = __instance.c_player;
+            if (!p.m_remote_player || p.m_pregame)
+            {
+                if (s_logged.Add(p.netId.Value))
+                    CoopLog.Write("BOOST", "netId=" + p.netId.Value + ": thruster flames were off for this copy (remote=" + p.m_remote_player + " pregame=" + p.m_pregame + "); turned on");
+                p.m_remote_player = true; p.m_pregame = false;
+            }
             try { CoopBoost.Apply(__instance); } catch (Exception ex) { CoopLog.Error("LT8", ex); }
         }
     }

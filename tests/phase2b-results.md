@@ -143,3 +143,9 @@
 - Log: both chosen several times, no effect (mouse re-selection in PausedUpdate). Host's boost: "my boost ON/off" on the host,
   "netId=2 boost ON/off (host)" on the joiner. Host closed the game at 14:08:55; joiner got the goodbye at 14:08:56 and left
   the level, but as a dead player it then got a death screen. Fixed in 0.5.3.
+
+## Run 14:16-14:23, 0.5.3 (logs show 0.5.3), two PCs over Steam
+- User: LEAVE SESSION and STOP HOSTING work, but the other player sees it only ~10 s later. Boost animation still not visible.
+- Log: leave 14:20:01 -> host drop 14:20:15 by Steam session timeout (goodbye lost to the immediate session close); stop hosting
+  14:23:02 -> joiner left at 14:23:18 (joiner clock ~1 s ahead). Boost ON/off reported and received both ways.
+- Cause of no flames (IL): thrusters are only drawn for Player.m_remote_player ships (set by the MP spawn). Fixed in 0.5.4.

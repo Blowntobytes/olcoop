@@ -1,6 +1,15 @@
 # Changelog
 
-## 0.5.3-online (2026-10-04), UNTESTED in game (all players must run 0.5.3)
+## 0.5.4-online (2026-10-04), UNTESTED in game (all players must run 0.5.4)
+- Boost and thruster flames on other players' ships: the game only draws another ship's thrusters (and makes them bigger when it
+  boosts) for ships marked as remote players, a mark the multiplayer spawn sets and co-op ships never got. The boost state was
+  already arriving (14:18 logs); now other ships are marked, so their thrusters and boost flames are drawn. This is the same
+  code path that shows boosts in normal multiplayer.
+- Leaving shows up at once for the other player: the goodbye was thrown away because the Steam connection was closed in the
+  same moment (14:20 run: the host noticed a LEAVE SESSION 14 s later). Connections now close 2 s after the goodbye.
+- Fix: rejoining right after leaving dropped the new connection at once ("no packets for 20 s" from the old session).
+
+## 0.5.3-online (2026-10-04), 14:16 run: LEAVE SESSION / STOP HOSTING work (slow to show); boost state flows both ways but no flames (all players must run 0.5.3)
 - Fix: LEAVE SESSION / STOP HOSTING did nothing when clicked (14:07 run: logged as chosen 3-9 times each). 0.5.2 passed the click
   on to QUIT TO MAIN MENU, but the game re-selects the entry under the mouse in the same frame, so nothing happened. The entry
   now ends the session itself: back to the main menu, the other players are told, the Steam lobby is left.
