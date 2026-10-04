@@ -10,7 +10,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   `Overload_Data\Managed\Assembly-CSharp.dll` locally if needed. Build references the game's Managed DLLs + GameMod.dll staged from the game folder.
 
 ## Build + delivery rules (user is strict about these)
-- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.4.20 world"). Protocol = 14 (in build.sh).
+- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.5.0 online"). Protocol = 15 (in build.sh). Current build folder: build-online.
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 146 patches, 0 problems; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b (current). Bug fixes overwrite the current phase
   folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
@@ -195,3 +195,30 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   blur/overbright cleared each tick. [SPECT] lines log headlightsOn/unlock/pixelLightCount and each light's enabled/intensity/mode
   (on follow and every 15 s) - check them if still dark (e.g. headlightsOn=False on the spectator's copy = headlight state not synced).
 - Open: revived/respawned ships log headlights=False after respawn (state not restored on remote copies).
+
+## 0.5.0 status (2026-10-04 12:17) - installed, UNTESTED. New phase "online", build folder build-online
+- Installed SHA1 915b3c4308ca8f9bdd8e7e7d54b8d213f1269568 (196608 bytes), verified in game folder + build-online. Protocol 15.
+  Tag v0.5.0. 177 patches, 0 problems. olcoop.bat also installed in the game folder. Friend zip dist/olcoop-0.5.0-online.zip
+  (SHA1 4d78f57ffdfc75204a5ce5f671a1f41bc316d8d4).
+- 11:32 run (0.4.20): [SPECT] showed headlightsOn=False on the spectator's copy of the live ship -> Phase6Lights.cs: state sync
+  (190 J->H own state, 191 H->J every ship, 1 Hz + on change), set via ToggleHeadlights only when different; stock
+  RpcToggleHeadlights ignored in co-op. Stock: host's own toggles never sent; RpcToggleHeadlights dropped unless InGameplay.
+- Steam transport (Phase7Steam.cs): SteamConnection : NetworkConnection, TransportSend -> SteamNetworking.SendP2PPacket (bytes +
+  trailing channel byte, Steam channel 0; reliable UNET channels or >1200 B -> k_EP2PSendReliable, else UnreliableNoDelay).
+  Pump in Overload.NetworkManager.Update prefix: ReadP2PPacket -> TransportReceive. Host: AddExternalConnection (conn ids from 20,
+  hostId = NetworkServer.serverHostId so isConnected is true), packets that arrive before the server runs are queued. Joiner:
+  Client.m_network_client = new NetworkClient(conn) (starts connected), Client.RegisterHandlers, InvokeHandlerNoData(Connect);
+  FlushChannels every frame (NetworkClient.Update returns early with no transport host). NetworkConnection.Disconnect prefixed for
+  Steam conns. P2PSessionRequest accepted for lobby members/friends only.
+- Lobby/invites: CreateLobby(FriendsOnly, 4), lobby data olcoop=<version>; rich presence connect=+connect_lobby <id>.
+  InviteUserToLobby from the CO-OP screen; GameLobbyJoinRequested -> JoinLobby -> LobbyEnter -> owner -> CoopConfig.SetJoinSteam.
+  Version mismatch (lobby data) refused before connecting.
+- Runtime role (CoopCore.cs): SetHost / SetJoinSteam / SetJoinIp / ClearRole; command line still works.
+- CO-OP screen (Phase7Menus.cs): MenuState 121, UIElementType 123, main menu button id 40 drawn after OVERLOAD ON DISCORD
+  (transpiler on DrawMainMenu, x=+500). Joiner MenuTick also runs on this screen.
+- Scene skip: MenuManager.ChangeMenuState prefix. PROLOGUE/BRIEFING/INTRO/INTRO_ALIEN/INTRO_REVIVAL/ENTITY_BRIEFING -> set
+  m_menu_state to that scene, call GoToNextBriefing, restore (depth guard 12). DEBRIEF -> LEVEL_RESULTS unless IsLastLevel.
+- READY UP: transpiler on UIElement.DrawLevelBriefing after Loc.LS("PLAY"/"BEGIN SIMULATION").
+- Not testable on one PC: Steam P2P needs two Steam accounts. Same-PC tests keep using olcoop-host.bat / olcoop-join.bat (IP).
+- Known limits: the CO-OP screen is the game's own menu (works in VR); a Steam invite accepted while the game is closed starts
+  Overload without olmod (start olcoop.bat first); the Steam overlay invite only works if the overlay attaches to the olmod-launched game.

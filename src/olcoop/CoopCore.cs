@@ -23,7 +23,40 @@ namespace OlCoop
         public static string JoinIp;
         /// <summary>-coopport &lt;n&gt; (default 7777).</summary>
         public static int Port = 7777;
-        public static bool IsJoiner { get { return !string.IsNullOrEmpty(JoinIp); } }
+        /// <summary>Joining a Steam friend's game (0.5.0): the host's Steam id. Set from the CO-OP screen or a Steam invite.</summary>
+        public static ulong JoinSteamId;
+        public static bool IsJoiner { get { return !string.IsNullOrEmpty(JoinIp) || JoinSteamId != 0; } }
+        public static string JoinTarget { get { return JoinSteamId != 0 ? "steam:" + JoinSteamId : JoinIp + ":" + Port; } }
+
+        // ---- 0.5.0: the role can be chosen in the game (CO-OP screen) instead of on the command line
+        public static void SetHost()
+        {
+            JoinIp = null; JoinSteamId = 0; IsHost = true;
+            CoopLog.Write("ROLE", "now HOST");
+            // The game's server may already be running (it starts with the main menu in some flows); give it our handlers.
+            if (Overload.Server.IsActive())
+            {
+                try { AccessTools.Method(typeof(Overload.Server), "RegisterHandlers").Invoke(null, null); CoopLog.Write("ROLE", "server already running; co-op handlers added"); }
+                catch (Exception ex) { CoopLog.Error("SetHost RegisterHandlers", ex); }
+            }
+        }
+        public static void SetJoinSteam(ulong hostId)
+        {
+            IsHost = false; JoinIp = null; JoinSteamId = hostId;
+            OlCoop.Session.CoopClient.ResetForNewHost();
+            CoopLog.Write("ROLE", "now JOINER of steam:" + hostId);
+        }
+        public static void SetJoinIp(string ip)
+        {
+            IsHost = false; JoinSteamId = 0; JoinIp = ip;
+            OlCoop.Session.CoopClient.ResetForNewHost();
+            CoopLog.Write("ROLE", "now JOINER of " + ip + ":" + Port);
+        }
+        public static void ClearRole()
+        {
+            CoopLog.Write("ROLE", "left co-op (was " + (IsHost ? "host" : IsJoiner ? "joiner of " + JoinTarget : "nothing") + ")");
+            IsHost = false; JoinIp = null; JoinSteamId = 0;
+        }
         /// <summary>True only when started with -coophost or -coopjoin. Every behaviour change is gated on this.</summary>
         public static bool Active { get { return IsHost || IsJoiner; } }
 
@@ -52,7 +85,7 @@ namespace OlCoop
             CoopLog.Write("INIT", CoopVersion.Full + " protocol=" + CoopVersion.Protocol +
                 " game=" + typeof(Overload.GameManager).Assembly.GetName().Version +
                 " logging=" + LoggingEnabled + " dumpInterval=" + DumpInterval +
-                " coop=" + (IsHost ? "HOST" : IsJoiner ? "JOIN " + JoinIp : "off") + " port=" + Port);
+                " coop=" + (IsHost ? "HOST" : IsJoiner ? "JOIN " + JoinTarget : "off (choose HOST or JOIN on the CO-OP screen)") + " port=" + Port);
             if (IsHost && IsJoiner) { CoopLog.Write("INIT", "both -coophost and -coopjoin given; acting as joiner only"); IsHost = false; }
         }
     }

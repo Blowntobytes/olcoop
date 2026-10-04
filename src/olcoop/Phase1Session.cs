@@ -454,8 +454,16 @@ namespace OlCoop.Session
 
         public static bool Enabled { get { CoopConfig.EnsureInit(); return CoopConfig.IsJoiner; } }
 
+        /// A new host was chosen (CO-OP screen / Steam invite): start connecting from scratch.
+        public static void ResetForNewHost()
+        {
+            if (Client.IsConnected()) { try { Client.Disconnect(); } catch { } }
+            ConnectIssued = false; Welcomed = false; s_tries = 0; s_menu_since = -1f; s_next_rejoin = -1f; s_hello_tries = 0; s_next_hello = 0f;
+        }
+
         static float s_next_rejoin;
         static int s_rejoin_msgs;
+        static float s_next_hello; static int s_hello_tries;
 
         /// Ask for the host's level 1 s after reaching the main menu instead of 3 s.
         public static void RejoinSoon() { s_next_rejoin = Time.realtimeSinceStartup + 1f; s_rejoin_msgs = 0; }
@@ -496,7 +504,23 @@ namespace OlCoop.Session
                 if (s_rejoin_msgs++ == 0) GameplayManager.AddHUDMessage("CO-OP: REJOINING THE HOST'S LEVEL", -1, true);
                 return;
             }
-            if (Client.IsConnected() && ConnectIssued) { s_menu_since = -1f; return; }
+            if (Client.IsConnected() && ConnectIssued)
+            {
+                s_menu_since = -1f;
+                // Steam: the link counts as connected at once; until the host answers, repeat the handshake (the host may still have
+                // been in its menus, or the Steam session was still being set up).
+                if (CoopConfig.JoinSteamId != 0 && !Welcomed && Time.realtimeSinceStartup >= s_next_hello)
+                {
+                    if (s_hello_tries++ > 0)
+                    {
+                        Client.GetClient().Send(CoopNet.MsgHello, new StringMessage(CoopVersion.Protocol + "|" + CoopVersion.Full));
+                        CoopLog.Write("JOIN", "no answer from the Steam host yet; handshake sent again (" + s_hello_tries + ")");
+                        if (s_hello_tries == 4) GameplayManager.AddHUDMessage("CO-OP: WAITING FOR THE HOST - THE HOST MUST START OR CONTINUE THE CAMPAIGN", -1, true);
+                    }
+                    s_next_hello = Time.realtimeSinceStartup + 5f;
+                }
+                return;
+            }
             if (MenuManager.m_menu_sub_state != MenuSubState.ACTIVE || string.IsNullOrEmpty(PilotManager.ActivePilot)) { s_menu_since = -1f; return; }
             float now = Time.realtimeSinceStartup;
             if (s_menu_since < 0f) { s_menu_since = now; s_next_try = now + 1f; }
@@ -505,8 +529,9 @@ namespace OlCoop.Session
             s_tries++;
             s_next_try = now + 5f;
             ConnectIssued = true;
-            CoopLog.Write("JOIN", "connecting to " + CoopConfig.JoinIp + ":" + CoopConfig.Port + " (attempt " + s_tries + ")");
-            Client.Connect(CoopConfig.JoinIp, CoopConfig.Port);
+            CoopLog.Write("JOIN", "connecting to " + CoopConfig.JoinTarget + " (attempt " + s_tries + ")");
+            if (CoopConfig.JoinSteamId != 0) OlCoop.SteamNet.SteamLink.ClientConnect(CoopConfig.JoinSteamId);
+            else Client.Connect(CoopConfig.JoinIp, CoopConfig.Port);
         }
 
         public static void OnWelcome(NetworkMessage msg)

@@ -118,3 +118,8 @@
 - User: working - joiner Devastator, Shredder/claw melee, exit line-up, boss lockdown on entry, lockdown pull from far away, status lines
   after the exit, teammate maps, switching who you spectate. Problem: spectators saw darker lighting and no headlights from the live
   player (spectate mode, 11:13-11:17). 0.4.20 forces the followed ship's lights to per-pixel and logs their state.
+
+## Run 11:32-11:35, 0.4.20 (all logs show 0.4.20), host + 2 joiners, spectate mode
+- User: the lighting fix did not work for one of the dead spectating ships.
+- Log: every spectator's copy of the followed live ship had headlightsOn=False (lights 0-2 off, fill light 0.10), pixelLights=1.
+  Cause: headlight state never reached the other copies. 0.5.0 syncs the state explicitly (Phase6Lights.cs).

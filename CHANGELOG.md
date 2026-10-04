@@ -1,6 +1,19 @@
 # Changelog
 
-## 0.4.20-world (2026-10-04), UNTESTED in game
+## 0.5.0-online (2026-10-04), UNTESTED in game (protocol 15: all players must run 0.5.0; new build folder build-online)
+- Play with friends over the internet through Steam, no port forwarding: the game's network connection to a Steam friend
+  travels over Steam's peer-to-peer/relay network instead of a UDP port.
+- One launcher: olcoop.bat. Main menu, bottom right: CO-OP: HOST / JOIN. The host clicks HOST A CO-OP GAME (creates a
+  friends-only Steam lobby) and invites friends from the list (or the Steam overlay); a friend accepts the Steam invite or picks
+  the hosting friend on their CO-OP screen. olcoop-host.bat / olcoop-join.bat still work for same-PC testing.
+- Between levels the story scenes (prologue, briefings, intros, entity briefings, debrief) are skipped in co-op:
+  results (stats) -> upgrades -> level briefing -> play.
+- Joiners' PLAY button on the level briefing reads READY UP.
+- Headlights: every player's headlight state is now synced to all copies of their ship (11:34 run: spectators' copies of the live
+  ship had headlights off, so the level looked dark). The stock toggle message is ignored in co-op; respawns keep the state.
+- Friend package: dist/olcoop-0.5.0-online.zip (mod DLL, olcoop.bat, install.bat, uninstall.bat, README; no game or olmod files).
+
+## 0.4.20-world (2026-10-04), 11:32 run: spectate lighting not fixed (followed ship's headlights off on the spectator's copy)
 - Spectating: the ship you follow now lights the level like your own ship would (its lights render at full quality instead of
   competing for the few per-pixel light slots), and leftover death screen effects are cleared. The followed ship's light state is
   logged so the cause can be confirmed if it's still dark.

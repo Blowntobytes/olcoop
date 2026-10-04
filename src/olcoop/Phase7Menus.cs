@@ -1,0 +1,326 @@
+// olcoop 0.5.0: in-game co-op setup, faster between-level flow.
+//  - CO-OP screen (main menu, right of QUIT): HOST A CO-OP GAME / invite Steam friends / join a friend who is hosting / LEAVE.
+//    One launcher (olcoop.bat); the command-line -coophost/-coopjoin still work for same-PC testing.
+//  - Between levels the story scenes (prologue, briefing, debrief, intros, entity briefings) are skipped in co-op: level results
+//    (stats) -> upgrades -> level briefing -> play.
+//  - Joiners' PLAY button on the level briefing reads READY UP (it tells the host this player is ready).
+using System;
+using System.Collections.Generic;
+using System.Reflection;
+using System.Reflection.Emit;
+using HarmonyLib;
+using Overload;
+using Steamworks;
+using UnityEngine;
+using OlCoop.SteamNet;
+
+namespace OlCoop.UI
+{
+    public static class CoopSessionMenu
+    {
+        public static readonly MenuState msCoop = (MenuState)121;
+        public static readonly UIElementType uiCoop = (UIElementType)123;
+        public const int MainMenuItemId = 40;
+        const int ID_HOST = 0, ID_OVERLAY = 1, ID_LEAVE = 3, ID_FRIEND0 = 10, MAX_FRIENDS = 7, ID_BACK = 100;
+        static readonly MethodInfo s_goBack = AccessTools.Method(typeof(MenuManager), "GoBack");
+
+        static List<SteamLink.Friend> s_friends = new List<SteamLink.Friend>();
+        static float s_next_refresh;
+
+        static void Refresh()
+        {
+            if (Time.realtimeSinceStartup < s_next_refresh) return;
+            s_next_refresh = Time.realtimeSinceStartup + 2f;
+            try { s_friends = SteamLink.Friends(); } catch (Exception ex) { CoopLog.Error("friends", ex); s_friends = new List<SteamLink.Friend>(); }
+        }
+
+        /// The friends shown as buttons: hosting -> every online friend (INVITE); otherwise -> friends who are hosting (JOIN).
+        static List<SteamLink.Friend> Rows()
+        {
+            var l = new List<SteamLink.Friend>();
+            foreach (var f in s_friends)
+            {
+                if (CoopConfig.IsHost || f.Lobby != CSteamID.Nil) l.Add(f);
+                if (l.Count >= MAX_FRIENDS) break;
+            }
+            return l;
+        }
+
+        static string RoleLine()
+        {
+            if (CoopConfig.IsHost) return "YOU ARE HOSTING - START OR CONTINUE THE CAMPAIGN FROM THE MAIN MENU";
+            if (CoopConfig.IsJoiner) return (OlCoop.Session.CoopClient.Welcomed ? "CONNECTED TO " : "JOINING ") + HostName();
+            return "CHOOSE: HOST A GAME, OR JOIN A FRIEND WHO IS HOSTING";
+        }
+
+        static string HostName()
+        {
+            if (CoopConfig.JoinSteamId != 0) return SteamLink.Name(new CSteamID(CoopConfig.JoinSteamId)).ToUpperInvariant();
+            return (CoopConfig.JoinIp ?? "").ToUpperInvariant();
+        }
+
+        public static void DrawMainMenuButton(UIElement uie, Vector2 discordPos)
+        {
+            var p = discordPos; p.x = 500f;
+            string label = CoopConfig.IsHost ? "CO-OP: HOSTING" : CoopConfig.IsJoiner ? "CO-OP: JOINED" : "CO-OP: HOST / JOIN";
+            uie.SelectAndDrawHalfItem(label, p, MainMenuItemId, false);
+        }
+
+        public static void Draw(UIElement uie)
+        {
+            UIManager.X_SCALE = 0.35f;
+            UIManager.ui_bg_dark = true;
+            uie.DrawMenuBG();
+            uie.DrawHeaderMedium(Vector2.up * (UIManager.UI_TOP + 20f), "CO-OP", 1f);
+            uie.DrawStringSmall(CoopVersion.Full.ToUpperInvariant(), Vector2.up * (UIManager.UI_TOP + 52f), 0.45f, StringOffset.CENTER, UIManager.m_col_ui2, 1f, -1f);
+            Vector2 pos = uie.m_position;
+            pos.y -= 230f;
+            uie.DrawStringSmall(RoleLine(), pos - Vector2.up * 75f, 0.45f, StringOffset.CENTER, UIManager.m_col_hi4, 1f, -1f);
+            if (!string.IsNullOrEmpty(SteamLink.LastStatus))
+                uie.DrawStringSmall(SteamLink.LastStatus, pos - Vector2.up * 52f, 0.4f, StringOffset.CENTER, UIManager.m_col_ui2, 1f, -1f);
+            uie.DrawMenuSeparator(pos - Vector2.up * 32f);
+
+            bool steam = SteamLink.Available;
+            if (!CoopConfig.IsJoiner)
+            {
+                uie.SelectAndDrawItem(CoopConfig.IsHost ? "STOP HOSTING" : "HOST A CO-OP GAME", pos, ID_HOST, false, 1f, 0.75f);
+                pos.y += 62f;
+            }
+            if (CoopConfig.IsHost && steam && SteamLink.Lobby != CSteamID.Nil)
+            {
+                uie.SelectAndDrawItem("INVITE WITH THE STEAM OVERLAY", pos, ID_OVERLAY, false, 1f, 0.75f);
+                pos.y += 62f;
+            }
+            if (CoopConfig.IsJoiner)
+            {
+                uie.SelectAndDrawItem("LEAVE CO-OP", pos, ID_LEAVE, false, 1f, 0.75f);
+                pos.y += 62f;
+            }
+
+            if (!steam)
+            {
+                uie.DrawStringSmall("STEAM IS NOT AVAILABLE - START STEAM AND RESTART THE GAME TO PLAY WITH FRIENDS", pos + Vector2.up * 10f, 0.4f, StringOffset.CENTER, UIManager.m_col_ui2, 1f, -1f);
+            }
+            else if (!CoopConfig.IsJoiner)
+            {
+                Refresh();
+                var rows = Rows();
+                uie.DrawStringSmall(CoopConfig.IsHost ? "INVITE A FRIEND:" : "FRIENDS HOSTING CO-OP:", pos + Vector2.up * 4f, 0.45f, StringOffset.CENTER, UIManager.m_col_ui2, 1f, -1f);
+                pos.y += 34f;
+                if (rows.Count == 0)
+                    uie.DrawStringSmall(CoopConfig.IsHost ? "NO FRIENDS ONLINE" : "NONE RIGHT NOW - ASK YOUR FRIEND TO HOST, OR ACCEPT THEIR STEAM INVITE",
+                        pos, 0.4f, StringOffset.CENTER, UIManager.m_col_ui1, 1f, -1f);
+                for (int i = 0; i < rows.Count; i++)
+                {
+                    var f = rows[i];
+                    string tag = CoopConfig.IsHost ? (f.InOverload ? "INVITE  (IN OVERLOAD)" : "INVITE") : "JOIN";
+                    uie.SelectAndDrawItem(Clip(f.Name) + "  -  " + tag, pos, ID_FRIEND0 + i, false, 1f, 0.6f);
+                    pos.y += 50f;
+                }
+            }
+            pos.y = UIManager.UI_BOTTOM - 30f;
+            uie.SelectAndDrawItem(Loc.LS("BACK"), pos, ID_BACK, false, 1f, 0.75f);
+        }
+
+        static string Clip(string s)
+        {
+            s = (s ?? "?").ToUpperInvariant();
+            return s.Length > 22 ? s.Substring(0, 21) + "." : s;
+        }
+
+        public static void Update(ref float timer)
+        {
+            UIManager.MouseSelectUpdate();
+            if (CoopConfig.IsJoiner) { try { OlCoop.Session.CoopClient.MenuTick(); } catch (Exception ex) { CoopLog.Error("coop menu tick", ex); } }
+            switch (MenuManager.m_menu_sub_state)
+            {
+                case MenuSubState.INIT:
+                    if (timer > 0.25f)
+                    {
+                        UIManager.CreateUIElement(UIManager.SCREEN_CENTER, 7000, uiCoop);
+                        MenuManager.m_menu_sub_state = MenuSubState.ACTIVE;
+                        s_next_refresh = 0f;
+                        MenuManager.SetDefaultSelection(CoopConfig.IsJoiner ? ID_LEAVE : ID_HOST);
+                    }
+                    break;
+                case MenuSubState.ACTIVE:
+                    UIManager.ControllerMenu();
+                    if (!UIManager.PushedSelect(-1)) break;
+                    int sel = UIManager.m_menu_selection;
+                    if (sel == ID_BACK)
+                    {
+                        s_goBack.Invoke(null, null);
+                        UIManager.DestroyAll();
+                        MenuManager.PlaySelectSound();
+                    }
+                    else if (sel == ID_HOST)
+                    {
+                        if (CoopConfig.IsHost) { SteamLink.Leave(); CoopConfig.ClearRole(); SteamLink.LastStatus = "STOPPED HOSTING"; }
+                        else { CoopConfig.SetHost(); if (SteamLink.Available) SteamLink.CreateLobby(); else SteamLink.LastStatus = "HOSTING (LAN / IP ONLY - STEAM NOT AVAILABLE)"; }
+                        MenuManager.PlaySelectSound();
+                    }
+                    else if (sel == ID_OVERLAY) { SteamLink.OpenInviteOverlay(); MenuManager.PlaySelectSound(); }
+                    else if (sel == ID_LEAVE)
+                    {
+                        SteamLink.Leave();
+                        try { if (Client.IsConnected()) Client.Disconnect(); } catch { }
+                        CoopConfig.ClearRole();
+                        SteamLink.LastStatus = "LEFT CO-OP";
+                        MenuManager.PlaySelectSound();
+                    }
+                    else if (sel >= ID_FRIEND0 && sel < ID_FRIEND0 + MAX_FRIENDS)
+                    {
+                        var rows = Rows();
+                        int i = sel - ID_FRIEND0;
+                        if (i < rows.Count)
+                        {
+                            if (CoopConfig.IsHost) SteamLink.Invite(rows[i].Id);
+                            else if (rows[i].Lobby != CSteamID.Nil) SteamLink.JoinLobby(rows[i].Lobby);
+                        }
+                        MenuManager.PlaySelectSound();
+                    }
+                    break;
+            }
+        }
+    }
+
+    /// Main menu: CO-OP button on the QUIT row, right side (mirrors OVERLOAD ON DISCORD on the left).
+    [HarmonyPatch(typeof(UIElement), "DrawMainMenu")]
+    static class SM1_DrawMainMenuButton
+    {
+        static readonly MethodInfo m_half = AccessTools.Method(typeof(UIElement), "SelectAndDrawHalfItem");
+        static readonly MethodInfo m_ours = AccessTools.Method(typeof(CoopSessionMenu), "DrawMainMenuButton");
+        static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> code)
+        {
+            var list = new List<CodeInstruction>(code);
+            int done = 0;
+            for (int i = 0; i < list.Count; i++)
+            {
+                if (done == 0 && list[i].opcode == OpCodes.Call && Equals(list[i].operand, m_half))
+                {
+                    // ... ldarg.0, ldstr "OVERLOAD ON DISCORD", ldloc.0 (position), ldc id, ldc bool, call -> reuse the position local
+                    CodeInstruction posLoad = null;
+                    for (int k = i - 1; k >= Math.Max(0, i - 6); k--)
+                        if (list[k].opcode == OpCodes.Ldloc_0 || list[k].opcode == OpCodes.Ldloc_S || list[k].opcode == OpCodes.Ldloc) { posLoad = list[k]; break; }
+                    if (posLoad == null) break;
+                    list.InsertRange(i + 1, new[] { new CodeInstruction(OpCodes.Ldarg_0), new CodeInstruction(posLoad.opcode, posLoad.operand), new CodeInstruction(OpCodes.Call, m_ours) });
+                    done++;
+                }
+            }
+            CoopLog.Write("UI", "main menu CO-OP button " + (done == 1 ? "added" : "NOT added (menu code differs)"));
+            return list;
+        }
+    }
+
+    [HarmonyPatch(typeof(MenuManager), "MainMenuUpdate")]
+    static class SM2_MainMenuSelect
+    {
+        static void Postfix()
+        {
+            if (MenuManager.m_menu_state != MenuState.MAIN_MENU || MenuManager.m_menu_sub_state != MenuSubState.ACTIVE) return;
+            if (UIManager.m_menu_selection == CoopSessionMenu.MainMenuItemId && UIManager.PushedSelect(-1))
+            {
+                MenuManager.ChangeMenuState(CoopSessionMenu.msCoop);
+                UIManager.DestroyAll();
+                MenuManager.PlaySelectSound();
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(MenuManager), "Update")]
+    static class SM3_MenuUpdate
+    {
+        static void Postfix(ref float ___m_menu_state_timer)
+        {
+            if (MenuManager.m_menu_state != CoopSessionMenu.msCoop) return;
+            try { CoopSessionMenu.Update(ref ___m_menu_state_timer); } catch (Exception ex) { CoopLog.Error("SM3", ex); }
+        }
+    }
+
+    [HarmonyPatch(typeof(UIElement), "Draw")]
+    static class SM4_Draw
+    {
+        static void Postfix(UIElement __instance)
+        {
+            if (__instance.m_type != CoopSessionMenu.uiCoop || __instance.m_alpha <= 0f) return;
+            try { CoopSessionMenu.Draw(__instance); } catch (Exception ex) { CoopLog.Error("SM4", ex); }
+        }
+    }
+}
+
+namespace OlCoop.World
+{
+    /// Skip the story scenes between levels in co-op. GoToNextBriefing walks PROLOGUE/BRIEFING/INTRO.../ENTITY_BRIEFING/UPGRADE/
+    /// LEVEL_BRIEFING/PLAY_GAME by looking at the current menu state; when it picks a story scene we pretend that scene just ended and
+    /// ask it for the next one, until it reaches a screen we keep (upgrades, level briefing, play). DEBRIEF (after the exit) goes
+    /// straight to the level results, except after the last level (credits/victory stay).
+    public static class SkipScenes
+    {
+        static readonly HashSet<MenuState> s_skip = new HashSet<MenuState> {
+            MenuState.PROLOGUE, MenuState.BRIEFING, MenuState.INTRO, MenuState.INTRO_ALIEN, MenuState.INTRO_REVIVAL, MenuState.ENTITY_BRIEFING };
+        static readonly MethodInfo m_next = AccessTools.Method(typeof(MenuManager), "GoToNextBriefing");
+        static int s_depth;
+
+        public static bool Active { get { return CoopConfig.Active && !GameplayManager.IsMultiplayer && !GameplayManager.IsChallengeMode; } }
+
+        /// ChangeMenuState prefix. False = handled (state replaced).
+        public static bool Redirect(ref MenuState state)
+        {
+            if (!Active) return true;
+            if (state == MenuState.DEBRIEF && !GameplayManager.IsLastLevel)
+            {
+                CoopLog.Write("FLOW", "skipping the debrief scene -> level results");
+                state = MenuState.LEVEL_RESULTS;
+                return true;
+            }
+            if (!s_skip.Contains(state) || m_next == null) return true;
+            if (s_depth >= 12) { CoopLog.Write("FLOW", "scene skip: too many steps; showing " + state); return true; }
+            var prev = MenuManager.m_menu_state;
+            s_depth++;
+            try
+            {
+                CoopLog.Write("FLOW", "skipping story scene " + state);
+                MenuManager.m_menu_state = state;      // GoToNextBriefing decides from the current state
+                m_next.Invoke(null, null);
+            }
+            catch (Exception ex) { CoopLog.Error("scene skip", ex); MenuManager.m_menu_state = prev; s_depth--; return true; }
+            MenuManager.m_menu_state = prev;
+            s_depth--;
+            return false;
+        }
+    }
+
+    [HarmonyPatch(typeof(MenuManager), "ChangeMenuState")]
+    static class SK1_SkipScenes
+    {
+        static bool Prefix(ref MenuState new_state)
+        {
+            try { return SkipScenes.Redirect(ref new_state); } catch (Exception ex) { CoopLog.Error("SK1", ex); return true; }
+        }
+    }
+
+    /// Level briefing button: READY UP on joiners (PLAY / BEGIN SIMULATION on the host).
+    [HarmonyPatch(typeof(UIElement), "DrawLevelBriefing")]
+    static class SK2_ReadyUpLabel
+    {
+        static readonly MethodInfo m_ls = AccessTools.Method(typeof(Loc), "LS", new[] { typeof(string) });
+        static readonly MethodInfo m_label = AccessTools.Method(typeof(SK2_ReadyUpLabel), "Label");
+        public static string Label(string s) { return CoopConfig.IsJoiner && !GameplayManager.IsMultiplayer ? "READY UP" : s; }
+        static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> code)
+        {
+            var list = new List<CodeInstruction>(code);
+            int n = 0;
+            for (int i = 0; i + 1 < list.Count; i++)
+            {
+                if (list[i].opcode != OpCodes.Ldstr) continue;
+                var str = list[i].operand as string;
+                if (str != "PLAY" && str != "BEGIN SIMULATION") continue;
+                if (!(list[i + 1].opcode == OpCodes.Call && Equals(list[i + 1].operand, m_ls))) continue;
+                list.Insert(i + 2, new CodeInstruction(OpCodes.Call, m_label));
+                n++;
+            }
+            CoopLog.Write("UI", "level briefing READY UP label: " + n + " button(s) patched");
+            return list;
+        }
+    }
+}
