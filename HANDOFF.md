@@ -18,6 +18,11 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 - Check the `[INIT] olcoop x.y.z` line of every log before analysing a test — twice the user tested a stale version.
 - Never claim success without an in-game test; mark untested builds as untested.
 
+## GitHub publishing (same as the user's other mods)
+- Repo: github.com/Blowntobytes/olmodcoop (public). Cloud sessions CANNOT push (Claude GitHub App not installed on the account).
+- After each build: commit `<version>: description`, tag `v<version>`, `git bundle create olmodcoop-latest.bundle main --tags`, deliver it to
+  `olmodcoop\publish\` next to Publish-ToGitHub.cmd/.ps1. The user double-clicks Publish-ToGitHub.cmd, which pushes with their own login.
+
 ## Current status
 - 0.3.10 installed (2026-10-03 16:58, 103936 bytes, SHA1 39ffbd8a…, verified byte-for-byte), NOT yet tested in game.
   PASSED in game: respawn countdown (0.3.9, overlay slot 1 / element type 121), player names + health bars (0.3.7).
