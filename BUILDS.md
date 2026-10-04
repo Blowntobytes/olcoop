@@ -39,4 +39,5 @@ Targets unless noted: Overload 1.1.1886, olmod 0.5.14.
 | 0.4.18-world | 13 | 10-04 10:22 | tested (10:31-10:48 runs) | 3-player exit + end screens + next level (log) | host dead (hardcore) when a joiner exited: host finished dead, menus froze | tag v0.4.18 |
 | 0.4.19-world | 14 | 10-04 10:55 | tested (11:05 run) | dead joiner revived into the exit door; host held at 0/2 -> 2/2 ready; user: Devastator, melee, line-up, boss lockdown on entry, lockdown pull, status lines, teammate maps, spectate switching all work | spectators: darker lighting, no headlights from the followed ship | tag v0.4.19 |
 | 0.4.20-world | 14 | 10-04 11:30 | tested (11:32 run) | - | spectators still dark: [SPECT] log shows the followed ship's headlightsOn=False on the spectator's copy | tag v0.4.20, build-phase2b |
-| 0.5.0-online | 15 | 10-04 12:17 | untested | - | - | tag v0.5.0, build-online, dist/olcoop-0.5.0-online.zip |
+| 0.5.0-online | 15 | 10-04 12:17 | tested (12:31-13:06, two PCs over Steam) | Steam lobby, invite, join both ways, levels and level changes over Steam (user: incredibly successful) | disconnected players stayed in the game; crash in SteamAPI_RunCallbacks (12:51); boost not shown for other players | tag v0.5.0, build-online |
+| 0.5.1-online | 16 | 10-04 13:52 | untested | - | - | tag v0.5.1, build-online, dist/olcoop-0.5.1-online.zip |

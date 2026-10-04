@@ -123,3 +123,10 @@
 - User: the lighting fix did not work for one of the dead spectating ships.
 - Log: every spectator's copy of the followed live ship had headlightsOn=False (lights 0-2 off, fill light 0.10), pixelLights=1.
   Cause: headlight state never reached the other copies. 0.5.0 syncs the state explicitly (Phase6Lights.cs).
+
+## Runs 12:31-13:06, 0.5.0 (logs show 0.5.0), two PCs over Steam (BlownToBits + PeetzaGuest)
+- User: first run incredibly successful. Problems: a disconnected player stays in the game for the others; boost not shown.
+- Log: lobby created, invite accepted, Steam session direct (relay=0), host sent the level over Steam, joiner played; roles
+  swapped at 12:58 and level changes worked over Steam (13:03:44 next level).
+- Host log ended 12:50:46 mid-level without a disconnect line. Crash report (D: PC, 12:51:10): access violation in
+  steam_api64 SteamAPI_RunCallbacks. 0.5.1 stops the game's timer-thread Steam callbacks and adds disconnect detection.

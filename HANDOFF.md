@@ -10,7 +10,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   `Overload_Data\Managed\Assembly-CSharp.dll` locally if needed. Build references the game's Managed DLLs + GameMod.dll staged from the game folder.
 
 ## Build + delivery rules (user is strict about these)
-- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.5.0 online"). Protocol = 15 (in build.sh). Current build folder: build-online.
+- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.5.1 online"). Protocol = 16 (in build.sh). Current build folder: build-online.
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 146 patches, 0 problems; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b (current). Bug fixes overwrite the current phase
   folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
@@ -19,9 +19,9 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 - Never claim success without an in-game test; mark untested builds as untested.
 
 ## GitHub publishing (same as the user's other mods)
-- Repo: github.com/Blowntobytes/olmodcoop. Cloud sessions can only push to branches named `claude/...` and cannot push tags or main.
+- Repo: github.com/Blowntobytes/olcoop (renamed from olmodcoop on 2026-10-04; the local folder is still `olmodcoop`). Cloud sessions can only push to branches named `claude/...` and cannot push tags or main.
   Do NOT push anything to GitHub from a cloud session unless the user asks; main + tags are published by the user's script.
-- After each build: commit `<version>: description`, tag `v<version>`, `git bundle create olmodcoop-latest.bundle main --tags`, deliver it to
+- After each build: commit `<version>: description`, tag `v<version>`, `git bundle create publish/olcoop-latest.bundle main --tags`, deliver it to
   `olmodcoop\publish\` next to Publish-ToGitHub.cmd/.ps1. The user double-clicks Publish-ToGitHub.cmd, which pushes with their own login.
 
 ## Current status
@@ -222,3 +222,24 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 - Not testable on one PC: Steam P2P needs two Steam accounts. Same-PC tests keep using olcoop-host.bat / olcoop-join.bat (IP).
 - Known limits: the CO-OP screen is the game's own menu (works in VR); a Steam invite accepted while the game is closed starts
   Overload without olmod (start olcoop.bat first); the Steam overlay invite only works if the overlay attaches to the olmod-launched game.
+
+## 0.5.1 status (2026-10-04 13:52) - installed, UNTESTED
+- Installed SHA1 b4e991e33f55cf813f2e4579d4b8e2a59e0c4e6e (202752 bytes), verified in game folder + build-online. Protocol 16.
+  Tag v0.5.1. 182 patches, 0 problems (tools/VerifyPatches.cs now also accepts OlmodTarget "game:<Type>:<Method>").
+  Friend zip dist/olcoop-0.5.1-online.zip (SHA1 aa3900609d6b40c380bf683ec8bd5d58aeed614c).
+- First internet run (0.5.0, 12:31-13:06): user BlownToBits (C: PC) hosted, PeetzaGuest (D: PC) joined via invite; route direct
+  (relay=0). Then roles swapped. Host log 12:31 stops at 12:50:46 with no disconnect line. The D: PC crashed 12:51:10:
+  access violation in steam_api64 SteamAPI_RunCallbacks (null interface = Steam API already shut down / unusable).
+  Overload.Steam.Initialize starts a System.Timers.Timer (1 s) whose CallbackTimerTick calls SteamAPI.RunCallbacks on a worker
+  thread, in parallel with SteamManager.Update on the main thread -> ST4 skips it. ST3: SteamManager.OnDestroy prefix sends BYE
+  and sets SteamLink.ShuttingDown (Pump stops).
+- Liveness: Steam P2P channel 1, 1-byte PING (1/s, also to joiners queued while the host is in menus) and BYE (reliable).
+  Any packet refreshes last-heard; 20 s silence -> host DropServerConn (stock Server.OnDisconnect removes the ship for all),
+  joiner HostGone (stock client disconnect -> main menu, Client.Disconnect, leave lobby, ClearRole). A >2 s gap in our own
+  Pump calls (level load) resets the timers.
+- Boost (Phase6Lights.cs CoopBoost): 192 J->H own m_boosting (unreliable, on change + 1 Hz), 193 H->J every ship. Non-local
+  copies: PlayerShip.Update prefix applies the owner's state (UpdateBoostLoop / BoostStopped like RpcSetBoosting), host keeps it
+  after FixedUpdateProcessControlsInternal; stock RpcSetBoosting ignored for ships we have a state for. [BOOST] log lines
+  (first 6 changes per ship).
+- Repo renamed to github.com/Blowntobytes/olcoop. Bundle is now publish/olcoop-latest.bundle (the old
+  olmodcoop-latest.bundle in the user's publish folder is obsolete).

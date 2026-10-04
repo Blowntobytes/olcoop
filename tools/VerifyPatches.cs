@@ -32,8 +32,10 @@ static class V {
           }
           var tf = t.GetField("OlmodTarget", BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Static);
           if (tf == null) { Console.WriteLine("BAD  {0}: no OlmodTarget const", t.Name); bad++; continue; }
-          var spec = (string)tf.GetRawConstantValue(); var parts = spec.Split(':');
-          var olmod = Assembly.LoadFrom(Path.Combine(a.Length>2?a[2]:"", "GameMod.dll"));
+          var spec = (string)tf.GetRawConstantValue();
+          bool game = spec.StartsWith("game:"); if (game) spec = spec.Substring(5); // "game:" = a type in Assembly-CSharp
+          var parts = spec.Split(':');
+          var olmod = Assembly.LoadFrom(game ? Path.Combine(a[1], "Assembly-CSharp.dll") : Path.Combine(a.Length>2?a[2]:"", "GameMod.dll"));
           var tt = olmod.GetType(parts[0]);
           var pm = tt == null ? null : tt.GetMethod(parts[1], BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Static|BindingFlags.Instance);
           if (pm == null) { Console.WriteLine("BAD  {0}: olmod target {1} not found", t.Name, spec); bad++; } else ok++;

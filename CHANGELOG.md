@@ -1,6 +1,18 @@
 # Changelog
 
-## 0.5.0-online (2026-10-04), UNTESTED in game (protocol 15: all players must run 0.5.0; new build folder build-online)
+## 0.5.1-online (2026-10-04), UNTESTED in game (protocol 16: all players must run 0.5.1)
+- Disconnects: a player whose game closes, crashes or loses the connection is removed for everyone. Over Steam every player
+  sends a small "still here" signal each second; 20 s of silence, or a goodbye when someone quits or leaves co-op, removes that
+  player (the host removes the ship for all; joiners whose host is gone return to the main menu with THE HOST LEFT THE GAME).
+- Crash fix: the game's own Steam code also ran Steam callbacks from a background timer thread, which crashed in
+  SteamAPI_RunCallbacks when Steam was already shut down (12:51 crash report). That timer is skipped; Steam's per-frame update
+  on the main thread already does the work. No Steam call is made once Steam starts shutting down.
+- Boost: every player's own boost state is sent to the host and on to everyone; other players' ships show the owner's boost
+  (flames and sound) instead of the host's simulated guess.
+- Repository renamed to https://github.com/Blowntobytes/olcoop: README rewritten for the current state, publish script and
+  bundle (publish/olcoop-latest.bundle) renamed.
+
+## 0.5.0-online (2026-10-04), 12:31-13:06 runs: first internet game over Steam (direct route, no relay); host's game stopped at 12:50; a crash in SteamAPI_RunCallbacks at 12:51 (protocol 15: all players must run 0.5.0; new build folder build-online)
 - Play with friends over the internet through Steam, no port forwarding: the game's network connection to a Steam friend
   travels over Steam's peer-to-peer/relay network instead of a UDP port.
 - One launcher: olcoop.bat. Main menu, bottom right: CO-OP: HOST / JOIN. The host clicks HOST A CO-OP GAME (creates a

@@ -20,6 +20,8 @@ namespace OlCoop.Lights
     {
         public const short Report = 190; // J->H LightMsg (own ship)
         public const short State = 191;  // H->J LightMsg per ship
+        public const short BoostReport = 192; // J->H LightMsg (own ship boosting)
+        public const short BoostState = 193;  // H->J LightMsg per ship
     }
 
     public class LightMsg : MessageBase
@@ -118,10 +120,134 @@ namespace OlCoop.Lights
         public static void Reset() { s_reported.Clear(); s_logged.Clear(); s_have_local = false; s_next_send = 0f; }
     }
 
+    /// 0.5.1: boost flames/sound on other players' ships. Stock sends RpcSetBoosting only from the host's simulated copy, which can
+    /// disagree with what the owner actually does (the host decides a joiner's boost from forwarded inputs, heat and unlocks), and
+    /// remote copies on clients can be overwritten by snapshots. Now each player's own boost state is reported to the host and
+    /// relayed to everyone; every non-local copy shows exactly the owner's state (start/stop effects like the stock RPC).
+    public static class CoopBoost
+    {
+        static readonly Dictionary<uint, bool> s_want = new Dictionary<uint, bool>();   // netId -> owner's boost state
+        static readonly Dictionary<uint, int> s_changes = new Dictionary<uint, int>();
+        static bool s_last, s_have;
+        static float s_next;
+
+        public static bool Wanted(uint id, out bool on) { return s_want.TryGetValue(id, out on); }
+
+        static PlayerShip ShipOf(uint netId)
+        {
+            foreach (var p in Overload.NetworkManager.m_Players)
+                if (p != null && p.netId.Value == netId) return p.c_player_ship;
+            return null;
+        }
+
+        /// Show `on` on a non-local copy, with the stock start/stop effects.
+        public static void Apply(PlayerShip s)
+        {
+            if (s == null || s.isLocalPlayer) return;
+            bool on;
+            if (!s_want.TryGetValue(s.c_player.netId.Value, out on) || s.m_boosting == on) return;
+            if (on) s.UpdateBoostLoop(); else s.BoostStopped();
+            s.m_boosting = on;
+        }
+
+        static void Set(uint id, bool on, string why)
+        {
+            bool prev;
+            if (s_want.TryGetValue(id, out prev) && prev == on) return;
+            s_want[id] = on;
+            int n; s_changes.TryGetValue(id, out n); s_changes[id] = ++n;
+            if (n <= 6) CoopLog.Write("BOOST", "netId=" + id + " boost " + (on ? "ON" : "off") + " (" + why + ")" + (n == 6 ? " (further changes not logged)" : ""));
+            Apply(ShipOf(id));
+        }
+
+        public static void Tick()
+        {
+            if (!CoopLights.Active) return;
+            var me = GameManager.m_player_ship;
+            bool changed = me != null && (!s_have || me.m_boosting != s_last);
+            if (me != null) { s_last = me.m_boosting; s_have = true; }
+            if (!changed && Time.realtimeSinceStartup < s_next) return;
+            s_next = Time.realtimeSinceStartup + 1f;
+            if (OlCoop.World.CoopWorld.IsHost)
+            {
+                if (me != null) s_want[me.c_player.netId.Value] = me.m_boosting;
+                foreach (var kv in s_want)
+                {
+                    var m = new LightMsg { netId = kv.Key, on = kv.Value };
+                    foreach (var c in NetworkServer.connections)
+                        if (c != null && c.connectionId != 0 && c.isConnected && Session.CoopHost.Verified.Contains(c.connectionId)) c.Send(HNet.BoostState, m);
+                }
+            }
+            else if (OlCoop.World.CoopWorld.IsJoiner && me != null)
+            {
+                var c = Client.GetClient();
+                if (c != null && Client.IsConnected()) c.SendUnreliable(HNet.BoostReport, new LightMsg { netId = me.c_player.netId.Value, on = me.m_boosting });
+            }
+        }
+
+        public static void OnReport(NetworkMessage msg)
+        {
+            try { var m = msg.ReadMessage<LightMsg>(); Set(m.netId, m.on, "joiner"); }
+            catch (Exception ex) { CoopLog.Error("Boost.OnReport", ex); }
+        }
+
+        public static void OnState(NetworkMessage msg)
+        {
+            try
+            {
+                var m = msg.ReadMessage<LightMsg>();
+                var me = GameManager.m_local_player;
+                if (me != null && me.netId.Value == m.netId) return;
+                Set(m.netId, m.on, "host");
+            }
+            catch (Exception ex) { CoopLog.Error("Boost.OnState", ex); }
+        }
+
+        public static void Reset() { s_want.Clear(); s_changes.Clear(); s_have = false; s_next = 0f; }
+    }
+
     [HarmonyPatch(typeof(GameplayManager), "Update")]
     static class LT1_Tick
     {
-        static void Postfix() { try { CoopLights.Tick(); } catch (Exception ex) { CoopLog.Error("LT1", ex); } }
+        static void Postfix()
+        {
+            try { CoopLights.Tick(); } catch (Exception ex) { CoopLog.Error("LT1", ex); }
+            try { CoopBoost.Tick(); } catch (Exception ex) { CoopLog.Error("LT1 boost", ex); }
+        }
+    }
+
+    /// Stock boost RPC: ignored for ships whose owner state we have (we set it ourselves).
+    [HarmonyPatch(typeof(Player), "RpcSetBoosting")]
+    static class LT6_NoBoostRpc
+    {
+        static bool Prefix(Player __instance)
+        {
+            bool on;
+            return !(OlCoop.World.CoopWorld.Active && __instance != null && CoopBoost.Wanted(__instance.netId.Value, out on));
+        }
+    }
+
+    /// Host simulates joiner ships: keep the copy's boost flag (flames, sound) at the owner's state after the control step.
+    [HarmonyPatch(typeof(PlayerShip), "FixedUpdateProcessControlsInternal")]
+    static class LT7_KeepBoostAfterControls
+    {
+        static void Postfix(PlayerShip __instance)
+        {
+            if (__instance == null || __instance.isLocalPlayer || !OlCoop.World.CoopWorld.Active) return;
+            bool on;
+            if (__instance.c_player != null && CoopBoost.Wanted(__instance.c_player.netId.Value, out on)) __instance.m_boosting = on;
+        }
+    }
+
+    /// Every peer, every frame before the ship's visuals update: non-local copies show the owner's boost state.
+    [HarmonyPatch(typeof(PlayerShip), "Update")]
+    static class LT8_BoostVisuals
+    {
+        static void Prefix(PlayerShip __instance)
+        {
+            if (__instance == null || __instance.isLocalPlayer || __instance.c_player == null || !OlCoop.World.CoopWorld.Active) return;
+            try { CoopBoost.Apply(__instance); } catch (Exception ex) { CoopLog.Error("LT8", ex); }
+        }
     }
 
     /// Stock toggle RPC: ignored in co-op (state sync above sets every copy).
@@ -134,13 +260,18 @@ namespace OlCoop.Lights
     [HarmonyPatch(typeof(LevelData), "Awake")]
     static class LT3_Reset
     {
-        static void Prefix() { if (CoopConfig.Active) CoopLights.Reset(); }
+        static void Prefix() { if (CoopConfig.Active) { CoopLights.Reset(); CoopBoost.Reset(); } }
     }
 
     [HarmonyPatch(typeof(Server), "RegisterHandlers")]
     static class LT4_ServerHandlers
     {
-        static void Postfix() { CoopConfig.EnsureInit(); if (CoopConfig.Active) NetworkServer.RegisterHandler(HNet.Report, CoopLights.OnReport); }
+        static void Postfix()
+        {
+            // Registered whenever the server registers its handlers: the role can be chosen later in the game (0.5.0).
+            NetworkServer.RegisterHandler(HNet.Report, CoopLights.OnReport);
+            NetworkServer.RegisterHandler(HNet.BoostReport, CoopBoost.OnReport);
+        }
     }
 
     [HarmonyPatch(typeof(Client), "RegisterHandlers")]
@@ -149,7 +280,9 @@ namespace OlCoop.Lights
         static void Postfix()
         {
             CoopConfig.EnsureInit();
-            if (CoopConfig.Active && Client.GetClient() != null) Client.GetClient().RegisterHandler(HNet.State, CoopLights.OnState);
+            if (Client.GetClient() == null) return;
+            Client.GetClient().RegisterHandler(HNet.State, CoopLights.OnState);
+            Client.GetClient().RegisterHandler(HNet.BoostState, CoopBoost.OnState);
         }
     }
 }

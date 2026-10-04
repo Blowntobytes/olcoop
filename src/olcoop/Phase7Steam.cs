@@ -249,6 +249,7 @@ namespace OlCoop.SteamNet
         /// Joiner gives up the session (LEAVE on the CO-OP screen).
         public static void Leave()
         {
+            SayBye();
             CloseClient();
             foreach (var c in new List<SteamConnection>(s_server.Values)) DropServerConn(c, "host left co-op");
             LeaveLobby();
@@ -278,12 +279,7 @@ namespace OlCoop.SteamNet
             CoopLog.Write("STEAM", "session with " + Name(r.m_steamIDRemote) + " failed/closed (error " + r.m_eP2PSessionError + ")");
             SteamConnection c;
             if (s_server.TryGetValue(r.m_steamIDRemote.m_SteamID, out c)) DropServerConn(c, "steam session ended");
-            if (s_client != null && s_client.Peer == r.m_steamIDRemote)
-            {
-                var conn = s_client; s_client = null;
-                try { conn.InvokeHandlerNoData(MsgType.Disconnect); } catch (Exception ex) { CoopLog.Error("steam client disconnect", ex); }
-                LastStatus = "LOST THE CONNECTION TO THE HOST";
-            }
+            if (s_client != null && s_client.Peer == r.m_steamIDRemote) HostGone("steam session failed");
         }
 
         static int NextServerConnId()
@@ -320,6 +316,7 @@ namespace OlCoop.SteamNet
         static void DropServerConn(SteamConnection c, string why)
         {
             s_server.Remove(c.Peer.m_SteamID);
+            s_last_heard.Remove(c.Peer.m_SteamID);
             CoopLog.Write("STEAM", "dropping conn " + c.connectionId + " (" + Name(c.Peer) + "): " + why);
             try { SteamNetworking.CloseP2PSessionWithUser(c.Peer); } catch { }
             try
@@ -336,9 +333,102 @@ namespace OlCoop.SteamNet
         public static bool IsSteamConn(NetworkConnection c) { return c is SteamConnection; }
 
         // ---------------------------------------------------------------- pump (every frame)
+        // ---------------------------------------------------------------- 0.5.1: liveness (Steam channel 1)
+        // UNET's own timeouts belong to its UDP transport, which a Steam connection doesn't use, so a player whose game closed or
+        // crashed stayed in the game for everyone else (13:20 report). Every peer sends a 1-byte ping per second on Steam channel 1;
+        // 20 s without any packet = gone. A clean quit or LEAVE sends BYE so the others drop the player at once.
+        const byte CTL_PING = 1, CTL_BYE = 2;
+        const float TIMEOUT = 20f;
+        static readonly Dictionary<ulong, float> s_last_heard = new Dictionary<ulong, float>();
+        static readonly byte[] s_ctl = new byte[1];
+        static float s_next_ping, s_last_pump = -1f;
+        /// Set once Steam is shutting down (SteamManager.OnDestroy / application quit): no Steam call may run after that
+        /// (12:51 crash: access violation in SteamAPI_RunCallbacks after the Steam API was shut down).
+        public static bool ShuttingDown;
+
+        static void Heard(CSteamID id) { s_last_heard[id.m_SteamID] = Time.realtimeSinceStartup; }
+
+        static void SendCtl(CSteamID to, byte what)
+        {
+            s_ctl[0] = what;
+            SteamNetworking.SendP2PPacket(to, s_ctl, 1, what == CTL_BYE ? EP2PSend.k_EP2PSendReliable : EP2PSend.k_EP2PSendUnreliableNoDelay, 1);
+        }
+
+        /// Tell everyone we're leaving (quit, LEAVE, STOP HOSTING).
+        public static void SayBye()
+        {
+            if (!s_init || ShuttingDown) return;
+            try
+            {
+                if (s_client != null) SendCtl(s_client.Peer, CTL_BYE);
+                foreach (var c in s_server.Values) SendCtl(c.Peer, CTL_BYE);
+                if (s_client != null || s_server.Count > 0) CoopLog.Write("STEAM", "told the other players we're leaving");
+            }
+            catch (Exception ex) { CoopLog.Error("SayBye", ex); }
+        }
+
+        static void PeerGone(CSteamID who, string why)
+        {
+            s_last_heard.Remove(who.m_SteamID);
+            SteamConnection c;
+            if (s_server.TryGetValue(who.m_SteamID, out c)) DropServerConn(c, why); // stock disconnect removes the ship for everyone
+            if (s_waiting.Remove(who.m_SteamID)) CoopLog.Write("STEAM", Name(who) + " stopped waiting: " + why);
+            if (s_client != null && s_client.Peer == who) HostGone(why);
+        }
+
+        /// Joiner: the host is gone. Run the stock disconnect (back to the main menu) and stop trying to rejoin.
+        static void HostGone(string why)
+        {
+            var conn = s_client; s_client = null;
+            CoopLog.Write("STEAM", "lost the host " + Name(conn.Peer) + ": " + why);
+            try { SteamNetworking.CloseP2PSessionWithUser(conn.Peer); } catch { }
+            try { conn.InvokeHandlerNoData(MsgType.Disconnect); } catch (Exception ex) { CoopLog.Error("steam client disconnect", ex); }
+            try { if (Client.IsConnected()) Client.Disconnect(); } catch (Exception ex) { CoopLog.Error("steam client close", ex); }
+            LeaveLobby();
+            CoopConfig.ClearRole();
+            LastStatus = "THE HOST LEFT THE GAME";
+            GameplayManager.AddHUDMessage("CO-OP: THE HOST LEFT THE GAME", -1, true);
+        }
+
+        static void Liveness()
+        {
+            float now = Time.realtimeSinceStartup;
+            // our own frame stalled (level load): don't blame the others for the silence
+            if (s_last_pump >= 0f && now - s_last_pump > 2f)
+                foreach (var k in new List<ulong>(s_last_heard.Keys)) s_last_heard[k] = now;
+            s_last_pump = now;
+
+            if (now >= s_next_ping)
+            {
+                s_next_ping = now + 1f;
+                if (s_client != null) SendCtl(s_client.Peer, CTL_PING);
+                foreach (var c in s_server.Values) SendCtl(c.Peer, CTL_PING);
+                foreach (var id in s_waiting.Keys) SendCtl(new CSteamID(id), CTL_PING); // joiners waiting for our campaign to start
+            }
+            var gone = new List<CSteamID>();
+            if (s_client != null) { float t; if (s_last_heard.TryGetValue(s_client.Peer.m_SteamID, out t) && now - t > TIMEOUT) gone.Add(s_client.Peer); else if (!s_last_heard.ContainsKey(s_client.Peer.m_SteamID)) s_last_heard[s_client.Peer.m_SteamID] = now; }
+            foreach (var c in s_server.Values) { float t; if (!s_last_heard.TryGetValue(c.Peer.m_SteamID, out t)) s_last_heard[c.Peer.m_SteamID] = now; else if (now - t > TIMEOUT) gone.Add(c.Peer); }
+            foreach (var g in gone) PeerGone(g, "no packets for " + TIMEOUT.ToString("0") + " s");
+        }
+
+        static void PumpControl()
+        {
+            uint size; int guard = 0;
+            while (SteamNetworking.IsP2PPacketAvailable(out size, 1) && guard++ < 200)
+            {
+                uint read; CSteamID from;
+                if (size > s_buf.Length) s_buf = new byte[size + 1024];
+                if (!SteamNetworking.ReadP2PPacket(s_buf, size, out read, out from, 1) || read < 1) continue;
+                Heard(from);
+                if (s_buf[0] == CTL_BYE) PeerGone(from, "left the game");
+            }
+        }
+
         public static void Pump()
         {
+            if (ShuttingDown) return;
             if (!s_init) { if (!Available) return; Init(); }
+            PumpControl();
             uint size;
             int guard = 0;
             while (SteamNetworking.IsP2PPacketAvailable(out size, 0) && guard++ < 2000)
@@ -348,6 +438,7 @@ namespace OlCoop.SteamNet
                 if (!SteamNetworking.ReadP2PPacket(s_buf, size, out read, out from, 0) || read < 1) continue;
                 int ch = s_buf[read - 1];
                 int n = (int)read - 1;
+                Heard(from);
                 if (s_client != null && from == s_client.Peer)
                 {
                     s_client.BytesIn += n; s_client.PacketsIn++;
@@ -376,6 +467,7 @@ namespace OlCoop.SteamNet
                     var c = ServerConn(new CSteamID(id));
                     if (c != null) FlushWaiting(new CSteamID(id), c);
                 }
+            Liveness();
             // UNET only flushes a client's send buffers from its transport update, which a Steam client never runs.
             if (s_client != null) { try { s_client.FlushChannels(); } catch (Exception ex) { CoopLog.Error("steam flush", ex); } }
 
@@ -442,6 +534,34 @@ namespace OlCoop.SteamNet
     static class ST1_Pump
     {
         static void Prefix() { try { SteamLink.Pump(); } catch (Exception ex) { CoopLog.Error("ST1", ex); } }
+    }
+
+    /// Steam goes away with SteamManager (game quitting): say goodbye first, then never touch Steam again.
+    [HarmonyPatch]
+    static class ST3_SteamShutdown
+    {
+        public const string OlmodTarget = "game:SteamManager:OnDestroy"; // SteamManager is internal; checked by tools/VerifyPatches
+        static MethodBase TargetMethod() { return AccessTools.Method(AccessTools.TypeByName("SteamManager"), "OnDestroy"); }
+        static void Prefix()
+        {
+            try { SteamLink.SayBye(); } catch { }
+            SteamLink.ShuttingDown = true;
+            CoopLog.Write("STEAM", "steam shutting down; co-op steam link stopped");
+        }
+    }
+
+    /// Overload also runs SteamAPI.RunCallbacks from a 1 s System.Timers thread, besides SteamManager.Update on the main thread.
+    /// That runs Steam callbacks (ours included) off the main thread and can run after Steam has shut down at quit - the 12:51
+    /// access violation in SteamAPI_RunCallbacks. SteamManager.Update already runs them every frame, so the timer is skipped.
+    [HarmonyPatch(typeof(Overload.Steam), "CallbackTimerTick")]
+    static class ST4_NoTimerThreadCallbacks
+    {
+        static bool s_logged;
+        static bool Prefix()
+        {
+            if (!s_logged) { s_logged = true; CoopLog.Write("STEAM", "skipping Overload's timer-thread Steam callbacks (main thread runs them)"); }
+            return false;
+        }
     }
 
     /// NetworkConnection.Disconnect on a Steam connection would call NetworkTransport.Disconnect for a connection the UDP transport
