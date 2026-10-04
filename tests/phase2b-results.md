@@ -78,3 +78,10 @@
   Joiner: mlevel slot 5 went 0->1 at 08:09:14 (unlock arrived) but missile ammo slot 5 stayed 0 all level. Ammo didn't arrive.
 - Carry-over: joiner kept DEVASTATOR selected/creeper 2/energy 92 into the next level, but the new level had unlocked FLAK
   (wlevel 1,1,1,0,1,1,0,0) and the restore overwrote it (1,1,1,0,1,0,0,0). 0.4.14 merges.
+
+## Runs 08:24, 08:38, 08:45 (0.4.14, all logs 0.4.14-world protocol 13), 3 players
+- Devastator: host "sent 1 DEVASTATOR to netId=91" 08:32:21.6; joiner "picked up 1 DEVASTATOR: 0 -> 1" 08:32:21.6, selected and fired
+  (1 -> 0 at 08:32:24). Same at 08:34:56, 08:41:35, 08:47:28.
+- Hunter pickups: host +2 -> 10 and joiner 8 -> 10 (no double count).
+- Melee: "melee CLAWBOTA hits netId=91/92 (not the host)" (08:31:30-39, 08:42:02-08).
+- 0 "Fire packet dropped". Only exception: olmod MPTweaks KeyNotFoundException once per joiner connect (8x), no visible effect.

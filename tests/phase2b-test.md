@@ -1,7 +1,7 @@
-# Phase 2b world sync test (build 0.4.14)
+# Phase 2b world sync test (build 0.4.15)
 
 Host + 1 joiner, a level with keys, a shootable button that opens a door, and comm (voice) messages, e.g. the first Cronus levels.
-Both windows must show OLCOOP 0.4.14-WORLD at the top-left of the main menu.
+Both windows must show OLCOOP 0.4.15-WORLD at the top-left of the main menu.
 
 1. **Keys:** the host picks up a security key. Both get "SECURITY ACCESS GRANTED!" (the joiner's says "BY A TEAMMATE"), and the joiner
    can open that key's door. Repeat with the joiner picking up a key.
@@ -43,4 +43,7 @@ Both windows must show OLCOOP 0.4.14-WORLD at the top-left of the main menu.
 19. **Carry-over:** a joiner picks up a new weapon and a missile type, then the level ends: in the next level that joiner still has
     them (and its ammo/missile counts).
 20. **Devastator:** a joiner picks up a Devastator and tries to select it. Tell me if it fails; the logs now show the missile state.
-21. Note anything out of sync: what, where, and which window.
+21. **Joiner end-of-level screens:** after the exit each joiner sees results/stats and the upgrade menu. Buy an upgrade on a joiner,
+    continue: "WAITING FOR THE HOST'S NEXT LEVEL" until the host's level loads (or loads at once if the host was faster); the upgrade
+    is there in the next level. Also try a joiner that stays in the upgrade menu for a while after the host has started the next level.
+22. Note anything out of sync: what, where, and which window.

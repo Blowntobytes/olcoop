@@ -10,7 +10,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   `Overload_Data\Managed\Assembly-CSharp.dll` locally if needed. Build references the game's Managed DLLs + GameMod.dll staged from the game folder.
 
 ## Build + delivery rules (user is strict about these)
-- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.4.14 world"). Protocol = 13 (in build.sh).
+- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.4.15 world"). Protocol = 13 (in build.sh).
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 146 patches, 0 problems; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b (current). Bug fixes overwrite the current phase
   folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
@@ -138,3 +138,13 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   GetMaxMissileAmmo) and unlocks the missile if still LOCKED. Watch for double-adding if olmod's own path ever starts delivering.
 - Carry-over now Merge(): levels/picked-up/upgrades = max; counts/energy/selection = carried.
 - Not checked yet: weapon pickups (UnlockWeapon -> RpcUnlockWeaponClient) and ammo/energy pickups on joiners under olmod sniper.
+
+## 0.4.15 status (2026-10-04 09:28) - installed, UNTESTED
+- Installed SHA1 94f904c861f1dd6b67318166daef92979a1789cf (160768 bytes), verified in game folder + build-phase2b. Protocol 13. Tag v0.4.15. 162 patches, 0 problems.
+- 0.4.14 tested OK (Devastator, melee, missile pickups, no drops).
+- Joiner end-of-level screens (src/olcoop/Phase5PostLevel.cs): F6 now lets joiner EscapeLevel run (PostLevel.Begin) -> stock
+  DoneLevel(Escaped) -> LEVEL_RESULTS/UPGRADE_MENU/briefing. P1 prefix on MenuManager.PlayGameUpdate holds the joiner (unless C1 set
+  PostLevel.AllowPlay), captures the loadout (after upgrades), shows the status line, then loads the pending host scene via
+  NetworkManager.LoadScene (C1) or asks for it (CoopClient.AwaitLevel). C1 defers the host's scene while PostLevel.InMenus.
+- Risks to watch: host messages arriving while the joiner is in menus after its own DoneLevel (netcode OFF there); joiner XP/upgrade
+  points (host-side pickups; SyncVar m_upgrade_points); last level of the campaign (VICTORY/credits path not handled).

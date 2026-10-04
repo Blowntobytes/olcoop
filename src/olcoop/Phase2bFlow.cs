@@ -153,7 +153,7 @@ namespace OlCoop.World
         static bool s_requested, s_exit_sent, s_wait_shown;
         public static bool Waiting { get { return s_wait_shown; } }
 
-        public static void ResetForLevel() { if (s_wait_shown) { try { UIManager.SetScreenFade(0f); } catch { } } CoopStatus.Clear(); s_lockdowns_done.Clear(); s_last_trigger_ship = null; s_exit_anchor = null; s_pending_pose = null; s_pending_exit = -1; s_requested = false; s_exit_sent = false; s_wait_shown = false; ApplyingExit = false; ApplyingLog = false; }
+        public static void ResetForLevel() { PostLevel.Reset(); if (s_wait_shown) { try { UIManager.SetScreenFade(0f); } catch { } } CoopStatus.Clear(); s_lockdowns_done.Clear(); s_last_trigger_ship = null; s_exit_anchor = null; s_pending_pose = null; s_pending_exit = -1; s_requested = false; s_exit_sent = false; s_wait_shown = false; ApplyingExit = false; ApplyingLog = false; }
 
         static bool LocalAlive()
         {
@@ -412,8 +412,10 @@ namespace OlCoop.World
         static bool Prefix()
         {
             if (!CoopWorld.IsJoiner) return true;
-            CoopFlow.ShowWaiting();
-            return false;
+            // 0.4.15: joiners get the stock end-of-level screens (results, stats, upgrades). Their own "start next level" step is
+            // held at the PLAY_GAME gate (PostLevel.P1) until the host's next level arrives.
+            PostLevel.Begin();
+            return true;
         }
     }
 

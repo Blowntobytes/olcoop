@@ -644,6 +644,7 @@ namespace OlCoop.Session
             if (story == null) { CoopLog.Write("JOIN", "LoadScene '" + name + "': no story mission loaded"); return true; }
             int idx = story.FindLevelIndex(name);
             if (idx < 0) return true;
+            if (OlCoop.World.PostLevel.ShouldDefer(name)) return false;
             if (name == s_last_scene && Time.realtimeSinceStartup - s_last_scene_at < 6f)
             {
                 CoopLog.Write("JOIN", "ignoring duplicate LoadScene '" + name + "' (already loading it)");
@@ -661,6 +662,7 @@ namespace OlCoop.Session
                 GameplayManager.DifficultyLevel = OlCoop.Robots.CoopRobots.HostDifficulty;
             }
             GameplayManager.CreateNewGame(story, idx);
+            OlCoop.World.PostLevel.AllowPlay = true;
             if (inLevel) { GameplayManager.m_between_level_start = Time.realtimeSinceStartup; GameplayManager.SwitchToMenu(MenuState.PLAY_GAME); }
             else MenuManager.ChangeMenuState(MenuState.PLAY_GAME);
             return false;

@@ -150,6 +150,15 @@ namespace OlCoop.Combat
         static string s_last_state;
         static float s_next_poll;
 
+        /// Joiner: end-of-level screens done (after upgrades): keep this loadout for the next level.
+        public static void CaptureForNextLevel(string why)
+        {
+            var lp = GameManager.m_local_player;
+            if (lp == null) return;
+            s_carry_taken = true; s_carry = Capture(lp);
+            CoopLog.Write("COMBAT", "joiner: " + why + ", keeping loadout for the next level: " + s_carry.Describe());
+        }
+
         /// Joiner: our ship just started in a co-op level; send our loadout to the host shortly (its copy of us must exist first).
         public static void JoinerShipStarted() { s_send_at = Time.realtimeSinceStartup + 1.0f; s_carry_taken = false; s_last_state = null; }
 

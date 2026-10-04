@@ -1,6 +1,14 @@
 # Changelog
 
-## 0.4.14-world (2026-10-04), UNTESTED in game
+## 0.4.15-world (2026-10-04), UNTESTED in game
+- New: joiners get the end-of-level screens like the host (results/stats, upgrade menu, briefing). The joiner's game now finishes the
+  level normally; when its menus reach "start next level" it does not load a level of its own. It shows "WAITING FOR THE HOST'S NEXT
+  LEVEL" and loads the host's level. If the host's level is ready while a joiner is still in its menus, it waits until that joiner is
+  done instead of pulling them out. Upgrades bought there go with the joiner into the next level (loadout carry-over now runs after the
+  upgrade screen) and to the host.
+- (A joiner who is dead/spectating when the team exits still skips the screens and waits in the level, as before.)
+
+## 0.4.14-world (2026-10-04), 08:24-08:49 runs: Devastator fixed (reaches joiner, selectable, fires); melee hits joiners; 0 shots dropped
 - Fix: a Devastator (or any missile) picked up by a joiner could not be selected. The pickup ran on the host, and the unlock reached the
   joiner, but the missile ammo never did (08:09 run: Devastator unlocked with 0 rounds on the joiner; the game won't select a missile
   with no ammo). The host now sends every missile pickup straight to that joiner (message 174).
