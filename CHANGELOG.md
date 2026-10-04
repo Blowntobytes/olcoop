@@ -1,6 +1,16 @@
 # Changelog
 
-## 0.4.9-world (2026-10-03), UNTESTED in game
+## 0.4.10-world (2026-10-04), UNTESTED in game
+- Fix (3 players): two joiners were put on exactly the same spot when joining a level, respawning, and on lockdown and exit regroups.
+  Each placement rotated through the same short list of spots near the teammate, and in tight places only one spot was free, so both
+  got it. Overlapping ships jam each other: in the 06:33 run both joiners barely moved after the level restart and in sp_titan_06
+  (user: the second joiner could only turn his ship), and the second joiner's exit flight stalled. Spots are now rejected when a ship
+  is already within 2.4 units or another ship was placed there in the last 3 s.
+- The nearest-open-segment fallback also accepts tighter open spots before giving up.
+- Lockdown/exit: when there is no free spot at all, the ship is no longer pushed 4 units behind the teammate (that could be inside a
+  wall, as at the Goliath exit); it stays where it is and plays the exit from there.
+
+## 0.4.9-world (2026-10-03), 3-player run 06:33: black hold after exit worked for joiner 1; joiners stacked on one spot (stuck, bad exit)
 - Fix: after the exit cutscene the joiner kept spinning (rough in VR and flat). Once the exit flight ends, the game re-attaches the
   camera to the ship, clears the fade and keeps flying the ship every frame, waiting to finish a level that only the host can finish.
   Joiners now hold a black screen and a still ship until the host's next level loads; the status line stays readable on top. The

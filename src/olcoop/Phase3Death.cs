@@ -208,7 +208,9 @@ namespace OlCoop.Death
         static void ServerRespawn(PlayerShip s, PlayerShip anchor)
         {
             var sp = new LevelData.SpawnPoint(anchor.c_transform.position - anchor.c_transform.forward * 4f, anchor.c_transform.rotation, 0);
-            Session.CoopHost.TryAroundPublic("teammate", anchor.c_transform.position, anchor.c_transform.rotation, UnityEngine.Random.Range(0, 12), ref sp);
+            Session.CoopHost.IgnoreShip = s;
+            try { Session.CoopHost.TryAroundPublic("teammate", anchor.c_transform.position, anchor.c_transform.rotation, UnityEngine.Random.Range(0, 12), ref sp); }
+            finally { Session.CoopHost.IgnoreShip = null; }
             s.c_transform.position = sp.position; s.c_transform.rotation = sp.orientation;
             NetworkSpawnPlayer.StartSpawnInvul(s.c_player);
             s.c_player.m_input_deficit = 0;

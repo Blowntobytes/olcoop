@@ -1,7 +1,7 @@
-# Phase 2b world sync test (build 0.4.9)
+# Phase 2b world sync test (build 0.4.10)
 
 Host + 1 joiner, a level with keys, a shootable button that opens a door, and comm (voice) messages, e.g. the first Cronus levels.
-Both windows must show OLCOOP 0.4.9-WORLD at the top-left of the main menu.
+Both windows must show OLCOOP 0.4.10-WORLD at the top-left of the main menu.
 
 1. **Keys:** the host picks up a security key. Both get "SECURITY ACCESS GRANTED!" (the joiner's says "BY A TEAMMATE"), and the joiner
    can open that key's door. Repeat with the joiner picking up a key.
@@ -27,4 +27,7 @@ Both windows must show OLCOOP 0.4.9-WORLD at the top-left of the main menu.
 10. **Join next to the host:** host continues a saved game (starts at a checkpoint), then the joiner joins: the joiner appears next to
     the host, not at the level start. Then fly apart for the lockdown test.
 11. **Boss level (Goliath):** the boss lockdown starts on both screens (doors seal, music), and the exit after the boss works for both.
-12. Note anything out of sync: what, where, and which window.
+12. **3 players:** host + 2 joiners. After joining, a level restart and the next level, both joiners can fly (not only turn) and are
+    never on top of each other. Lockdown and exit with both joiners far away: both arrive next to the trigger player, apart from each
+    other, and both exit flights play fully.
+13. Note anything out of sync: what, where, and which window.

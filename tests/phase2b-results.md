@@ -41,3 +41,12 @@
   exited; status 1 then 2; next level sp_titan_06, joiner spawned next to the host.
 - User: after the cutscene the joiner keeps spinning after the ship exits the mine. Cause (IL, ExitSequenceFrame): when the exit timer
   ends it re-parents the camera, calls EscapeLevel (blocked on joiners), sets fade 0 and keeps driving the ship, every frame. 0.4.9 F17.
+
+## 3-player run 06:33-06:45, 0.4.9 (all three logs show 0.4.9-world protocol 10)
+- User: the cutscene did not go well for the 3rd ship (2nd joiner); the 2nd joiner could only spin his ship, no other control.
+- Logs: lockdown pulled both joiners (06:36:00, 06:40:41); joiner 1 completed the exit (to (271.7, 196.2, 75.5)), got the black hold
+  (F17) and the next level. Joiner 2 (TESTEE) stalled at (111.4, 19.1, 79.4) for ~30 s and never reached "level complete".
+- Cause: both joiners got the same position every time: level load after the host restart (06:38:16, both (-16.3, 41.2, 28.6)),
+  sp_titan_06 (06:42:21, both (-5.0, 9.0, -67.9)), respawn (06:37:19), lockdown (06:40:41), exit (06:41:29: all spots rejected,
+  blind fallback 4 u behind the host). In the levels with stacked spawns both joiners barely moved for minutes; in the 06:35 load
+  (spawns 3 u apart) they flew normally. 0.4.10 adds an occupancy check and removes the blind fallback.

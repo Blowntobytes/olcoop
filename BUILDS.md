@@ -27,4 +27,5 @@ Targets unless noted: Overload 1.1.1886, olmod 0.5.14.
 | 0.4.6-world | 9 | 10-03 22:24 | tested (Goliath run) | boss lockdown runs on joiner; exit regroup moved joiner next to host | lockdown regroup skipped nearby joiner; joiner exit flight dragged; no host status after exit | tag v0.4.6 |
 | 0.4.7-world | 10 | 10-03 22:52 | tested (23:00 run) | **joiner exit flight** (user: looks better); status line + next level loaded (log); lockdown moved joiner (log) | joiner spawned at level start, not near host | tag v0.4.7 |
 | 0.4.8-world | 10 | 10-03 23:10 | tested (23:18 run) | **joiner spawns next to host at a checkpoint**, lockdown regroup, exit, next level (user: worked pretty good) | joiner view keeps spinning after its exit flight | tag v0.4.8 |
-| 0.4.9-world | 10 | 10-03 23:25 | untested | - | - | tag v0.4.9, build-phase2b |
+| 0.4.9-world | 10 | 10-03 23:25 | tested (3 players, 06:33) | 3 players join; lockdown pulls both joiners; joiner 1 exit + black hold + next level (log) | joiners placed on the same spot: stuck after reload/next level, 2nd joiner exit stalled | tag v0.4.9 |
+| 0.4.10-world | 10 | 10-04 06:52 | untested | - | - | tag v0.4.10, build-phase2b |

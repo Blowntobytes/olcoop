@@ -52,12 +52,14 @@ namespace OlCoop.World
         }
 
         /// A free spot next to the anchor ship (same checks as joiner spawns: inside the level, line of sight, room).
-        static LevelData.SpawnPoint SpotNear(PlayerShip anchor, int idx)
+        /// A free spot next to the anchor for `ship` (never on top of another ship). False = none; then the ship is not moved.
+        static bool SpotNear(PlayerShip anchor, PlayerShip ship, int idx, out LevelData.SpawnPoint sp)
         {
             var t = anchor.c_transform;
-            var sp = new LevelData.SpawnPoint(t.position - t.forward * 4f, t.rotation, 0);
-            Session.CoopHost.TryAroundPublic("teammate", t.position, t.rotation, idx, ref sp);
-            return sp;
+            sp = new LevelData.SpawnPoint(t.position, t.rotation, 0);
+            Session.CoopHost.IgnoreShip = ship;
+            try { return Session.CoopHost.TryAroundPublic("teammate", t.position, t.rotation, idx, ref sp); }
+            finally { Session.CoopHost.IgnoreShip = null; }
         }
 
         static bool Alive(PlayerShip s) { return s != null && !(bool)s.m_dying && !(bool)s.m_dead; }
@@ -86,7 +88,14 @@ namespace OlCoop.World
                 }
                 if (!Alive(ship)) continue;
                 if (minDist > 0f && (ship.c_transform.position - anchor.c_transform.position).magnitude < minDist) continue;
-                var sp = SpotNear(anchor, idx++);
+                LevelData.SpawnPoint sp;
+                if (!SpotNear(anchor, ship, idx++, out sp))
+                {
+                    CoopLog.Write("FLOW", "host: " + why + ": no free spot next to netId=" + anchor.c_player.netId.Value + "; netId=" + p.netId.Value + " stays where it is");
+                    if (msgType == FNet.Exit && !p.isLocalPlayer && p.connectionToClient != null)
+                        p.connectionToClient.Send(msgType, new PoseMsg { kind = kind }); // pos zero = exit from where you are
+                    continue;
+                }
                 MoveShip(ship, sp.position, sp.orientation);
                 if (!p.isLocalPlayer && p.connectionToClient != null)
                     p.connectionToClient.Send(msgType, new PoseMsg { kind = kind, pos = sp.position, rot = sp.orientation });
@@ -229,7 +238,8 @@ namespace OlCoop.World
         {
             var me = GameManager.m_player_ship;
             if (s_exit_anchor == null || me == null || s_exit_anchor == me || !Alive(me)) return;
-            var sp = SpotNear(s_exit_anchor, 0);
+            LevelData.SpawnPoint sp;
+            if (!SpotNear(s_exit_anchor, me, 0, out sp)) { CoopLog.Write("FLOW", "host: no free spot next to netId=" + s_exit_anchor.c_player.netId.Value + "; host exits from where it is"); return; }
             MoveShip(me, sp.position, sp.orientation);
             CoopLog.Write("FLOW", "host: moved own ship next to netId=" + s_exit_anchor.c_player.netId.Value + " for the exit");
         }

@@ -115,7 +115,29 @@ namespace OlCoop.Session
             RaycastHit hit;
             if (Physics.Linecast(anchor, p, out hit, GEOM_MASK, QueryTriggerInteraction.Ignore)) { why = "blocked by " + hit.collider.name; return false; }
             if (Physics.CheckSphere(p, 1.6f, GEOM_MASK, QueryTriggerInteraction.Ignore)) { why = "no room"; return false; }
+            if (Occupied(p, out why)) return false;
             why = "seg " + seg; return true;
+        }
+
+        // ---------------------------------------------------------------- occupancy (0.4.10)
+        // 3-player run 06:33 (0.4.9): two joiners were placed on the same point at level load, respawn, lockdown and exit, because each
+        // search only rotated its start in the same candidate list. Overlapping ships jam each other (joiners could only rotate).
+        const float SHIP_GAP = 2.4f;
+        /// The ship being placed (its current position doesn't count as occupied).
+        public static PlayerShip IgnoreShip;
+        static readonly List<KeyValuePair<Vector3, float>> s_reserved = new List<KeyValuePair<Vector3, float>>();
+        static void Reserve(Vector3 p) { s_reserved.Add(new KeyValuePair<Vector3, float>(p, Time.realtimeSinceStartup)); }
+        static bool Occupied(Vector3 p, out string why)
+        {
+            float now = Time.realtimeSinceStartup;
+            s_reserved.RemoveAll(r => now - r.Value > 3f);
+            foreach (var r in s_reserved) if ((r.Key - p).sqrMagnitude < SHIP_GAP * SHIP_GAP) { why = "taken by a ship just placed"; return true; }
+            foreach (var pl in Overload.NetworkManager.m_Players)
+            {
+                if (pl == null || pl.c_player_ship == null || pl.c_player_ship == IgnoreShip || (bool)pl.c_player_ship.m_dead) continue;
+                if ((pl.c_player_ship.c_transform.position - p).sqrMagnitude < SHIP_GAP * SHIP_GAP) { why = "occupied by netId=" + pl.netId.Value; return true; }
+            }
+            why = null; return false;
         }
 
         /// Joiners spawn next to the host's ship (where the action is), falling back to the level start.
@@ -150,15 +172,16 @@ namespace OlCoop.Session
             if (seg0 < 0 || segs == null || seg0 >= segs.Length) { CoopLog.Write("HOST", "  segment search near " + label + ": anchor not in a segment"); return false; }
             var depth = new Dictionary<int, int> { { seg0, 0 } };
             var queue = new Queue<int>(); queue.Enqueue(seg0);
-            var found = new List<int>();
+            var found = new List<int>(); var loose = new List<int>(); string occ;
             while (queue.Count > 0 && depth.Count < 64)
             {
                 int s = queue.Dequeue(); int d = depth[s];
                 var sd = segs[s];
-                if (sd != null && Physics.CheckSphere(sd.Center, 1.6f, GEOM_MASK, QueryTriggerInteraction.Ignore) == false
-                    && RobotManager.FindSegmentContainingWorldPosition(sd.Center, -1, false) >= 0
-                    && (sd.Center - anchor).sqrMagnitude > 2.5f * 2.5f)
-                    found.Add(s);
+                if (sd != null && RobotManager.FindSegmentContainingWorldPosition(sd.Center, -1, false) >= 0 && !Occupied(sd.Center, out occ))
+                {
+                    if (!Physics.CheckSphere(sd.Center, 1.6f, GEOM_MASK, QueryTriggerInteraction.Ignore)) found.Add(s);
+                    else if (!Physics.CheckSphere(sd.Center, 1.0f, GEOM_MASK, QueryTriggerInteraction.Ignore)) loose.Add(s); // tight but open
+                }
                 if (d >= 4 || sd == null || sd.Portals == null) continue;
                 foreach (int pi in sd.Portals)
                 {
@@ -170,10 +193,11 @@ namespace OlCoop.Session
                     depth[n] = d + 1; queue.Enqueue(n);
                 }
             }
-            if (found.Count == 0) { CoopLog.Write("HOST", "  segment search near " + label + ": no open segment within 4 steps of seg " + seg0); return false; }
+            if (found.Count == 0) found = loose;
+            if (found.Count == 0) { CoopLog.Write("HOST", "  segment search near " + label + ": no free open segment within 4 steps of seg " + seg0); return false; }
             found.Sort((x, y) => (segs[x].Center - anchor).sqrMagnitude.CompareTo((segs[y].Center - anchor).sqrMagnitude));
             int pick = found[start % Math.Min(found.Count, 3)];
-            Vector3 p = segs[pick].Center;
+            Vector3 p = segs[pick].Center; Reserve(p);
             Quaternion r = Quaternion.LookRotation((anchor - p).sqrMagnitude > 0.01f ? (anchor - p).normalized : rot * Vector3.forward, rot * Vector3.up);
             result = new LevelData.SpawnPoint(p, r, 0);
             CoopLog.Write("HOST", "joiner spawn at " + p.ToString("F1") + " (centre of seg " + pick + ", " + depth[pick] + " step(s) from seg " + seg0 + ", " + (p - anchor).magnitude.ToString("F1") + "u) near " + label);
@@ -191,7 +215,7 @@ namespace OlCoop.Session
                 string why;
                 bool ok = SpawnOk(anchor, p, out why);
                 CoopLog.Write("HOST", "  spawn candidate near " + label + " " + off.ToString("F1") + ": " + (ok ? "OK " : "rejected, ") + why);
-                if (ok) { result = new LevelData.SpawnPoint(p, rot, 0); CoopLog.Write("HOST", "joiner spawn at " + p.ToString("F1") + " near " + label); return true; }
+                if (ok) { Reserve(p); result = new LevelData.SpawnPoint(p, rot, 0); CoopLog.Write("HOST", "joiner spawn at " + p.ToString("F1") + " near " + label); return true; }
             }
             return false;
         }
