@@ -20,8 +20,16 @@ namespace OlCoop.World
     {
         public const short LogEntry = 184;    // H->J (empty)
         public const short ExitRequest = 185; // J->H byte kind
-        public const short Exit = 186;        // H->J byte kind
+        public const short Exit = 186;        // H->J PoseMsg: kind + where to put your ship before the exit sequence
+        public const short Teleport = 187;    // H->J PoseMsg: regroup (lockdown) - move your ship here
         public const byte KindDoor = 0, KindWarp = 1, KindTeleport = 2;
+    }
+
+    public class PoseMsg : MessageBase
+    {
+        public byte kind; public Vector3 pos; public Quaternion rot;
+        public override void Serialize(NetworkWriter w) { w.Write(kind); w.Write(pos); w.Write(rot); }
+        public override void Deserialize(NetworkReader r) { kind = r.ReadByte(); pos = r.ReadVector3(); rot = r.ReadQuaternion(); }
     }
 
     public static class CoopFlow
@@ -29,10 +37,108 @@ namespace OlCoop.World
         static readonly System.Reflection.FieldInfo f_next_log = AccessTools.Field(typeof(GameplayManager), "m_next_log_entry");
         static string NextLog() { try { return f_next_log != null ? f_next_log.GetValue(null).ToString() : "?"; } catch { return "?"; } }
         static int s_pending_exit = -1;
+        static PoseMsg s_pending_pose;
+        static PlayerShip s_exit_anchor;
+        static PlayerShip s_last_trigger_ship; static float s_last_trigger_time = -100f;
+        static readonly System.Collections.Generic.HashSet<int> s_lockdowns_done = new System.Collections.Generic.HashSet<int>();
+
+        // ------------------------------------------------------------ placing ships next to another player
+        public static void MoveShip(PlayerShip s, Vector3 p, Quaternion r)
+        {
+            if (s == null) return;
+            s.c_transform.position = p; s.c_transform.rotation = r;
+            if (s.c_rigidbody != null) { s.c_rigidbody.position = p; s.c_rigidbody.rotation = r; s.c_rigidbody.velocity = Vector3.zero; s.c_rigidbody.angularVelocity = Vector3.zero; }
+        }
+
+        /// A free spot next to the anchor ship (same checks as joiner spawns: inside the level, line of sight, room).
+        static LevelData.SpawnPoint SpotNear(PlayerShip anchor, int idx)
+        {
+            var t = anchor.c_transform;
+            var sp = new LevelData.SpawnPoint(t.position - t.forward * 4f, t.rotation, 0);
+            Session.CoopHost.TryAroundPublic("teammate", t.position, t.rotation, idx, ref sp);
+            return sp;
+        }
+
+        static bool Alive(PlayerShip s) { return s != null && !(bool)s.m_dying && !(bool)s.m_dead; }
+
+        public static void NoteTrigger(Collider other)
+        {
+            if (other == null) return;
+            var ps = other.GetComponentInParent<PlayerShip>();
+            if (ps == null) return;
+            s_last_trigger_ship = ps; s_last_trigger_time = Time.time;
+        }
+
+        /// Host: bring every other living player next to the anchor. Host moves its own ship directly; joiners get a Teleport/Exit pose.
+        static void Regroup(PlayerShip anchor, short msgType, byte kind, float minDist, string why)
+        {
+            int idx = 0, moved = 0;
+            foreach (var p in Overload.NetworkManager.m_Players)
+            {
+                if (p == null || p.c_player_ship == null) continue;
+                var ship = p.c_player_ship;
+                if (ship == anchor)
+                {
+                    if (msgType == FNet.Exit && !p.isLocalPlayer && p.connectionToClient != null)
+                        p.connectionToClient.Send(msgType, new PoseMsg { kind = kind, pos = ship.c_transform.position, rot = ship.c_transform.rotation });
+                    continue;
+                }
+                if (!Alive(ship)) continue;
+                if (minDist > 0f && (ship.c_transform.position - anchor.c_transform.position).magnitude < minDist) continue;
+                var sp = SpotNear(anchor, idx++);
+                MoveShip(ship, sp.position, sp.orientation);
+                if (!p.isLocalPlayer && p.connectionToClient != null)
+                    p.connectionToClient.Send(msgType, new PoseMsg { kind = kind, pos = sp.position, rot = sp.orientation });
+                moved++;
+                CoopLog.Write("FLOW", "host: " + why + ": moved netId=" + p.netId.Value + " next to netId=" + anchor.c_player.netId.Value + " at " + sp.position.ToString("F1"));
+            }
+            if (msgType == FNet.Exit)
+            {
+                // joiners that were not moved (dead, or the anchor itself handled above) still need the exit message
+                foreach (var p in Overload.NetworkManager.m_Players)
+                    if (p != null && !p.isLocalPlayer && p.connectionToClient != null && p.c_player_ship != null && p.c_player_ship != anchor && !Alive(p.c_player_ship))
+                        p.connectionToClient.Send(msgType, new PoseMsg { kind = kind, pos = anchor.c_transform.position, rot = anchor.c_transform.rotation });
+            }
+            if (msgType == FNet.Teleport && moved > 0) GameplayManager.AddHUDMessage("CO-OP: LOCKDOWN - TEAM REGROUPED", -1, true);
+        }
+
+        /// Host: a lockdown started (ScriptLockdownMaster / ScriptLockdownBoss). Teleport everyone else next to whoever triggered it.
+        public static void HostLockdown(ScriptBase s)
+        {
+            if (!s_lockdowns_done.Add(s.GetInstanceID())) return;
+            PlayerShip anchor = (Time.time - s_last_trigger_time < 10f && Alive(s_last_trigger_ship)) ? s_last_trigger_ship : null;
+            if (anchor == null)
+            {
+                float best = float.MaxValue;
+                foreach (var p in Overload.NetworkManager.m_Players)
+                    if (p != null && Alive(p.c_player_ship))
+                    {
+                        float d = (p.c_player_ship.c_transform.position - s.transform.position).sqrMagnitude;
+                        if (d < best) { best = d; anchor = p.c_player_ship; }
+                    }
+            }
+            if (anchor == null) { CoopLog.Write("FLOW", "host: lockdown " + s.GetType().Name + " but no living player to regroup at"); return; }
+            CoopLog.Write("FLOW", "host: lockdown " + s.GetType().Name + " '" + s.gameObject.name + "' triggered near netId=" + anchor.c_player.netId.Value + "; regrouping");
+            Regroup(anchor, FNet.Teleport, 0, 25f, "lockdown");
+        }
+
+        public static void OnTeleport(NetworkMessage msg)
+        {
+            try
+            {
+                var m = msg.ReadMessage<PoseMsg>();
+                var me = GameManager.m_player_ship;
+                if (!Alive(me)) return;
+                MoveShip(me, m.pos, m.rot);
+                GameplayManager.AddHUDMessage("CO-OP: LOCKDOWN - TELEPORTED TO YOUR TEAMMATE", -1, true);
+                CoopLog.Write("FLOW", "joiner: lockdown regroup, moved to " + m.pos.ToString("F1"));
+            }
+            catch (Exception ex) { CoopLog.Error("OnTeleport", ex); }
+        }
         public static bool ApplyingExit, ApplyingLog;
         static bool s_requested, s_exit_sent, s_wait_shown;
 
-        public static void ResetForLevel() { s_pending_exit = -1; s_requested = false; s_exit_sent = false; s_wait_shown = false; ApplyingExit = false; ApplyingLog = false; }
+        public static void ResetForLevel() { s_lockdowns_done.Clear(); s_last_trigger_ship = null; s_exit_anchor = null; s_pending_pose = null; s_pending_exit = -1; s_requested = false; s_exit_sent = false; s_wait_shown = false; ApplyingExit = false; ApplyingLog = false; }
 
         static bool LocalAlive()
         {
@@ -93,18 +199,37 @@ namespace OlCoop.World
                     GameplayManager.EscapeLevel();
                     return;
                 }
+                PlayerShip anchor = null;
+                foreach (var p in Overload.NetworkManager.m_Players)
+                    if (p != null && p.connectionToClient != null && p.connectionToClient.connectionId == msg.conn.connectionId) anchor = p.c_player_ship;
+                s_exit_anchor = anchor;
                 if (kind == FNet.KindDoor) GameplayManager.ExitSequenceStart();
                 else GameplayManager.TeleportSequenceStart(kind == FNet.KindWarp);
             }
             catch (Exception ex) { CoopLog.Error("OnExitRequest", ex); }
+            finally { s_exit_anchor = null; }
         }
 
+        /// Host: send the exit to joiners. Everyone is first put next to the player who reached the exit, so every exit/teleport
+        /// sequence plays from the same spot and looks the same for everybody.
         public static void SendExit(byte kind)
         {
             if (s_exit_sent) return;
             s_exit_sent = true;
-            SendAll(FNet.Exit, new IntegerMessage(kind));
-            CoopLog.Write("FLOW", "host: " + KindName(kind) + " sequence started; told joiners to exit too");
+            var anchor = s_exit_anchor != null ? s_exit_anchor : GameManager.m_player_ship;
+            if (anchor == null) { SendAll(FNet.Exit, new PoseMsg { kind = kind }); return; }
+            Regroup(anchor, FNet.Exit, kind, 0f, KindName(kind));
+            CoopLog.Write("FLOW", "host: " + KindName(kind) + " sequence started at netId=" + anchor.c_player.netId.Value + "; told joiners to exit too");
+        }
+
+        /// Host, joiner-triggered exit: put the host's own ship next to that joiner before the host's exit sequence starts.
+        public static void HostPlaceSelfForExit()
+        {
+            var me = GameManager.m_player_ship;
+            if (s_exit_anchor == null || me == null || s_exit_anchor == me || !Alive(me)) return;
+            var sp = SpotNear(s_exit_anchor, 0);
+            MoveShip(me, sp.position, sp.orientation);
+            CoopLog.Write("FLOW", "host: moved own ship next to netId=" + s_exit_anchor.c_player.netId.Value + " for the exit");
         }
 
         /// Joiner: the host is exiting; play the same exit here.
@@ -112,17 +237,19 @@ namespace OlCoop.World
         {
             try
             {
-                byte kind = (byte)msg.ReadMessage<IntegerMessage>().value;
-                CoopLog.Write("FLOW", "joiner: host started " + KindName(kind) + "; gameplay=" + GameplayManager.m_gameplay_state + " alive=" + LocalAlive());
+                var pm = msg.ReadMessage<PoseMsg>();
+                byte kind = pm.kind;
+                CoopLog.Write("FLOW", "joiner: host started " + KindName(kind) + "; gameplay=" + GameplayManager.m_gameplay_state + " alive=" + LocalAlive() + " moveTo=" + pm.pos.ToString("F1"));
                 if (GameplayManager.m_gameplay_state == GameplayState.EXIT) return;
                 if (!LocalAlive()) { ShowWaiting(); return; }
                 if (GameplayManager.m_gameplay_state != GameplayState.PLAYING)
                 {
                     // map or menu open: start the exit as soon as the player is back in normal play
-                    s_pending_exit = kind;
+                    s_pending_exit = kind; s_pending_pose = pm;
                     GameplayManager.AddHUDMessage("CO-OP: THE TEAM IS LEAVING THE LEVEL", -1, true);
                     return;
                 }
+                if (pm.pos != Vector3.zero) MoveShip(GameManager.m_player_ship, pm.pos, pm.rot);
                 RunExit(kind);
             }
             catch (Exception ex) { CoopLog.Error("OnExit", ex); }
@@ -146,6 +273,7 @@ namespace OlCoop.World
             byte k = (byte)s_pending_exit; s_pending_exit = -1;
             if (!LocalAlive()) { ShowWaiting(); return; }
             CoopLog.Write("FLOW", "joiner: running the deferred " + KindName(k));
+            if (s_pending_pose != null && s_pending_pose.pos != Vector3.zero) MoveShip(GameManager.m_player_ship, s_pending_pose.pos, s_pending_pose.rot);
             RunExit(k);
         }
 
@@ -211,10 +339,11 @@ namespace OlCoop.World
         }
     }
 
-    /// F4: host started an exit flight -> joiners follow.
+    /// F4: host started an exit flight -> joiners follow (everyone placed next to whoever reached the exit).
     [HarmonyPatch(typeof(GameplayManager), "ExitSequenceStart")]
     static class F4_ExitStart
     {
+        static void Prefix() { if (CoopWorld.IsHost) { try { CoopFlow.HostPlaceSelfForExit(); } catch (Exception ex) { CoopLog.Error("F4 pre", ex); } } }
         static void Postfix()
         {
             if (!CoopWorld.IsHost || GameplayManager.m_gameplay_state != GameplayState.EXIT) return;
@@ -226,6 +355,7 @@ namespace OlCoop.World
     [HarmonyPatch(typeof(GameplayManager), "TeleportSequenceStart")]
     static class F5_TeleportStart
     {
+        static void Prefix() { if (CoopWorld.IsHost) { try { CoopFlow.HostPlaceSelfForExit(); } catch (Exception ex) { CoopLog.Error("F5 pre", ex); } } }
         static void Postfix(bool alien_warp)
         {
             if (!CoopWorld.IsHost || GameplayManager.m_gameplay_state != GameplayState.EXIT) return;
@@ -284,6 +414,13 @@ namespace OlCoop.World
         }
     }
 
+    /// F12: remember which ship last set off a trigger (host) - the lockdown regroup point.
+    [HarmonyPatch(typeof(TriggerBase), "OnTrigger")]
+    static class F12_NoteTrigger
+    {
+        static void Prefix(Collider other) { if (CoopWorld.IsHost) { try { CoopFlow.NoteTrigger(other); } catch { } } }
+    }
+
     [HarmonyPatch(typeof(GameplayManager), "Update")]
     static class F11_Tick
     {
@@ -315,6 +452,7 @@ namespace OlCoop.World
             var c = Client.GetClient();
             c.RegisterHandler(FNet.LogEntry, CoopFlow.OnLogEntry);
             c.RegisterHandler(FNet.Exit, CoopFlow.OnExit);
+            c.RegisterHandler(FNet.Teleport, CoopFlow.OnTeleport);
         }
     }
 }

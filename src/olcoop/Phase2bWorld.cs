@@ -87,7 +87,7 @@ namespace OlCoop.World
 
         /// Scripts that drive robots, counters, saves or level flow: host only, never replayed on joiners.
         static readonly HashSet<string> HostOnly = new HashSet<string> {
-            "ScriptActivateMatcen", "ScriptRobotAttack", "ScriptLockdownRobot", "ScriptLockdownBoss", "ScriptLockdownMaster",
+            "ScriptActivateMatcen", "ScriptRobotAttack", "ScriptLockdownRobot", "ScriptLockdownMaster",
             "ScriptRevealRobot", "ScriptOnCount", "ScriptOnDestroy", "ScriptOnPickup", "ScriptOnRobotKills", "ScriptCheckpointSave",
             "ScriptSecretLevel", "ScriptTeleportOut", "ScriptAnalyticsChokepoint", "ScriptLevel1", "ScriptLevel12", "ScriptLevel16" };
         /// Scripts that only make sound/text: played live, not replayed to a late joiner.
@@ -151,6 +151,8 @@ namespace OlCoop.World
             if (!IsHostOnly(s) && !LiveOnly.Contains(s.GetType().Name)) s_history.Add(id);
             SendAll(WNet.Script, new IdMsg { id = id });
             CoopLog.Write("WORLD", "host: script " + id + " " + Describe(s) + (IsHostOnly(s) ? " (host-only)" : ""));
+            string tn = s.GetType().Name;
+            if (tn == "ScriptLockdownMaster" || tn == "ScriptLockdownBoss") { try { CoopFlow.HostLockdown(s); } catch (Exception ex) { CoopLog.Error("HostLockdown", ex); } }
         }
 
         public static void HostDestroyed(Destroyable d)
