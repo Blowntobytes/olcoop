@@ -18,4 +18,5 @@ Targets unless noted: Overload 1.1.1886, olmod 0.5.14.
 | 0.3.8 | 5 | 10-03 16:08 | tested (run 6) | - | respawn timer; Hardcore joiner stuck | no |
 | 0.3.9 | 5 | 10-03 16:25 | tested (run 7) | **respawn countdown** | Hardcore: joiner frozen, then panorama view | no |
 | 0.3.10 | 5 | 10-03 16:58 | untested | - | - | tag v0.3.10, build-coop-options |
-| 0.4.0-world | 6 | 10-03 19:47 | untested | - | - | tag v0.4.0, build-phase2b |
+| 0.4.0-world | 6 | 10-03 19:47 | replaced before test | - | - | tag v0.4.0 |
+| 0.4.1-world | 6 | 10-03 20:02 | untested | - | - | tag v0.4.1, build-phase2b |

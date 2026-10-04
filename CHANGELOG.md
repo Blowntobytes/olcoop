@@ -1,6 +1,11 @@
 # Changelog
 
-## 0.4.0-world (2026-10-03), UNTESTED in game. New phase 2b, folder build-phase2b
+## 0.4.1-world (2026-10-03), UNTESTED in game
+- The version is now always visible: top-left of the main menu ("OLCOOP 0.4.1-WORLD - HOST/JOINER") and under the CO-OP OPTIONS title.
+  (The old level-start HUD message scrolled away and was easy to miss.)
+- Otherwise identical to 0.4.0 (world sync), which was replaced before testing.
+
+## 0.4.0-world (2026-10-03), replaced by 0.4.1 before testing. New phase 2b, folder build-phase2b
 - Host-authoritative level logic (`docs/phase2b-design.md`, `src/olcoop/Phase2bWorld.cs`): the host runs triggers, switches, pickups and
   every level script; joiners run only what the host tells them (doors, comm/voice messages, objective text, music, forcefields, lights,
   objects). Robot, counter, save and level-flow scripts are host-only. Voice messages should now play once, at the same time, for everyone.

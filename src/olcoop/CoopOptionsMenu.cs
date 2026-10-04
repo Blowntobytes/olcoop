@@ -81,6 +81,8 @@ namespace OlCoop.UI
             uie.DrawMenuBG();
             UIElement.ToolTipActive = false;
             uie.DrawHeaderMedium(Vector2.up * (UIManager.UI_TOP + 20f), "CO-OP OPTIONS");
+            uie.DrawStringSmall(CoopVersion.Full.ToUpperInvariant() + (CoopConfig.IsHost ? " - HOST" : CoopConfig.IsJoiner ? " - JOINER" : ""),
+                Vector2.up * (UIManager.UI_TOP + 52f), 0.45f, StringOffset.CENTER, UIManager.m_col_ui2, 1f, -1f);
             Vector2 position = uie.m_position;
             position.y -= 217f; // one row higher than 0.3.5 to fit SHOW PLAYER NAMES
             bool ro = ReadOnly;
@@ -246,6 +248,22 @@ namespace OlCoop.UI
         {
             if (__instance.m_type != CoopOptionsMenu.uiCoopOptions || __instance.m_alpha <= 0f) return;
             try { CoopOptionsMenu.Draw(__instance); } catch (Exception ex) { CoopLog.Error("M4", ex); }
+        }
+    }
+
+    /// Always-visible version on the main menu (top-left corner).
+    [HarmonyPatch(typeof(UIElement), "Draw")]
+    static class M5_MainMenuVersion
+    {
+        static void Postfix(UIElement __instance)
+        {
+            if (__instance.m_type != UIElementType.MAIN_MENU || __instance.m_alpha <= 0f) return;
+            try
+            {
+                __instance.DrawStringSmall(CoopVersion.Full.ToUpperInvariant() + (CoopConfig.IsHost ? " - HOST" : CoopConfig.IsJoiner ? " - JOINER" : ""),
+                    new Vector2(UIManager.UI_LEFT + 12f, UIManager.UI_TOP + 14f), 0.4f, StringOffset.LEFT, UIManager.m_col_ui2, __instance.m_alpha, -1f);
+            }
+            catch (Exception ex) { CoopLog.Error("M5", ex); }
         }
     }
 }
