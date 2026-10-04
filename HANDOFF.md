@@ -259,3 +259,6 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   so the stock quit flow + ARE YOU SURE? runs.
 - Boost owner side: FixedUpdateProcessControlsInternal postfix latches m_boosting for the local ship (not while resimulating);
   owner state = latch || m_boosting || (USE_BOOST pressed && m_unlock_boost && overheat <= 0). Report 192 is now reliable.
+- Installer (14:20): install.bat calls find-overload.ps1 (registry SteamPath/InstallPath -> libraryfolders.vdf paths, plus
+  <drive>:\SteamLibrary, Steam, Program Files (x86)\Steam, Program Files\Steam, Games\Steam, Games\SteamLibrary, Games on every
+  drive; Overload.exe required, olmod.exe preferred). Not run on Windows yet (no PowerShell in the cloud workspace).

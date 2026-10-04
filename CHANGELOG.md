@@ -10,6 +10,8 @@
   since the last frame and from the boost button (same conditions as the game), and sent reliably. [BOOST] "my boost" lines
   log the first changes with the button/unlock/overheat state.
 - CO-OP screen: INVITE WITH THE STEAM OVERLAY renamed INVITE THROUGH STEAM.
+- Installer: finds Overload on any drive (Steam's library list from the registry, then the usual Steam folders on every
+  drive; prefers a copy with olmod installed), and only asks for the folder if none is found (find-overload.ps1).
 
 ## 0.5.1-online (2026-10-04), 13:33-13:47 runs: no crash; boost still not visible; quitting to the menu kept players in the session; disconnects broke the other game (protocol 16: all players must run 0.5.1)
 - Disconnects: a player whose game closes, crashes or loses the connection is removed for everyone. Over Steam every player
