@@ -21,6 +21,7 @@ namespace OlCoop.World
         static float s_gate_since;
 
         public static bool InMenus { get { return s_active && !s_at_gate; } }
+        public static bool Active { get { return s_active; } }
 
         /// The stock end-of-level screens. Only while the joiner is in one of these is the host's level held back (10:05 run: a joiner
         /// whose menus went to MAIN_MENU instead of PLAY_GAME waited there forever).
@@ -36,7 +37,17 @@ namespace OlCoop.World
             try
             {
                 OlCoop.Death.Spectate.Stop(null);
+                // 10:18 run (0.4.17): the dead joiner reached the results screen but it never responded. MenuManager.Update skips menu
+                // handling while PlayerShip.DeathPaused is set (set by StartDying, normally cleared on respawn). Clear the death state
+                // the way the game does when leaving its death menu, and drop our respawn countdown overlay.
+                PlayerShip.DeathPaused = false;
+                try { OlCoop.Hud.CoopHud.ClearRespawn(); UIManager.ClearOverlayElement(1); } catch { }
+                try { UIManager.SetScreenFade(0f); } catch { }
+                try { AccessTools.Method(typeof(MenuManager), "RecoverFromDeathMenu").Invoke(null, new object[] { false, false }); }
+                catch (Exception ex) { CoopLog.Write("FLOW", "joiner: RecoverFromDeathMenu failed: " + ex.GetType().Name); }
                 GameplayManager.EscapeLevel();   // F6 lets it run and calls Begin()
+                PlayerShip.DeathPaused = false;
+                CoopLog.Write("FLOW", "joiner: death state cleared for the end-of-level screens (DeathPaused=" + PlayerShip.DeathPaused + ")");
             }
             catch (Exception ex) { CoopLog.Error("DeadJoinerExit", ex); CoopFlow.ShowWaiting(); }
         }
@@ -103,7 +114,21 @@ namespace OlCoop.World
         }
     }
 
-    [HarmonyPatch(typeof(MenuManager), "PlayGameUpdate")]
+/// P3: while a joiner is on its end-of-level screens, a leftover death pause must not freeze the menus (MenuManager.Update skips
+    /// menu handling while PlayerShip.DeathPaused).
+    [HarmonyPatch(typeof(MenuManager), "Update")]
+    static class P3_NoDeathPauseInPostLevel
+    {
+        static bool s_logged;
+        static void Prefix()
+        {
+            if (!PostLevel.Active || !PlayerShip.DeathPaused) return;
+            PlayerShip.DeathPaused = false;
+            if (!s_logged) { s_logged = true; CoopLog.Write("FLOW", "joiner: cleared a leftover death pause on the end-of-level screens"); }
+        }
+    }
+
+        [HarmonyPatch(typeof(MenuManager), "PlayGameUpdate")]
     static class P1_JoinerPlayGate
     {
         static bool Prefix()

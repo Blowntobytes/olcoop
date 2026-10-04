@@ -99,3 +99,9 @@
   "host marked us not-ready" + "host's level arrived after 1 request(s)" (the NotReady fix works).
 - Joiner 9580 ran the end-of-level screens (10:04:44), then was in MAIN_MENU from 10:05:14 (not PLAY_GAME). C1 deferred the host's
   level there ("once the end-of-level screens are done (menu MAIN_MENU)") every 10 s - stuck.
+
+## Run 10:15-10:20, 0.4.17 (all logs 0.4.17-world protocol 13), 3 players
+- Joiner 10304 (alive): end screens 10:18:28, host's level held "menu LEVEL_RESULTS" 10:19:09, loaded at 10:19:35 when done. OK.
+- Joiner 3112 (dead 10:18:11, respawn overlay created, never cleared): exit 10:18:14 -> "finishing the level", DoneLevel(Escaped),
+  MENUS. Still LEVEL_RESULTS at 10:19:09, then nothing. User: their game breaks. IL: MenuManager.Update skips menu handling while
+  PlayerShip.DeathPaused (set by StartDying, cleared on respawn / RecoverFromDeathMenu).

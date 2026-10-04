@@ -10,7 +10,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   `Overload_Data\Managed\Assembly-CSharp.dll` locally if needed. Build references the game's Managed DLLs + GameMod.dll staged from the game folder.
 
 ## Build + delivery rules (user is strict about these)
-- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.4.17 world"). Protocol = 13 (in build.sh).
+- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.4.18 world"). Protocol = 13 (in build.sh).
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 146 patches, 0 problems; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b (current). Bug fixes overwrite the current phase
   folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
@@ -163,3 +163,9 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 - PostLevel.ShouldDefer only defers while MenuManager.m_menu_state is an end-of-level screen (LEVEL_RESULTS, STATS, UPGRADE_MENU,
   SAVE_MENU, SAVE_ERROR, DEBRIEF, LEVEL_BRIEFING, BRIEFING, ENTITY_BRIEFING, MISSION_COMPLETE); otherwise captures the loadout and loads.
 - Open question: why joiner 9580's menus went to MAIN_MENU after LEVEL_RESULTS at 10:05:14 (user action or stock flow).
+
+## 0.4.18 status (2026-10-04 10:22) - installed, UNTESTED
+- Installed SHA1 8477c44eee917d9ace6e0ac05122dee3e33c5870 (162816 bytes), verified in game folder + build-phase2b. Protocol 13. Tag v0.4.18. 164 patches, 0 problems.
+- DeadJoinerExit: Spectate.Stop, DeathPaused=false, CoopHud.ClearRespawn + ClearOverlayElement(1), SetScreenFade(0),
+  MenuManager.RecoverFromDeathMenu(false,false) (reflection), then EscapeLevel. P3: MenuManager.Update prefix keeps DeathPaused off
+  while PostLevel.Active.

@@ -1,6 +1,12 @@
 # Changelog
 
-## 0.4.17-world (2026-10-04), UNTESTED in game
+## 0.4.18-world (2026-10-04), UNTESTED in game
+- Fix: a joiner who was dead when the team exited reached the results screen, but the screen didn't respond (game "broken"). Overload
+  stops handling its menus while the death pause from dying is still on, and that pause normally only ends on respawn. The dead joiner
+  now leaves the death state like the game does when leaving its own death menu (death pause off, camera restored, respawn countdown
+  and fade cleared) before the end-of-level screens, and the pause is kept off while on those screens.
+
+## 0.4.17-world (2026-10-04), 10:15 run: dead joiner now goes to the end-of-level screens but they froze; living joiner OK
 - Fix: a joiner who was dead when the team exited got no end-of-level screens and stayed spectating in the old level. It now stops
   spectating and finishes the level like everyone else (results, upgrades, then the host's next level).
 - Fix: a joiner whose end-of-level menus ended up somewhere else (10:05 run: the main menu) never loaded the host's level - it was
