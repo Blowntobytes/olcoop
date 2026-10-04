@@ -57,3 +57,10 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   (clear pairs once on OFF->ON) and only reset when a pooled projectile's owner changed.
 - Later phases (not started): joiner loadout sync (msg 170/P15, ammo weapons/missiles don't hurt robots), doors/switches/pickups,
   objectives (reactor, exit with all players, exit while host spectates), melee damage routing, chunk union P13.
+
+## 0.4.6 status (2026-10-03) — installed, UNTESTED
+- Installed DLL SHA1 f6de7c7d9b04c2377f971f683a5d6224d0c4d7ed (verified in game folder + build-phase2b). Protocol 9. Tag v0.4.6.
+- Exit regroup: host moves all ships next to the exit trigger-er, Exit msg 186 carries pose, joiner plays same Exit/Teleport sequence.
+- Lockdown regroup: ScriptLockdownMaster/Boss on host -> CoopFlow.HostLockdown teleports others (>25u) next to last trigger ship (10 s) or nearest; msg 187.
+- ScriptLockdownBoss removed from HostOnly (Goliath run on 0.4.5 showed it host-only; exit sync fired 22:16:57).
+- TODO: update CHANGELOG/BUILDS/tests for 0.4.6; await user tests: exit both orders, lockdown while apart, Goliath exit.
