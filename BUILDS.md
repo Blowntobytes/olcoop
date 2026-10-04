@@ -22,4 +22,5 @@ Targets unless noted: Overload 1.1.1886, olmod 0.5.14.
 | 0.4.1-world | 6 | 10-03 19:49 | not tested (version display only) | - | - | tag v0.4.1 |
 | 0.4.2-world | 7 | 10-03 19:59 | tested (2b run 2, log) | joiner breaks a button via the host (20:07:45) | - | tag v0.4.2 |
 | 0.4.3-world | 7 | 10-03 20:34 | tested (2b run 3) | joiner breaks a button (20:40:34) | host shots invisible on joiner | tag v0.4.3 |
-| 0.4.4-world | 7 | 10-03 20:54 | untested | - | - | tag v0.4.4, build-phase2b |
+| 0.4.4-world | 7 | 10-03 20:54 | tested (2b run 4) | - | some audio logs only for the picker; no shared exits; no teammates on map | tag v0.4.4 |
+| 0.4.5-world | 8 | 10-03 21:50 | untested | - | - | tag v0.4.5, build-phase2b |

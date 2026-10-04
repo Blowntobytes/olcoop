@@ -1,6 +1,17 @@
 # Changelog
 
-## 0.4.4-world (2026-10-03), UNTESTED in game
+## 0.4.5-world (2026-10-03), UNTESTED in game
+- Fix: audio logs (log entry pickups) only played for one player. Real pickups run only on the host in co-op, so `PickupLogEntry` (chime +
+  voice/text) never ran on joiners. The host now sends each log pickup and joiners play the same log.
+- Exits together: when anyone reaches the exit door or an alien warp, every player plays the same exit/teleport sequence. Joiners ask the
+  host, the host starts its own sequence and tells everyone; joiners then wait ("LEVEL COMPLETE - WAITING FOR THE HOST") for the host's
+  next level instead of finishing the level alone. Teleport-out scripts on the host also take joiners along. If the host is dead
+  (spectating) when a joiner reaches the exit, the host finishes the level directly. With a map or menu open, a joiner's exit starts
+  as soon as they're back in play.
+- Automap: other players' ships are shown on your map (their map icons are switched on while your map is open).
+- Protocol 8 (messages 184/185/186).
+
+## 0.4.4-world (2026-10-03): run 4, shots now shared (user didn't report a problem); audio logs only for the picker
 - Fix: the joiner couldn't see the host's shots. The game only sends player shots to other machines in a real multiplayer match (game type
   check), and co-op runs as a campaign game. The host now sends every player shot (its own and the joiners' it simulates) to every other
   player except the shooter, the same way stock multiplayer does (message 70). This also covers joiners seeing each other's shots with 3 players.
