@@ -25,4 +25,5 @@ Targets unless noted: Overload 1.1.1886, olmod 0.5.14.
 | 0.4.4-world | 7 | 10-03 20:54 | tested (2b run 4) | - | some audio logs only for the picker; no shared exits; no teammates on map | tag v0.4.4 |
 | 0.4.5-world | 8 | 10-03 21:50 | partly run (Goliath exit, log) | - | boss lockdown host-only | tag v0.4.5 |
 | 0.4.6-world | 9 | 10-03 22:24 | tested (Goliath run) | boss lockdown runs on joiner; exit regroup moved joiner next to host | lockdown regroup skipped nearby joiner; joiner exit flight dragged; no host status after exit | tag v0.4.6 |
-| 0.4.7-world | 10 | 10-03 22:52 | untested | - | - | tag v0.4.7, build-phase2b |
+| 0.4.7-world | 10 | 10-03 22:52 | tested (23:00 run) | **joiner exit flight** (user: looks better); status line + next level loaded (log); lockdown moved joiner (log) | joiner spawned at level start, not near host | tag v0.4.7 |
+| 0.4.8-world | 10 | 10-03 23:10 | untested | - | - | tag v0.4.8, build-phase2b |

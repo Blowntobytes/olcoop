@@ -125,13 +125,60 @@ namespace OlCoop.Session
             var hs = GameManager.m_player_ship;
             if (hs != null && !(bool)hs.m_dying && !(bool)hs.m_dead) anchors.Add(new KeyValuePair<string, Transform>("host ship", hs.c_transform));
             int start = s_spawned++;
-            foreach (var a in anchors) if (TryAround(a.Key, a.Value.position, a.Value.rotation, start, ref result)) return;
+            foreach (var a in anchors) if (FindNear(a.Key, a.Value.position, a.Value.rotation, start, ref result)) return;
             if (TryAround("level start", SpawnPos, SpawnRot, start, ref result)) return;
             result = new LevelData.SpawnPoint(SpawnPos, SpawnRot, 0);
             CoopLog.Write("HOST", "joiner spawn: no safe offset, using the level start itself (ships may overlap briefly)");
         }
 
-        public static bool TryAroundPublic(string label, Vector3 anchor, Quaternion rot, int start, ref LevelData.SpawnPoint result) { return TryAround(label, anchor, rot, start, ref result); }
+        public static bool TryAroundPublic(string label, Vector3 anchor, Quaternion rot, int start, ref LevelData.SpawnPoint result) { return FindNear(label, anchor, rot, start, ref result); }
+
+        /// Close offsets around the anchor first; if they're all in walls (tight spots such as some checkpoints), the nearest open
+        /// segment centre reachable from the anchor's segment without passing a door.
+        public static bool FindNear(string label, Vector3 anchor, Quaternion rot, int start, ref LevelData.SpawnPoint result)
+        {
+            if (TryAround(label, anchor, rot, start, ref result)) return true;
+            return TrySegments(label, anchor, rot, start, ref result);
+        }
+
+        static bool TrySegments(string label, Vector3 anchor, Quaternion rot, int start, ref LevelData.SpawnPoint result)
+        {
+            var ld = GameManager.m_level_data;
+            if (ld == null) return false;
+            var segs = ld.Segments; var portals = ld.Portals;
+            int seg0 = RobotManager.FindSegmentContainingWorldPosition(anchor, -1, false);
+            if (seg0 < 0 || segs == null || seg0 >= segs.Length) { CoopLog.Write("HOST", "  segment search near " + label + ": anchor not in a segment"); return false; }
+            var depth = new Dictionary<int, int> { { seg0, 0 } };
+            var queue = new Queue<int>(); queue.Enqueue(seg0);
+            var found = new List<int>();
+            while (queue.Count > 0 && depth.Count < 64)
+            {
+                int s = queue.Dequeue(); int d = depth[s];
+                var sd = segs[s];
+                if (sd != null && Physics.CheckSphere(sd.Center, 1.6f, GEOM_MASK, QueryTriggerInteraction.Ignore) == false
+                    && RobotManager.FindSegmentContainingWorldPosition(sd.Center, -1, false) >= 0
+                    && (sd.Center - anchor).sqrMagnitude > 2.5f * 2.5f)
+                    found.Add(s);
+                if (d >= 4 || sd == null || sd.Portals == null) continue;
+                foreach (int pi in sd.Portals)
+                {
+                    if (pi < 0 || portals == null || pi >= portals.Length) continue;
+                    var pd = portals[pi];
+                    if (pd == null || pd.DoorData != null) continue; // never through a door (could be locked)
+                    int n = pd.MasterSegmentIndex == s ? pd.SlaveSegmentIndex : pd.MasterSegmentIndex;
+                    if (n < 0 || n >= segs.Length || depth.ContainsKey(n)) continue;
+                    depth[n] = d + 1; queue.Enqueue(n);
+                }
+            }
+            if (found.Count == 0) { CoopLog.Write("HOST", "  segment search near " + label + ": no open segment within 4 steps of seg " + seg0); return false; }
+            found.Sort((x, y) => (segs[x].Center - anchor).sqrMagnitude.CompareTo((segs[y].Center - anchor).sqrMagnitude));
+            int pick = found[start % Math.Min(found.Count, 3)];
+            Vector3 p = segs[pick].Center;
+            Quaternion r = Quaternion.LookRotation((anchor - p).sqrMagnitude > 0.01f ? (anchor - p).normalized : rot * Vector3.forward, rot * Vector3.up);
+            result = new LevelData.SpawnPoint(p, r, 0);
+            CoopLog.Write("HOST", "joiner spawn at " + p.ToString("F1") + " (centre of seg " + pick + ", " + depth[pick] + " step(s) from seg " + seg0 + ", " + (p - anchor).magnitude.ToString("F1") + "u) near " + label);
+            return true;
+        }
 
         static bool TryAround(string label, Vector3 anchor, Quaternion rot, int start, ref LevelData.SpawnPoint result)
         {

@@ -26,3 +26,11 @@
   didn't play properly at first, then did. 0.4.7 skips reconciliation on joiners during EXIT.
 - After the exit the host sat on the level summary (MENUS from 22:29:32) and the joiner got no notification. 0.4.7 adds host status 188
   and a persistent status line.
+
+## Run 23:00-23:05, 0.4.7 (both logs show 0.4.7-world protocol 10), Goliath from a saved game, then sp_titan_06
+- Exit: user says the exit sequence looks better. Joiner flight 23:03:04.8 -> 23:03:19.4 (14.5 s, was 26.6 s); corrections paused (F14).
+- Status line: WAITING (23:03:19.4) -> LEVEL SUMMARY (19.9) -> STARTING NEXT LEVEL (23:03:52.2); joiner loaded sp_titan_06 at 23:04:07.
+- Lockdown: host moved the joiner next to itself (23:01:54.6), joiner applied it.
+- Problem: the joiner spawned at the level start. The host continued a saved game, so its ship was at the checkpoint by the boss room
+  (54, 2, 86); all 12 spawn offsets around it were rejected (6 outside level, 6 no room). User could not test the lockdown pull from far
+  away as intended. 0.4.8 adds a segment-graph fallback near the host.

@@ -1,6 +1,13 @@
 # Changelog
 
-## 0.4.7-world (2026-10-03), UNTESTED in game
+## 0.4.8-world (2026-10-03), UNTESTED in game
+- Fix: a joiner could spawn at the level start instead of next to the host. When the host continues a saved game it starts at the
+  checkpoint, and in a tight spot every close spawn offset around the host was in a wall or outside the level (run of 23:00: 12/12
+  rejected, so the joiner went to the level start, far from the boss room). Now, when the close offsets fail, the joiner spawns at the
+  nearest open segment within 4 segments of the host, never through a door. Lockdown and exit teleports use the same search.
+- Protocol unchanged (10); host-side change only, but both players need 0.4.8 (the version must match to join).
+
+## 0.4.7-world (2026-10-03), run 23:00: exit flight smooth (user), status line shown, lockdown moved the joiner; joiner spawned at level start
 - Lockdown regroup now ignores distance: every other living player is teleported next to whoever set the lockdown off, wherever they
   are, so nobody gets locked out of the room. (0.4.6 skipped anyone within 25 units; on the Goliath run the joiner wasn't moved.)
 - Fix: the joiner's exit flight didn't play properly at first (Goliath run: 26.6 s on the joiner vs 14.4 s on the host). Every physics

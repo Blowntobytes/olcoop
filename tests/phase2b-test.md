@@ -1,7 +1,7 @@
-# Phase 2b world sync test (build 0.4.7)
+# Phase 2b world sync test (build 0.4.8)
 
 Host + 1 joiner, a level with keys, a shootable button that opens a door, and comm (voice) messages, e.g. the first Cronus levels.
-Both windows must show OLCOOP 0.4.7-WORLD at the top-left of the main menu.
+Both windows must show OLCOOP 0.4.8-WORLD at the top-left of the main menu.
 
 1. **Keys:** the host picks up a security key. Both get "SECURITY ACCESS GRANTED!" (the joiner's says "BY A TEAMMATE"), and the joiner
    can open that key's door. Repeat with the joiner picking up a key.
@@ -23,5 +23,7 @@ Both windows must show OLCOOP 0.4.7-WORLD at the top-left of the main menu.
 9. **Lockdown regroup:** let one player set off a lockdown (robot ambush that seals the doors) while the other is anywhere else, near or far.
    The other player is teleported next to them, inside the locked room, with "CO-OP: LOCKDOWN - TELEPORTED TO YOUR TEAMMATE" (joiner) /
    "TEAM REGROUPED" (host). Repeat with the other player triggering it.
-10. **Boss level (Goliath):** the boss lockdown starts on both screens (doors seal, music), and the exit after the boss works for both.
-11. Note anything out of sync: what, where, and which window.
+10. **Join next to the host:** host continues a saved game (starts at a checkpoint), then the joiner joins: the joiner appears next to
+    the host, not at the level start. Then fly apart for the lockdown test.
+11. **Boss level (Goliath):** the boss lockdown starts on both screens (doors seal, music), and the exit after the boss works for both.
+12. Note anything out of sync: what, where, and which window.
