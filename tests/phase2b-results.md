@@ -55,3 +55,10 @@
 - Not the mod: 0.4.9 behaved the same, also with the host alone. All affected windows used pilot TESTEE (host pilot was OBSERVERB2B in
   every earlier run). Control bindings are per pilot (testee.xconfigmod). Also explains the 06:33 run's 2nd joiner (TESTEE).
 - The stacked-spawn fix in 0.4.10 is still valid (stacking is in the logs), but its effect on "stuck" ships was over-claimed.
+
+## 3-player run 07:11-07:16, 0.4.10 (all three logs 0.4.10-world protocol 10), working pilot in every window. User: "that worked better"
+- Spawns apart: joiners at (51.0, 2.2, 87.6) and (61.0, 1.3, 83.1). All three ships moved.
+- The boss lockdown fired 26 ms after the joiners spawned, "triggered near netId=92": joiner 2 spawned inside the boss trigger. Regroup
+  moved host and joiner 1 next to it, on separate spots. Respawns placed apart (one via the segment fallback, 10.5 u).
+- Exit (joiner 2 first, 07:15:45): no free spot next to joiner 2 at the exit door, so host and joiner 1 exited from where they were
+  (0.4.10 rule). All three completed: joiner 2 in 14.5 s, joiner 1 in 18.4 s, host 18.9 s; both joiners black hold + status 1.
