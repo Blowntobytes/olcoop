@@ -19,7 +19,8 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 - Never claim success without an in-game test; mark untested builds as untested.
 
 ## GitHub publishing (same as the user's other mods)
-- Repo: github.com/Blowntobytes/olmodcoop (public). Cloud sessions CANNOT push (Claude GitHub App not installed on the account).
+- Repo: github.com/Blowntobytes/olmodcoop. Cloud sessions can only push to branches named `claude/...` and cannot push tags or main.
+  Do NOT push anything to GitHub from a cloud session unless the user asks; main + tags are published by the user's script.
 - After each build: commit `<version>: description`, tag `v<version>`, `git bundle create olmodcoop-latest.bundle main --tags`, deliver it to
   `olmodcoop\publish\` next to Publish-ToGitHub.cmd/.ps1. The user double-clicks Publish-ToGitHub.cmd, which pushes with their own login.
 
