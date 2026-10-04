@@ -1,6 +1,14 @@
 # Changelog
 
-## 0.4.1-world (2026-10-03), UNTESTED in game
+## 0.4.2-world (2026-10-03), UNTESTED in game
+- Fix: a joiner couldn't break destroyable buttons (run 1 of phase 2b, 0.4.0). Only the host applies button damage, and the host never got
+  the joiner's hits. The joiner now sends its button hits to the host, which applies them credited to the joiner's ship. The host also logs
+  every button hit and whose shot it was (`[WORLD] host: destroyable ... hit ... by netId=`).
+- Fix: when a joiner picked up a key, only the host heard the "security key acquired" sound (the pickup runs on the host). Joiners now play
+  the same sound with the popup when the team key level rises.
+- Protocol 7 (message 179).
+
+## 0.4.1-world (2026-10-03), replaced by 0.4.2 before testing
 - The version is now always visible: top-left of the main menu ("OLCOOP 0.4.1-WORLD - HOST/JOINER") and under the CO-OP OPTIONS title.
   (The old level-start HUD message scrolled away and was easy to miss.)
 - Otherwise identical to 0.4.0 (world sync), which was replaced before testing.

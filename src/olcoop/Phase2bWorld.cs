@@ -25,6 +25,7 @@ namespace OlCoop.World
         public const short Script = 177;     // H->J ushort script id (reliable)
         public const short Destroy = 178;    // H->J ushort destroyable id (reliable)
         public const short Keys = 180;       // H->J int team unlock level (reliable)
+        public const short Hit = 179;        // J->H ushort destroyable id + float damage + int damage type (joiner's local hit)
         public const short Ready = 182;      // J->H uint world hash (after the joiner built its registry)
         public const short Manifest = 183;   // H->J uint host world hash + catch-up (destroyed ids, state-script history)
     }
@@ -34,6 +35,13 @@ namespace OlCoop.World
         public ushort id;
         public override void Serialize(NetworkWriter w) { w.Write(id); }
         public override void Deserialize(NetworkReader r) { id = r.ReadUInt16(); }
+    }
+
+    public class HitMsg : MessageBase
+    {
+        public ushort id; public float damage; public int type; public Vector3 pos;
+        public override void Serialize(NetworkWriter w) { w.Write(id); w.Write(damage); w.Write(type); w.Write(pos); }
+        public override void Deserialize(NetworkReader r) { id = r.ReadUInt16(); damage = r.ReadSingle(); type = r.ReadInt32(); pos = r.ReadVector3(); }
     }
 
     public class WManifestMsg : MessageBase
@@ -187,6 +195,37 @@ namespace OlCoop.World
             catch (Exception ex) { CoopLog.Error("CoopWorld.OnReady", ex); }
         }
 
+        /// Host: apply a joiner's destroyable hit, credited to that joiner's ship.
+        public static void OnHit(NetworkMessage msg)
+        {
+            try
+            {
+                var m = msg.ReadMessage<HitMsg>();
+                Destroyable d;
+                if (!s_destroy.TryGetValue(m.id, out d) || d == null || (bool)d.m_dying) return;
+                GameObject owner = null;
+                foreach (var p in Overload.NetworkManager.m_Players)
+                    if (p != null && p.connectionToClient != null && p.connectionToClient.connectionId == msg.conn.connectionId && p.c_player_ship != null) owner = p.c_player_ship.gameObject;
+                var di = new DamageInfo { damage = m.damage, type = (DamageType)m.type, pos = m.pos, owner = owner };
+                s_applying_remote_hit = true;
+                try { d.ApplyDamage(di); } finally { s_applying_remote_hit = false; }
+                CoopLog.Write("WORLD", "host: joiner conn " + msg.conn.connectionId + " hit destroyable " + m.id + " '" + d.gameObject.name + "' dmg=" + m.damage.ToString("F1") + (owner == null ? " (no ship found)" : ""));
+            }
+            catch (Exception ex) { CoopLog.Error("CoopWorld.OnHit", ex); }
+        }
+        static bool s_applying_remote_hit;
+        static int s_host_hits_logged;
+
+        /// Host diagnostic: who hits destroyables here (tells us whether joiner shots reach destroyables on the host by themselves).
+        public static void HostNoteHit(Destroyable d, DamageInfo di)
+        {
+            if (s_applying_remote_hit || s_host_hits_logged++ >= 30) return;
+            ushort id; TryDestroyId(d, out id);
+            var ps = di.owner != null ? (di.owner.GetComponent<PlayerShip>() ?? di.owner.GetComponentInParent<PlayerShip>()) : null;
+            CoopLog.Write("WORLD", "host: destroyable " + id + " '" + d.gameObject.name + "' hit dmg=" + di.damage.ToString("F1") + " type=" + di.type +
+                " by " + (ps != null ? "netId=" + ps.c_player.netId.Value + (ps.isLocalPlayer ? " (host)" : " (joiner ship on host)") : (di.owner != null ? di.owner.name : "?")));
+        }
+
         // ---------------------------------------------------------------- shared
         public static void ApplyKeys(int k, bool announce)
         {
@@ -196,10 +235,38 @@ namespace OlCoop.World
             try { if (GameplayManager.m_gm != null && GameplayManager.m_gm.m_security_manager != null) GameplayManager.m_gm.m_security_manager.UpdateSecurityLevel(); } catch (Exception ex) { CoopLog.Error("UpdateSecurityLevel", ex); }
             foreach (var d in UnityEngine.Object.FindObjectsOfType<DoorAnimating>()) { try { d.UpdateLock(); } catch { } }
             if (announce && k > before)
-                GameplayManager.InfoPopup(Loc.LS("SECURITY ACCESS GRANTED!"), Loc.LS("SECURITY KEY ACQUIRED BY A TEAMMATE!"), 8f);
+            {
+                GameplayManager.InfoPopup(Loc.LS("SECURITY ACCESS GRANTED!"), Loc.LS("SECURITY KEY ACQUIRED!"), 8f);
+                PlayKeySound();
+            }
+        }
+
+        static readonly MethodInfo m_sfx2d = AccessTools.Method(typeof(SFXCueManager), "PlayRawSoundEffect2D");
+        /// Same cue Player.AddKey plays (369) - AddKey only runs on the host in co-op.
+        static void PlayKeySound()
+        {
+            try
+            {
+                if (m_sfx2d == null) return;
+                var ps = m_sfx2d.GetParameters();
+                object cue = ps[0].ParameterType.IsEnum ? Enum.ToObject(ps[0].ParameterType, 369) : (object)369;
+                m_sfx2d.Invoke(null, new object[] { cue, 1f, 0f, 0.1f, false });
+            }
+            catch (Exception ex) { CoopLog.Error("PlayKeySound", ex); }
         }
 
         // ---------------------------------------------------------------- joiner
+        /// Joiner: our shot hit a destroyable on our screen. The host is authoritative, so send it the hit.
+        public static void SendHit(Destroyable d, DamageInfo di)
+        {
+            ushort id;
+            var c = Client.GetClient();
+            if (c == null || !TryDestroyId(d, out id) || (bool)d.m_dying) return;
+            c.Send(WNet.Hit, new HitMsg { id = id, damage = di.damage, type = (int)di.type, pos = di.pos });
+            if (s_hits_logged++ < 20) CoopLog.Write("WORLD", "joiner: hit destroyable " + id + " '" + d.gameObject.name + "' dmg=" + di.damage.ToString("F1") + " -> host");
+        }
+        static int s_hits_logged;
+
         public static void SendReady()
         {
             var c = Client.GetClient();
@@ -318,7 +385,13 @@ namespace OlCoop.World
     [HarmonyPatch(typeof(Destroyable), "ApplyDamage")]
     static class W2_DestroyableDamage
     {
-        static bool Prefix() { return !(CoopWorld.IsJoiner && CoopWorld.Matched); }
+        static bool Prefix(Destroyable __instance, DamageInfo di)
+        {
+            if (CoopWorld.IsHost) { try { CoopWorld.HostNoteHit(__instance, di); } catch { } return true; }
+            if (!(CoopWorld.IsJoiner && CoopWorld.Matched)) return true;
+            try { CoopWorld.SendHit(__instance, di); } catch (Exception ex) { CoopLog.Error("W2", ex); }
+            return false;
+        }
     }
 
     /// W3: destroyable destruction. Host broadcasts; joiner only destroys on the host's word.
@@ -356,6 +429,7 @@ namespace OlCoop.World
             CoopConfig.EnsureInit();
             if (!CoopConfig.IsHost) return;
             NetworkServer.RegisterHandler(WNet.Ready, CoopWorld.OnReadyRaw);
+            NetworkServer.RegisterHandler(WNet.Hit, CoopWorld.OnHit);
         }
     }
 
