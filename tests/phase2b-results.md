@@ -92,3 +92,10 @@
 - Host loaded sp_titan_06 09:49:25, removed the joiners' old ships 09:49:28, sent the scene 09:49:33.586. Joiners: "Unknown message
   ID 36" (UNET NotReady from SetClientNotReady, no client handler) - UNET drops the rest of that batch (config, level info, 48, 49).
   No retry: CoopClient.AwaitTick runs from GameplayManager.Update, which doesn't tick in the menus. Joiners stuck on WAITING.
+
+## Run 09:56-10:06, 0.4.16 (all logs 0.4.16-world protocol 13), 3 players, Goliath save (host then reloaded the same save)
+- User: if a joiner dies when someone exits, it breaks their game and they get no exit screen.
+- Joiner 14384 dead at the exit (10:04:29 "alive=False") -> old path ShowWaiting, spectating until the host's level; at 10:05:31
+  "host marked us not-ready" + "host's level arrived after 1 request(s)" (the NotReady fix works).
+- Joiner 9580 ran the end-of-level screens (10:04:44), then was in MAIN_MENU from 10:05:14 (not PLAY_GAME). C1 deferred the host's
+  level there ("once the end-of-level screens are done (menu MAIN_MENU)") every 10 s - stuck.

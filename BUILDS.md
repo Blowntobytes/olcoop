@@ -34,4 +34,5 @@ Targets unless noted: Overload 1.1.1886, olmod 0.5.14.
 | 0.4.13-world | 12 | 10-04 07:56 | tested (08:01 run) | joiner shots no longer dropped by olmod (0 vs 278); loadout carried to next level (log) | Devastator unlocked but 0 ammo on the joiner; carry-over dropped the new level's Flak | tag v0.4.13 |
 | 0.4.14-world | 13 | 10-04 08:23 | tested (08:24-08:49, 3 runs) | **Devastator picked up by a joiner is selectable and fires**; melee hits the joiner it attacks; missile pickups reach joiners without double counting; 0 shots dropped (log) | - | tag v0.4.14 |
 | 0.4.15-world | 13 | 10-04 09:28 | tested (09:44 run) | **joiners get results + upgrade screens** (user: mostly worked); upgrades captured (joiner 1 weapon levels 2,2,..; joiner 2 missile levels 2,2) (log) | joiners stuck on WAITING after the host started the next level | tag v0.4.15 |
-| 0.4.16-world | 13 | 10-04 09:53 | untested | - | - | tag v0.4.16, build-phase2b |
+| 0.4.16-world | 13 | 10-04 09:53 | tested (09:56 run) | NotReady handled; host's level reached a joiner on the first send (log) | joiner dead at the exit: no end-of-level screens; a joiner that landed in the main menu after the results never loaded the host's level | tag v0.4.16 |
+| 0.4.17-world | 13 | 10-04 10:10 | untested | - | - | tag v0.4.17, build-phase2b |

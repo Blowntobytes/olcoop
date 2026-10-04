@@ -257,7 +257,7 @@ namespace OlCoop.World
                 byte kind = pm.kind;
                 CoopLog.Write("FLOW", "joiner: host started " + KindName(kind) + "; gameplay=" + GameplayManager.m_gameplay_state + " alive=" + LocalAlive() + " moveTo=" + pm.pos.ToString("F1"));
                 if (GameplayManager.m_gameplay_state == GameplayState.EXIT) return;
-                if (!LocalAlive()) { ShowWaiting(); return; }
+                if (!LocalAlive()) { PostLevel.DeadJoinerExit(); return; }
                 if (GameplayManager.m_gameplay_state != GameplayState.PLAYING)
                 {
                     // map or menu open: start the exit as soon as the player is back in normal play
@@ -287,7 +287,7 @@ namespace OlCoop.World
         {
             if (s_pending_exit < 0 || GameplayManager.m_gameplay_state != GameplayState.PLAYING) return;
             byte k = (byte)s_pending_exit; s_pending_exit = -1;
-            if (!LocalAlive()) { ShowWaiting(); return; }
+            if (!LocalAlive()) { PostLevel.DeadJoinerExit(); return; }
             CoopLog.Write("FLOW", "joiner: running the deferred " + KindName(k));
             if (s_pending_pose != null && s_pending_pose.pos != Vector3.zero) MoveShip(GameManager.m_player_ship, s_pending_pose.pos, s_pending_pose.rot);
             RunExit(k);

@@ -22,6 +22,25 @@ namespace OlCoop.World
 
         public static bool InMenus { get { return s_active && !s_at_gate; } }
 
+        /// The stock end-of-level screens. Only while the joiner is in one of these is the host's level held back (10:05 run: a joiner
+        /// whose menus went to MAIN_MENU instead of PLAY_GAME waited there forever).
+        static readonly System.Collections.Generic.HashSet<MenuState> s_post_menus = new System.Collections.Generic.HashSet<MenuState> {
+            MenuState.LEVEL_RESULTS, MenuState.STATS, MenuState.UPGRADE_MENU, MenuState.SAVE_MENU, MenuState.SAVE_ERROR,
+            MenuState.DEBRIEF, MenuState.LEVEL_BRIEFING, MenuState.BRIEFING, MenuState.ENTITY_BRIEFING, MenuState.MISSION_COMPLETE };
+
+        /// Joiner dead/spectating when the team exits (10:04 run: it stayed spectating with no end-of-level screens). Stop spectating
+        /// and finish the level like everyone else.
+        public static void DeadJoinerExit()
+        {
+            CoopLog.Write("FLOW", "joiner: the team exited while we were dead; finishing the level (end-of-level screens)");
+            try
+            {
+                OlCoop.Death.Spectate.Stop(null);
+                GameplayManager.EscapeLevel();   // F6 lets it run and calls Begin()
+            }
+            catch (Exception ex) { CoopLog.Error("DeadJoinerExit", ex); CoopFlow.ShowWaiting(); }
+        }
+
         public static void Begin()
         {
             if (s_active) return;
@@ -35,6 +54,13 @@ namespace OlCoop.World
         public static bool ShouldDefer(string name)
         {
             if (!InMenus) return false;
+            if (!s_post_menus.Contains(MenuManager.m_menu_state))
+            {
+                CoopLog.Write("FLOW", "joiner: host's level '" + name + "' ready and we're in " + MenuManager.m_menu_state + " (not an end-of-level screen); loading it now");
+                try { OlCoop.Combat.CoopLoadout.CaptureForNextLevel("left the end-of-level screens"); } catch (Exception ex) { CoopLog.Error("PostLevel capture", ex); }
+                s_at_gate = true;
+                return false;
+            }
             s_pending = name;
             if (!s_logged_defer) { s_logged_defer = true; CoopLog.Write("FLOW", "joiner: host's level '" + name + "' ready; loading it once the end-of-level screens are done (menu " + MenuManager.m_menu_state + ")"); }
             return true;

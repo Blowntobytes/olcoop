@@ -1,6 +1,13 @@
 # Changelog
 
-## 0.4.16-world (2026-10-04), UNTESTED in game
+## 0.4.17-world (2026-10-04), UNTESTED in game
+- Fix: a joiner who was dead when the team exited got no end-of-level screens and stayed spectating in the old level. It now stops
+  spectating and finishes the level like everyone else (results, upgrades, then the host's next level).
+- Fix: a joiner whose end-of-level menus ended up somewhere else (10:05 run: the main menu) never loaded the host's level - it was
+  being held back "until the end-of-level screens are done". The host's level is now only held back while the joiner is actually on
+  an end-of-level screen (results, stats, upgrades, save, briefing); anywhere else it loads at once.
+
+## 0.4.16-world (2026-10-04), 09:56 run: NotReady handled, level hand-off arrived first time on the dead joiner; dead joiner had no screens; one joiner stuck in the main menu
 - Fix: after the end-of-level screens, joiners stayed on "WAITING FOR THE HOST'S NEXT LEVEL" when the host started the next level.
   The host's level hand-off starts with a "not ready" network message that Overload clients have no handler for, and the network
   layer then throws away the rest of that batch - which held the level itself. Inside the old level the joiner asked again every
