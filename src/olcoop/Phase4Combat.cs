@@ -1,4 +1,4 @@
-// olcoop 0.4.11-0.4.12: combat parity.
+// olcoop 0.4.11-0.4.13: combat parity.
 //  - Melee robots (claw/blade "Shredder", detonator, charger) damage the ship they actually hit, not always the host.
 //  - Joiner loadout (weapons, upgrade levels, ammo, missiles, energy) is applied to the host's copy of that joiner, so the host
 //    stops refusing the joiner's ammo-weapon and missile shots.
@@ -135,16 +135,37 @@ namespace OlCoop.Combat
         // ------------------------------------------------------------ joiner
         static float s_send_at = -1f;
 
+        // Carry-over (0.4.13): a joiner's game starts each co-op level with that level's default campaign loadout (07:38/07:47 runs:
+        // both joiners IMPULSE/FALCON, ammo 200, missiles 10/60/8/24), so pickups were lost between levels. The loadout at the end of
+        // the exit flight is kept and re-applied when the next level's ship starts (this game session only).
+        static LoadoutMsg s_carry;
+        static bool s_carry_taken;
+        static string s_last_state;
+        static float s_next_poll;
+
         /// Joiner: our ship just started in a co-op level; send our loadout to the host shortly (its copy of us must exist first).
-        public static void JoinerShipStarted() { s_send_at = Time.realtimeSinceStartup + 1.0f; }
+        public static void JoinerShipStarted() { s_send_at = Time.realtimeSinceStartup + 1.0f; s_carry_taken = false; s_last_state = null; }
 
         public static void JoinerTick()
         {
+            var lp = GameManager.m_local_player;
+            if (!s_carry_taken && OlCoop.World.CoopFlow.Waiting && lp != null)
+            {
+                s_carry_taken = true; s_carry = Capture(lp);
+                CoopLog.Write("COMBAT", "joiner: level complete, keeping loadout for the next level: " + s_carry.Describe());
+            }
+            if (lp != null && Time.realtimeSinceStartup >= s_next_poll) { s_next_poll = Time.realtimeSinceStartup + 1f; LogChanges(lp); }
             if (s_send_at < 0f || Time.realtimeSinceStartup < s_send_at) return;
             s_send_at = -1f;
             var p = GameManager.m_local_player;
             var c = Client.GetClient();
             if (p == null || c == null || !c.isConnected) return;
+            if (s_carry != null)
+            {
+                Apply(p, s_carry, true);
+                CoopLog.Write("COMBAT", "joiner: restored loadout from the previous level: " + s_carry.Describe());
+                s_carry = null;
+            }
             var m = Capture(p);
             c.Send(LNet.Loadout, m);
             CoopLog.Write("COMBAT", "joiner: sent loadout to host: " + m.Describe());
@@ -167,6 +188,47 @@ namespace OlCoop.Combat
             return m;
         }
 
+        /// Joiner diagnostics: log the local weapon/missile state whenever it changes (Devastator selection report, 07:47 run).
+        static void LogChanges(Player p)
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.Append("weapon=").Append(p.m_weapon_type).Append(" missile=").Append(p.m_missile_type).Append(" wlevel=[");
+            for (int i = 0; i < p.m_weapon_level.Length; i++) sb.Append(i > 0 ? "," : "").Append((int)p.m_weapon_level[i]);
+            sb.Append("] mlevel=[");
+            for (int i = 0; i < p.m_missile_level.Length; i++) sb.Append(i > 0 ? "," : "").Append((int)p.m_missile_level[i]);
+            sb.Append("] missiles=[");
+            for (int i = 0; i < p.m_missile_ammo.Length; i++) sb.Append(i > 0 ? "," : "").Append((int)p.m_missile_ammo[i]);
+            sb.Append("] ammo=").Append((int)p.m_ammo);
+            string st = sb.ToString();
+            if (st == s_last_state) return;
+            s_last_state = st;
+            CoopLog.Write("COMBAT", "joiner: local loadout now " + st);
+        }
+
+        /// Write a loadout into a Player (joiner: its own; host: its copy of that joiner).
+        static void Apply(Player target, LoadoutMsg m, bool local)
+        {
+            for (int i = 0; i < Math.Min(m.wlevel.Length, target.m_weapon_level.Length); i++) target.m_weapon_level[i] = (WeaponUnlock)m.wlevel[i];
+            for (int i = 0; i < Math.Min(m.mlevel.Length, target.m_missile_level.Length); i++) target.m_missile_level[i] = (WeaponUnlock)m.mlevel[i];
+            for (int i = 0; i < Math.Min(m.wpicked.Length, target.m_weapon_picked_up.Length); i++) target.m_weapon_picked_up[i] = m.wpicked[i];
+            for (int i = 0; i < Math.Min(m.mammo.Length, target.m_missile_ammo.Length); i++) target.m_missile_ammo[i] = m.mammo[i];
+            var uf = UnlockFields;
+            for (int i = 0; i < Math.Min(m.unlocks.Length, uf.Length); i++) if (uf[i] != null) uf[i].SetValue(target, m.unlocks[i]);
+            target.m_ammo = m.ammo;
+            target.m_energy = m.energy;
+            if (local)
+            {
+                // local player: switch through the normal (Command) path so the host hears it too
+                target.m_weapon_type = (WeaponType)m.weapon; target.m_missile_type = (MissileType)m.missile;
+                try { target.UpdateCurrentWeaponName(); target.UpdateCurrentMissileName(); } catch { }
+            }
+            else
+            {
+                target.Networkm_weapon_type = (WeaponType)m.weapon;
+                target.Networkm_missile_type = (MissileType)m.missile;
+            }
+        }
+
         // ------------------------------------------------------------ host
         /// Host: apply a joiner's loadout to our copy of that joiner. Afterwards the game's own server-side sync (Player.Update sends
         /// ammo/energy RPCs, pickups run on the host) keeps both sides in step.
@@ -179,16 +241,7 @@ namespace OlCoop.Combat
                 foreach (var p in Overload.NetworkManager.m_Players)
                     if (p != null && !p.isLocalPlayer && p.connectionToClient != null && p.connectionToClient.connectionId == msg.conn.connectionId) target = p;
                 if (target == null) { CoopLog.Write("COMBAT", "host: loadout from conn " + msg.conn.connectionId + " but no player for it yet"); return; }
-                for (int i = 0; i < Math.Min(m.wlevel.Length, target.m_weapon_level.Length); i++) target.m_weapon_level[i] = (WeaponUnlock)m.wlevel[i];
-                for (int i = 0; i < Math.Min(m.mlevel.Length, target.m_missile_level.Length); i++) target.m_missile_level[i] = (WeaponUnlock)m.mlevel[i];
-                for (int i = 0; i < Math.Min(m.wpicked.Length, target.m_weapon_picked_up.Length); i++) target.m_weapon_picked_up[i] = m.wpicked[i];
-                for (int i = 0; i < Math.Min(m.mammo.Length, target.m_missile_ammo.Length); i++) target.m_missile_ammo[i] = m.mammo[i];
-                var uf = UnlockFields;
-                for (int i = 0; i < Math.Min(m.unlocks.Length, uf.Length); i++) if (uf[i] != null) uf[i].SetValue(target, m.unlocks[i]);
-                target.m_ammo = m.ammo;
-                target.m_energy = m.energy;
-                target.Networkm_weapon_type = (WeaponType)m.weapon;
-                target.Networkm_missile_type = (MissileType)m.missile;
+                Apply(target, m, false);
                 CoopLog.Write("COMBAT", "host: applied loadout of conn " + msg.conn.connectionId + " to netId=" + target.netId.Value + ": " + m.Describe());
             }
             catch (Exception ex) { CoopLog.Error("OnLoadout", ex); }
@@ -223,5 +276,87 @@ namespace OlCoop.Combat
             if (!CoopConfig.IsHost) return;
             NetworkServer.RegisterHandler(LNet.Loadout, CoopLoadout.OnLoadout);
         }
+    }
+
+    // ===================================================================== olmod sniper-packet clock
+    /// olmod's sniper packets (client-side shots) rate-check every shot on the server against NetworkMatch.m_match_elapsed_seconds
+    /// (MPSniperPacketsServerHandlers.OnSniperPacket). That clock only advances in NetworkMatch.ProcessPlaying, which returns at once
+    /// unless a multiplayer scene is loaded - never in a co-op campaign level. With the clock stuck the host dropped joiner shots as
+    /// "client is bursting" (07:47 run: 278 dropped - 138 impulse, 70 missile pod, 32 hunter, 20 creeper, 18 falcon). Advance it here.
+    /// Its other readers are MP-only (time limit inside ProcessPlaying, MP scoreboards, olmod race/stat log).
+    [HarmonyPatch(typeof(GameplayManager), "Update")]
+    static class K1_MatchClock
+    {
+        static bool s_logged;
+        static void Postfix()
+        {
+            if (!CoopConfig.Active || GameplayManager.IsMultiplayer || !GameplayManager.IsMultiplayerActive) return;
+            try
+            {
+                if (Overload.NetworkManager.IsMultiplayerSceneLoaded()) return;
+                NetworkMatch.m_match_elapsed_seconds += RUtility.FRAMETIME_GAME;
+                if (!s_logged) { s_logged = true; CoopLog.Write("COMBAT", "co-op: advancing the match clock (olmod shot rate check)"); }
+            }
+            catch (Exception ex) { CoopLog.Error("K1", ex); }
+        }
+    }
+
+    // ===================================================================== exit: ships pass through each other
+    /// 07:47 run (user): a joiner going through the exit first clogs the pipe. During an exit/teleport sequence every player ship
+    /// ignores collisions with every other player ship (on each peer; the level ends anyway).
+    [HarmonyPatch]
+    static class X1_ExitNoShipCollisions
+    {
+        static IEnumerable<MethodBase> TargetMethods()
+        {
+            yield return AccessTools.Method(typeof(GameplayManager), "ExitSequenceStart");
+            yield return AccessTools.Method(typeof(GameplayManager), "TeleportSequenceStart");
+        }
+        static void Postfix()
+        {
+            if (!CoopConfig.Active || GameplayManager.IsMultiplayer) return;
+            try
+            {
+                var ships = new List<PlayerShip>();
+                foreach (var p in Overload.NetworkManager.m_Players) if (p != null && p.c_player_ship != null) ships.Add(p.c_player_ship);
+                int pairs = 0;
+                for (int i = 0; i < ships.Count; i++)
+                    for (int j = i + 1; j < ships.Count; j++)
+                        foreach (var a in ships[i].GetComponentsInChildren<Collider>(true))
+                            foreach (var b in ships[j].GetComponentsInChildren<Collider>(true))
+                                if (a != null && b != null && !a.isTrigger && !b.isTrigger) { Physics.IgnoreCollision(a, b, true); pairs++; }
+                CoopLog.Write("COMBAT", "exit: " + ships.Count + " ships pass through each other (" + pairs + " collider pairs)");
+            }
+            catch (Exception ex) { CoopLog.Error("X1", ex); }
+        }
+    }
+
+    // ===================================================================== host diagnostics for joiner weapons/missiles
+    [HarmonyPatch(typeof(Player), "UnlockMissile")]
+    static class D1_LogUnlockMissile
+    {
+        static void Postfix(Player __instance, MissileType mt)
+        { if (CoopConfig.Active && !__instance.isLocalPlayer && Server.IsActive()) CoopLog.Write("COMBAT", "host: netId=" + __instance.netId.Value + " unlocked missile " + mt + " level=" + __instance.m_missile_level[(int)mt]); }
+    }
+
+    [HarmonyPatch(typeof(Player), "AddMissileAmmo")]
+    static class D2_LogAddMissileAmmo
+    {
+        static void Postfix(Player __instance, int amt, MissileType mt)
+        { if (CoopConfig.Active && !__instance.isLocalPlayer && Server.IsActive()) CoopLog.Write("COMBAT", "host: netId=" + __instance.netId.Value + " +" + amt + " " + mt + " -> " + (int)__instance.m_missile_ammo[(int)mt]); }
+    }
+
+    [HarmonyPatch(typeof(Player), "UnlockWeapon")]
+    static class D3_LogUnlockWeapon
+    {
+        static void Postfix(Player __instance, WeaponType wt, bool __result)
+        { if (CoopConfig.Active && !__instance.isLocalPlayer && Server.IsActive()) CoopLog.Write("COMBAT", "host: netId=" + __instance.netId.Value + " unlock weapon " + wt + " ok=" + __result); }
+    }
+
+    [HarmonyPatch(typeof(Player), "CmdSetCurrentMissile")]
+    static class D4_LogSelectMissile
+    {
+        static void Postfix(Player __instance, MissileType missile_type)
+        { if (CoopConfig.Active && !__instance.isLocalPlayer && Server.IsActive()) CoopLog.Write("COMBAT", "host: netId=" + __instance.netId.Value + " selected missile " + missile_type + " (level " + __instance.m_missile_level[(int)missile_type] + ", ammo " + (int)__instance.m_missile_ammo[(int)missile_type] + ")"); }
     }
 }

@@ -1,6 +1,18 @@
 # Changelog
 
-## 0.4.12-world (2026-10-04), UNTESTED in game
+## 0.4.13-world (2026-10-04), UNTESTED in game
+- Fix: the host dropped many joiner shots, missiles included (07:47 run: 278 dropped - impulse, missile pod, hunter, creeper, falcon -
+  "Fire packet dropped, client is bursting"). olmod rate-checks each client shot against the multiplayer match clock, and that clock
+  never runs in a campaign level, so shots looked like they all came at once. The clock now runs in co-op.
+- Exit: player ships pass through each other during the exit/teleport sequence, so a joiner going through the exit first no longer
+  clogs the pipe.
+- Joiner weapons carry over to the next level: the loadout at the end of the exit flight (weapons, upgrade levels, ammo, missiles,
+  energy, ship upgrades, selected weapon/missile) is restored when the next level's ship starts. Before, each joiner started every
+  co-op level with that level's default loadout. (This game session only; not saved to disk.)
+- Devastator report: logging added to find it next run - joiner logs its own weapon/missile state whenever it changes; host logs each
+  joiner missile unlock, missile ammo pickup, weapon unlock and missile selection.
+
+## 0.4.12-world (2026-10-04), 07:47 run: loadout + upgrades applied (log); exit lined up but clogged with a joiner first; joiner shots dropped by olmod; Devastator not selectable on a joiner
 - Fix: other players never saw a joiner's boost, and a joiner's boost was corrected back to normal speed. The host simulates every
   ship, and the game only lets a ship boost when its pilot has the boost upgrade (Player.m_unlock_boost). The host's copy of a joiner
   had no upgrades, so it never boosted and never sent the "boosting" state that shows the boost effect on other screens. The joiner's

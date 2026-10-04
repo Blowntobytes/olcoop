@@ -30,4 +30,5 @@ Targets unless noted: Overload 1.1.1886, olmod 0.5.14.
 | 0.4.9-world | 10 | 10-03 23:25 | tested (3 players, 06:33) | 3 players join; lockdown pulls both joiners; joiner 1 exit + black hold + next level (log) | joiners placed on the same spot: stuck after reload/next level, 2nd joiner exit stalled | tag v0.4.9 |
 | 0.4.10-world | 10 | 10-04 06:52 | tested (3 players, 07:13, working pilot) | separate spawns; all 3 ships fly; lockdown pulls everyone; all 3 exit, joiners black hold + status (log; user: "worked better") | at the Goliath exit no free spot next to the joiner, so each ship exits from its own spot; a joiner spawning in the boss trigger starts the lockdown at once | tag v0.4.10 |
 | 0.4.11-world | 11 | 10-04 07:34 | not tested (replaced by 0.4.12) | - | - | tag v0.4.11 |
-| 0.4.12-world | 12 | 10-04 07:46 | untested | - | - | tag v0.4.12, build-phase2b |
+| 0.4.12-world | 12 | 10-04 07:46 | tested (07:47 run) | joiner loadout + upgrades reach the host (log); exit line-up placed (log) | exit clog with a joiner first; 278 joiner shots dropped by olmod rate check; Devastator not selectable on a joiner | tag v0.4.12 |
+| 0.4.13-world | 12 | 10-04 07:56 | untested | - | - | tag v0.4.13, build-phase2b |

@@ -62,3 +62,12 @@
   moved host and joiner 1 next to it, on separate spots. Respawns placed apart (one via the segment fallback, 10.5 u).
 - Exit (joiner 2 first, 07:15:45): no free spot next to joiner 2 at the exit door, so host and joiner 1 exited from where they were
   (0.4.10 rule). All three completed: joiner 2 in 14.5 s, joiner 1 in 18.4 s, host 18.9 s; both joiners black hold + status 1.
+
+## Runs 07:38 (0.4.11) and 07:44 (0.4.12), 3 players (all logs show the right version)
+- Loadout reached the host on both joiners (07:47:30, upgrades=boost,headlight). Both joiners started with the level default loadout
+  (IMPULSE/FALCON, wlevel 1,1,1,0,1,0,0,0, mlevel 1,1,1,1,0,0,0,0, ammo 200, missiles 10/60/8/24) - nothing carried from earlier levels.
+- Exit line-up placed ships 4/7/10 u behind the exiting player (07:41:20, 07:49:44). User: with a joiner first the pipe clogs.
+- unity-host.log: 278 "Fire packet dropped, client is bursting" for OBSERVERB2B (joiner) shots. olmod MPSniperPacketsServerHandlers
+  .OnSniperPacket times shots with NetworkMatch.m_match_elapsed_seconds, which only ProcessPlaying advances, and only in an MP scene.
+- User: a picked-up Devastator was in the joiner's inventory but could not be selected. No log covered missile state; 0.4.13 adds it.
+  IL: pickup on the host calls UnlockMissile (-> RpcSetMissileLevel) + AddMissileAmmo (olmod sniper: PlayerAddResourceMessage 135).

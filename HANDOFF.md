@@ -117,3 +117,16 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 - Loadout msg 170 now also carries the 12 Player.m_unlock_* ship upgrades. Boost needs m_unlock_boost
   (FixedUpdateProcessControlsInternal); the host's copy only boosts, and Player.Update only sends RpcSetBoosting, with it.
   Remote boost flames: PlayerShip.Update -> UpdateThrusters (m_remote_player) scales thrusters while m_boosting.
+
+## 0.4.13 status (2026-10-04 07:56) - installed, UNTESTED
+- Installed SHA1 a933e31db7d168c026f8663374caf4f8ccd83831 (157184 bytes), verified in game folder + build-phase2b. Protocol 12. Tag v0.4.13. 160 patches, 0 problems.
+- olmod SNIPER PACKETS are active in co-op (client-side shots + client-owned ammo/energy; server rate-checks shots). K1 advances
+  NetworkMatch.m_match_elapsed_seconds in co-op (its burst-check clock). Earlier notes that ammo/energy are host-pushed via
+  Player.Update RPCs are wrong under sniper packets (olmod DisableRpcSetAmmo/Energy for "sniper" clients).
+- olmod MPTweaksOnLoadoutDataMessage throws KeyNotFoundException on the host for each joiner (ClientModifiersValid) - not ours, watch it.
+- X1: IgnoreCollision between all player ship colliders on ExitSequenceStart/TeleportSequenceStart (all peers).
+- Loadout carry-over: joiner captures its loadout when the exit flight ends (CoopFlow.Waiting) and re-applies it 1 s after the next
+  level's OnStartLocalPlayer, before sending msg 170. In memory only.
+- Diagnostics: [COMBAT] joiner: local loadout now ... (on change, 1 Hz poll); host: unlocked missile/+ammo/unlock weapon/selected missile.
+- User asked (07:52): joiners should get the end-of-level stats + upgrade screen like the host. Not started; needs the post-level menu
+  flow on joiners (stock DoneLevel(Escaped) path) with "continue" replaced by waiting for the host's next level.
