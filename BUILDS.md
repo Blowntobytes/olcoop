@@ -50,4 +50,5 @@ Targets unless noted: Overload 1.1.1886, olmod 0.5.14.
 | 0.5.8-online | 17 | 10-04 17:35 | not tested (17:33 run still on 0.5.7) | - | - | tag v0.5.8 |
 | 0.5.9-online | 17 | 10-04 18:05 | not tested (replaced by 0.5.10) | - | - | tag v0.5.9 |
 | 0.5.10-online | 17 | 10-04 17:57 | tested (17:59-18:13, two PCs, both logs + Unity logs) | saved game: 72 saved items re-created incl. 2 keys + 6 audio logs; joiner broke a button through the host on a save; invite opened the Steam friends list; no exceptions in Unity logs (user: looks real good) | - | tag v0.5.10, build-online |
-| 0.6.0-alpha | 17 | 10-04 18:25 | untested (cleanup of 0.5.10) | - | - | tag v0.6.0-alpha, NEW build folder build-alpha, dist/olcoop-0.6.0-alpha.zip |
+| 0.6.0-alpha | 17 | 10-04 18:25 | tested (19:20-20:53 CA-WI, joiner logs; 21:03-21:12 both logs) | 5 campaign levels over Steam, level hand-offs, saved game (Titan) | map close froze (joiner, host took a key); host: no pickup sounds; joiner: no ammo/energy from pickups, no shared upgrade points, points/ship upgrades lost between levels; hologuide can't find keys on joiner; robot lag at long distance | tag v0.6.0-alpha |
+| 0.6.1-alpha | 18 | 10-04 22:29 | untested | - | - | tag v0.6.1-alpha, build-alpha, dist/olcoop-0.6.1-alpha.zip |

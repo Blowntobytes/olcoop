@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.6.1-alpha (2026-10-04) - fixes from the first long internet session, UNTESTED build (all players must run 0.6.1-alpha; protocol 18)
+From the 19:20-20:53 run (California - Wisconsin, JosheM hosting) and the 21:03-21:12 run (PeetzaGuest hosting):
+- Fix: closing the map could freeze the game. When the map opens, the game collects the map markers of keys, audio logs,
+  switches and doors, and turns them off again when it closes. In co-op another player can pick one up while your map is open
+  (19:34: the host took the security key 4 s after the joiner opened the map); turning off the removed marker failed every frame,
+  so the map never finished closing. Removed markers are now skipped.
+- Fix: the host had no pickup sound (or flash) for most items. In multiplayer the server announces a pickup to the other players
+  and expects the picker's own game to have played it already, which never happens on the host. The host now plays its own.
+- Fix: joiners got no energy or ammo from pickups (and energy centers didn't recharge them). olmod only sends those to players
+  that announced themselves in the multiplayer lobby, which co-op skips, so nothing was sent. The host now treats every co-op
+  joiner as such a player. Missiles still come through olcoop's own message (tested in 0.4.14), not twice.
+- Fix/change: upgrade points are shared. Whoever picks up an upgrade point, every player gets it ("(TEAMMATE)" on the others).
+  A joiner's own pickup used to show its message on the host's screen; joiners now get their own message and sound.
+- Fix: joiners lost their unspent upgrade points and bought ship upgrades (energy use, ammo capacity, ...) at every level change.
+  Both now carry over with the rest of the joiner's loadout (this is the protocol change).
+- Friendly fire does half damage (CO-OP OPTIONS, FRIENDLY FIRE on).
+- Fix: the hologuide on a joiner couldn't lead to security keys ("next objective"), and didn't notice a key had been taken. The
+  guide only searches the items that existed at level start; a joiner's items all arrive later over the network (and on the host,
+  items restored from a save are new too). Every co-op item is now added to the guide's list, and removed when it goes away.
+- New: VR launcher. install.bat adds an "olcoop VR" shortcut (olcoop-vr.bat: olcoop.bat + -vrmode openvr).
+- Repo: README source-layout table restored; tests/online-test.md lists the real log lines; tools/decompile builds ILSpy's
+  decompiler engine from source (NuGet is blocked in the cloud workspace) to decompile the game and olmod into refs/.
+
 ## 0.6.0-alpha (2026-10-04) - first public release, UNTESTED build (all players must run 0.6.0-alpha; protocol 17)
 Same gameplay code as 0.5.10, which passed the 17:59-18:13 run (two PCs over Steam; see 0.5.10 below). Release cleanup only:
 - Removed the temporary security-key and item diagnostics (they found the saved-game and joiner-visibility causes).

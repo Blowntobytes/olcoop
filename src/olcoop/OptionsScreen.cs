@@ -21,7 +21,7 @@ namespace OlCoop.UI
         public const int OptionsItemId = 10;                                       // free id in the OPTIONS list
 
         const int ID_COOLDOWN = 3, ID_FF = 4, ID_NAMES = 5, ID_BACK = 100;
-        const string FFDesc = "WHEN CHECKED, PLAYERS CAN DAMAGE EACH OTHER WITH SHOTS, EXPLOSIONS AND RAMMING";
+        const string FFDesc = "WHEN CHECKED, PLAYERS CAN DAMAGE EACH OTHER WITH SHOTS, EXPLOSIONS AND RAMMING (HALF DAMAGE)";
         const string NamesDesc = "YOUR OWN SETTING: SHOW TEAMMATES' PILOT NAMES ABOVE THEIR HEALTH BARS";
         static readonly MethodInfo s_goBack = AccessTools.Method(typeof(MenuManager), "GoBack");
 

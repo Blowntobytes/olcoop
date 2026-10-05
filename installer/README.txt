@@ -10,11 +10,12 @@ Install
   1. Unzip this folder anywhere.
   2. Run install.bat. It looks for Overload on every drive (Steam's library list and the usual Steam folders),
      asks for the folder if it can't find it, copies the mod and checks the copy.
-     It also puts an "olcoop" shortcut (orange and black olcoop icon) on your Desktop.
+     It also puts "olcoop" and "olcoop VR" shortcuts (orange and black olcoop icon) on your Desktop.
 
 Play
   1. Start the game with the olcoop shortcut, or olcoop.bat in your Overload folder. Do not start it from Steam's Play button:
      that runs the game without olmod.
+     VR (SteamVR headsets): start SteamVR, then the "olcoop VR" shortcut or olcoop-vr.bat (adds -vrmode openvr).
   2. Main menu, bottom right: CO-OP: HOST / JOIN.
      Host:   HOST A CO-OP GAME, invite your friends from the list, then BACK and start or continue the campaign
              (PLAY MISSION / LOAD SAVED GAME) as usual.

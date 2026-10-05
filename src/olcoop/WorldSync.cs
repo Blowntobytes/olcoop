@@ -238,6 +238,9 @@ namespace OlCoop.World
             foreach (var d in UnityEngine.Object.FindObjectsOfType<DoorAnimating>()) { try { d.UpdateLock(); } catch { } }
             if (announce && k > before)
             {
+                // Hologuide: a key pickup (Item.OnTriggerEnter) only runs on the host, so a joiner's guide waiting in GO_TO_KEY never
+                // learned the key was taken. Same flag the host's pickup sets.
+                Robot.m_player_picked_up_security_key = true;
                 GameplayManager.InfoPopup(Loc.LS("SECURITY ACCESS GRANTED!"), Loc.LS("SECURITY KEY ACQUIRED!"), 8f);
                 PlayKeySound();
             }

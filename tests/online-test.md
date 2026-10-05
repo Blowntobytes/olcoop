@@ -1,38 +1,44 @@
-# Online test (build 0.6.0-alpha)
-All windows / PCs must show OLCOOP 0.6.0-ALPHA at the top-left of the main menu. Steam must be running.
+# Online test (build 0.6.1-alpha)
+All windows / PCs must show OLCOOP 0.6.1-ALPHA at the top-left of the main menu (0.6.0 can't join 0.6.1: protocol 18).
+Steam must be running. Send BOTH PCs' `Overload\olcoop_logs` folders after the run (the host's log matters most for
+pickups and upgrade points), and say which PC hosted.
+
+## New in 0.6.1 (check these first)
+1. Map while the host picks something up (the 19:34 freeze): joiner opens the map (M) and keeps it open while the host picks
+   up a security key or audio log, or breaks a destructible switch. Joiner closes the map: it closes normally.
+   Joiner log: [FLOW] "automap: closing; skipped N map marker(s) removed while the map was open".
+2. Host pickup sounds: the host picks up energy, ammo, armor, a missile and a weapon: each has its pickup sound (and the screen
+   flash). Host log: [ITEM] "host: pickup sound for my ..." (first 5).
+3. Joiner energy and ammo: the joiner fires the Driller/Cyclone etc. until ammo is low, uses energy, then picks up an ammo box
+   and an energy powerup: the HUD shows AMMO INCREASED TO / ENERGY INCREASED TO and the counters go up. Also an energy center
+   recharges the joiner. Missiles: picking up a missile pack adds the right number once (not twice).
+4. Upgrade points: the host picks up an upgrade point: the joiner(s) get "UPGRADE POINT ACQUIRED! (n TOTAL) (TEAMMATE)" and the
+   host gets its own message. A joiner picks one up: the joiner (not the host) shows the message, and everyone gets the point.
+   Host log: [ITEM] "... point given to every player", "host: netId=.. +1 upgrade point"; joiner log: [ITEM] "joiner: +1 ...".
+5. Upgrades kept between levels: a joiner saves points (doesn't spend them all) and buys a ship upgrade (e.g. ammo capacity);
+   next level: the unspent points and the ship upgrade are still there (upgrade menu after the next level shows them).
+   Joiner log: [COMBAT] "... ship=[..] points=a/b" on "keeping loadout" and "restored loadout".
+6. Friendly fire (CO-OP OPTIONS: FRIENDLY FIRE on): shots between players do half the damage they did in 0.6.0. FF off: none.
+7. Hologuide on a joiner: in a level with a security key the joiner calls the guide and picks "next objective": it leads to
+   the key (FOLLOW ME TO THE SECURITY KEY); after anyone picks up the key it moves on (security door / reactor / exit).
+   Joiner log: [ITEM] "joiner: KEY_SECURITY added to the hologuide's item list".
+8. VR launcher: install.bat from the zip creates "olcoop VR" next to "olcoop" on the Desktop; with SteamVR running it starts the
+   game in the headset (olcoop-vr.bat = olcoop.bat + -vrmode openvr).
 
 ## Same PC (two or three windows, olcoop-host.bat / olcoop-join.bat as before)
-1. Level end: results -> upgrades directly (no story scene in between); the joiners' briefing button says READY UP; the host's
+9. Level end: results -> upgrades directly (no story scene in between); the joiners' briefing button says READY UP; the host's
    next level starts after every joiner pressed READY UP.
-2. New campaign from the main menu (PLAY MISSION): no intro scene, straight to the upgrade/briefing screens.
-3. Headlights: each player toggles headlights; the others see them. Spectate a live player with headlights on: the level is lit.
-4. Respawn mode: die and respawn with headlights on: the others still see your headlights.
-5. Main menu shows CO-OP: HOSTING / CO-OP: JOINED bottom right; the CO-OP screen opens and BACK returns.
+10. New campaign from the main menu (PLAY MISSION): no intro scene, straight to the upgrade/briefing screens.
+11. Headlights: each player toggles headlights; the others see them. Spectate a live player with headlights on: the level is lit.
+12. Main menu shows CO-OP: HOSTING / CO-OP: JOINED bottom right; the CO-OP screen opens and BACK returns.
 
-## Two PCs (you + a friend, different Steam accounts) - friend installs dist/olcoop-0.6.0-alpha.zip
-6. Both start olcoop.bat. Host: CO-OP -> HOST A CO-OP GAME (status: HOSTING - FRIENDS CAN JOIN OR BE INVITED), INVITE the friend.
-7. Friend accepts the Steam chat invite (game running) -> joins; or friend opens CO-OP and picks the host -> JOIN.
-8. Host: BACK -> PLAY MISSION or LOAD SAVED GAME. The friend is taken into the host's level next to the host.
-9. Play a level to the exit: results, upgrades, READY UP, next level for both.
-10. Send both olcoop_logs folders (the [STEAM] lines show the route: relay=True/False).
-11. Disconnect, joiner: a joiner closes the game (or LEAVE CO-OP, or pulls the network): within 20 s (at once for a normal quit)
-    its ship disappears for the host and the other joiner.
-12. Disconnect, host: the host closes the game: joiners return to the main menu with THE HOST LEFT THE GAME.
-13. Boost: each player boosts in turn; everyone else sees the flames and hears the boost on that ship.
-14. Esc menu: the joiner has LEAVE SESSION, the host STOP HOSTING (under QUIT TO MAIN MENU). Joiner leaves: its ship disappears
-    for the others, the joiner is at the main menu and not reconnected. Host stops: joiners go to the MAIN menu (not multiplayer).
-15. Force-close a game (Alt+F4 / Task Manager): the others carry on (joiner gone) or go to the main menu (host gone) within 20 s.
-16. HUD + objective counter: top right shows SCORE/DESTROYED like single player (no PvP scoreboard). Objective counter (needs a level with a kill objective, e.g. Ymir Outpost): host and joiners kill operators; every
-    player's OPERATORS counter (HUD, top) counts down together and the "N AUTONOMOUS-OPERATORS REMAINING" popups show on
-    everyone. Same for CORES REMAINING on an alien-core level if you reach one. Logs: [OBJ] lines on host and joiners.
-17. Installer: run install.bat from the zip: an "olcoop" shortcut with the orange/black icon appears on the Desktop and starts
-    the game like olcoop.bat.
-18. Security keys (Ymir Outpost = sp_outer_01, the operator level): get both keys. If a key can't be found, note roughly
-    where you looked and when, then send both logs ([KEY] lines on host and joiner). Repeat on any level where a key is missing.
-19. Saved game: host continues a saved game (LOAD SAVED GAME, e.g. Tarvos Outpost): the security key(s), audio logs and power-ups
-    are there for the host and the joiner; both can pick them up. Host log: [ITEM] "network-spawned restored ..." lines.
-20. Joiner breaks a shoot-to-open button (and the host one): the door opens for everyone. Send BOTH logs.
-21. Joiner visibility: on a fresh level the joiner flies to the security keys, audio logs and power-ups: all visible on the joiner.
-    Host log: [ITEM] "sent ... to joiners" lines.
-22. INVITE THROUGH STEAM (host): either the Steam overlay invite opens, or the Steam friends list opens on the desktop; right-click
-    the friend > Invite to Game -> the friend gets the invite and joins. Host log: [STEAM] "invite button: overlay enabled=...".
+## Two PCs (you + a friend, different Steam accounts) - friend installs dist/olcoop-0.6.1-alpha.zip
+13. Both start olcoop.bat. Host: CO-OP -> HOST A CO-OP GAME, INVITE the friend; friend accepts (or picks the host -> JOIN).
+14. Host: BACK -> PLAY MISSION or LOAD SAVED GAME. The friend is taken into the host's level next to the host.
+15. Disconnects: LEAVE SESSION / STOP HOSTING in the Esc menu; a closed game is noticed within 20 s.
+16. Saved game (LOAD SAVED GAME, e.g. Tarvos Outpost): keys, audio logs and power-ups are there for host and joiner.
+    Host log: [ITEM] "host: saved items: N present, N re-created, N failed".
+17. Joiner visibility: on a fresh level the joiner flies to the security keys, audio logs and power-ups: all visible.
+    Host log: [ITEM] "host: sent ... to joiners (switched on after they joined)".
+18. Joiner breaks a shoot-to-open button (and the host one): the door opens for everyone.
+19. INVITE THROUGH STEAM (host): the Steam overlay invite or the Steam friends list opens. Host log: [STEAM] "invite button: overlay enabled=...".

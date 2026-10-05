@@ -23,6 +23,7 @@ expect rough edges. Download the latest zip from [Releases](https://github.com/B
   through olmod): right-click a friend > Invite to Game. The INVITE button next to each friend on the CO-OP screen works in-game.
 - Every player must run the same olcoop version; the game refuses to connect otherwise.
 - Improper disconnections can cause game freezing. Either 'leave session' or 'stop hosting' for proper disconnect.
+- Over long-distance connections robots lag behind on joiners' screens (they are shown about 0.1 s behind the host plus the ping).
 
 ## Install (players)
 Requirements: Overload on Steam, Steam running, and olmod 0.5.14 in the Overload folder. Every player needs the same olcoop version.
@@ -31,6 +32,7 @@ Requirements: Overload on Steam, Steam running, and olmod 0.5.14 in the Overload
    and puts an **olcoop** shortcut (orange and black icon) on your Desktop.
 3. Start the game with the **olcoop** shortcut, or `olcoop.bat` IN THE GAME FOLDER, not the zip folder (not Steam's Play button,
    which starts the vanilla game).
+   VR (SteamVR headsets): start SteamVR, then the **olcoop VR** shortcut or `olcoop-vr.bat` (same, with `-vrmode openvr`).
 4. Main menu, bottom right: **CO-OP: HOST / JOIN**.
    - Host: HOST A CO-OP GAME, invite friends from the list, then BACK and start or continue the campaign.
    - Friend: accept the host's Steam invite while the game is running, or open CO-OP and pick the friend who is hosting.
@@ -48,7 +50,25 @@ Options: `-coopnolog` turns logging off, `-coopdump <sec>` sets the state-dump i
 - `tools/VerifyPatches.cs` checks offline that every Harmony patch target and parameter name exists in the game.
 - `refs/` holds the local decompilation (`tools/ildump.py`) and is git-ignored. Never commit it.
 
-
+### Source layout (`src/olcoop/`)
+| File | What it does |
+|---|---|
+| `CoopCore.cs` | Mod entry, role (host/joiner), command line, logging |
+| `Session.cs` | Joining the host's campaign level, handshake, player spawn |
+| `NetcodeFixes.cs` | Side effects of running campaign levels with multiplayer netcode on |
+| `SteamTransport.cs` | Steam P2P connection, lobby, invites, disconnect detection |
+| `CoopScreen.cs` | CO-OP main-menu screen, Esc-menu entries, skipped story scenes, READY UP |
+| `OptionsScreen.cs`, `OptionsWindow.cs` | CO-OP OPTIONS (death mode, friendly fire etc.), in-menu and F8 window |
+| `Robots.cs` | Host-authoritative robots streamed to joiners |
+| `WorldSync.cs` | Level scripts, doors, switches, destroyables, security keys |
+| `LevelFlow.cs` | Audio logs, exiting together, lockdowns, teammates on the automap, closing the map safely |
+| `Items.cs` | Saved-game items, late-activated items, pickup sounds/ammo/energy, shared upgrade points, hologuide item list |
+| `Combat.cs` | Melee damage routing, joiner loadouts and carry-over between levels, shot rate checks |
+| `Death.cs`, `Hud.cs` | Death modes (respawn / spectate / hardcore), friendly fire, respawn countdown, names and health bars |
+| `ShipState.cs` | Headlights and boost on other players' ships |
+| `Objectives.cs` | Objective counters (operators, cores) and the single-player score block |
+| `PostLevel.cs` | End-of-level screens on joiners, waiting for everyone to be ready |
+| `Diagnostics.cs` | Read-only state logging to `olcoop_logs` |
 
 ## Docs
 - `HANDOFF.md`: how the mod works, version by version, and the working rules.

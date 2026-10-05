@@ -1,4 +1,4 @@
-# olcoop handoff (state as of 2026-10-04 18:25 PT)
+# olcoop handoff (state as of 2026-10-04 23:30 PT)
 
 Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
@@ -6,15 +6,18 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 - Repo copy (source of truth): `C:\Users\atyou\Desktop\AI crap\olmodcoop` (src, docs, tests, tools, build.sh, VERSION, lib\0Harmony.dll).
 - Game: `C:\Program Files (x86)\Steam\steamapps\common\Overload` (olmod 0.5.14, `olmod.exe -modded`). Logs: `olcoop_logs\` there
   (`olcoop-<date>-pid<pid>.log` per process, plus `unity-host.log` / `unity-join.log`).
-- Decompiled game source (`refs/`) and the offline ILSpy build are NOT on the PC (game code, not redistributed). Re-decompile
-  `Overload_Data\Managed\Assembly-CSharp.dll` locally if needed. Build references the game's Managed DLLs + GameMod.dll staged from the game folder.
+- Decompiled game source (`refs/`) is NOT on the PC (game code, not redistributed). Regenerate it in the cloud workspace:
+  `bash tools/decompile/build-and-run.sh` (apt-get install dotnet-sdk-8.0; builds ILSpy's decompiler engine v8.2 from GitHub
+  source, since NuGet is blocked) -> readable C# in refs/cs-game, cs-firstpass, cs-unet, cs-olmod. `tools/ildump.py` (IL only)
+  still works as a fallback. Build references the game's Managed DLLs + GameMod.dll staged from the game folder.
 
 ## Build + delivery rules (user is strict about these)
-- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.6.0 alpha"). Protocol = 17 (in build.sh). Current build folder: build-alpha (since 0.6.0-alpha; build-online held 0.5.x).
+- Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
+  `VERSION` ("0.6.1 alpha"). Protocol = 18 (in build.sh). Current build folder: build-alpha (since 0.6.0-alpha; build-online held 0.5.x).
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 192 patches, 0 problems;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
-- ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b (current). Bug fixes overwrite the current phase
-  folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
+- ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-alpha (current).
+  Bug fixes overwrite the current phase folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
 - Also install the DLL directly into the game folder via the device bridge and verify size/mtime (user's install.bat runs proved unreliable).
 - Check the `[INIT] olcoop x.y.z` line of every log before analysing a test — twice the user tested a stale version.
 - Never claim success without an in-game test; mark untested builds as untested.
@@ -430,3 +433,44 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   Blowntobytes); lib/README.md (Harmony 2.2.2, MIT); .gitignore also ignores publish/ and *.bundle.
 - Release flow from now on: ./build.sh, VerifyPatches, ./package.sh, copy DLL + installer files to the phase build folder, install,
   SHA1 check, commit + tag, bundle. GitHub Release: the user creates it on github.com from the pushed tag and attaches the zip.
+
+## 0.6.1-alpha status (2026-10-04 23:30) - installed, UNTESTED. Protocol 18 (LoadoutMsg 170 grew; new msg 195)
+- Installed SHA1 7447093701460894f5b86bfd5f6f72cd816cd4d6 (223744 bytes), verified in game folder + build-alpha (olcoop-vr.bat also in
+  both). Tag v0.6.1-alpha. 200 patches, 0 problems, 0 warnings. Player zip dist/olcoop-0.6.1-alpha.zip (SHA1
+  aba5a1634e67e6ccbbc2a3d14569607c32e56bcd); release notes dist/RELEASE-NOTES-0.6.1-alpha.md.
+- Runs analysed (all 0.6.0-alpha): 19:20/19:34 joiner logs (user BlownToBits = JOINER, host JosheM steam ...011202 in Wisconsin; host
+  log not supplied - asked for it), 21:03 PeetzaGuest host + 21:04 user joiner (both logs, sp_titan_06 from a save), 21:36 user host
+  (+ unity.log). README/known issue "Pickups don't always show up for everyone" not re-investigated (needs a host log).
+- Map freeze (19:34:22 joiner opened the map, 19:34:26 host took the Ymir key -> [DUMP]/[RSYNC] (GameplayManager.Update postfix)
+  stop, network-driven lines continue): Automap.Update EXIT does SetActive(false) on m_automap_objects ("_automap" children of
+  Key-tagged objects = security keys AND audio logs, cryotubes, PropGeneric incl. switch_onetime - tags confirmed in level22 data)
+  and GetComponentInChildren on m_doors; a network-destroyed one throws every frame -> EXIT never returns true. F18 (LevelFlow.cs)
+  prunes destroyed entries in EXIT. unity.log of that session was overwritten, so the exception text itself wasn't seen.
+- Host pickup FX: Item.OnTriggerEnter (server) -> CallRpcPlayItemPickupFX; RpcPlayItemPickupFX skips isLocalPlayer (stock MP: the
+  picker played it in TryFakePickup on its client). IT3a tracks the item, IT3 (CallRpcPlayItemPickupFX postfix) invokes the item's
+  PlayItemPickupFX for the host's own ship.
+- Joiner ammo/energy: joiner = olmod sniper client (ignores RpcSetEnergy/RpcSetAmmo); server sends msg 135 PlayerAddResource only if
+  MPTweaks.ClientHasTweak(conn,"sniper"); capabilities (msg 119) are sent in NetworkMatch.OnAcceptedToLobby (never in co-op), so
+  ClientInfos[conn] was empty (unity.log 21:37 "MPTweaks: conn 20 OnLoadoutDataMessage clientInfo is now " - empty). IT4 patches
+  ClientHasTweak: "sniper" = true for CoopHost.Verified conns on a co-op host (table is also cleared by MPTweaks.InitMatch). This also
+  turns on 135 for AddEnergyDefault (energy centers), AddWeakEnergy, HUD messages client-side, weapon-sync 134 relays. IT5 disables
+  olmod's MPSniperPacketsAddMissileAmmo.Prefix in co-op so missiles stay on our msg 174 (D2) only. olmod client range checks: energy
+  <= 20, ammo <= 200 (co-op ammo box = 50 because IsMultiplayerActive; super ammo 1000 would be rejected), missiles <= 80.
+- Upgrade points (SyncVars m_upgrade_points1/2, set in Player.AddUpgradePoint which also shows HUD + sound where it runs = host):
+  IT6 prefix on the host: pickup of UPGRADE_L1/L2 (CoopPickups.Current) gives every other player AddUpgradePoint too; for joiner
+  copies only the SyncVar is raised + msg 195 UpgradePointMsg {super, shared, total} -> joiner shows the stock message (+ "(TEAMMATE)").
+  Host's own ship keeps the stock path.
+- Carry-over: LoadoutMsg 170 now has slevel (Player.m_upgrade_level[10], ship upgrades) and points1/points2. Merge: slevel = max,
+  points = carried (local fields); host Apply sets m_upgrade_level and the points SyncVars (the host copy is what syncs back). Before,
+  each level's new Player started with 0 points for joiners and lost bought ship upgrades 0-3 (unlock flags 4-9 were already carried).
+- Friendly fire: FF1 prefix now takes ref DamageInfo: teammate damage x0.5 when FF on (TeammateDamageScale), none when off.
+- Hologuide: FindNextGuidebotObjective -> FindSegmentContainingKey searches RobotManager.m_master_item_list = FindObjectsOfType<Item>
+  at level init + spewed items only (Item.Start). Joiner items arrive later (network spawn / IV1), host save-restored items are new
+  instances. IT7 (Item.Start postfix) adds unlisted items in co-op; IT8 (Item.OnDestroy prefix) removes them (FindPowerupNearPlayer has
+  no null check). Joiner key: ApplyKeys (msg 180) sets Robot.m_player_picked_up_security_key (stock sets it only in the server pickup).
+- VR launcher: installer/olcoop-vr.bat (olcoop.bat + -vrmode openvr), "olcoop VR.lnk" from install.bat, removed by uninstall.bat,
+  in package.sh. Not run on Windows yet.
+- Robot lag (CA-WI): puppets render HostNow()-0.1 s (Robots.cs Tick, 20 Hz StateBatch) + one-way latency. Options proposed to the
+  user (adaptive delay, dead reckoning to host time, RTT logging first); nothing changed.
+- Wishlist from the user (not started): lobby member list on the CO-OP screen, 4 players, map/world ping visible through walls for
+  15 s to everyone, weapons available to every player (per-player weapon pickups).

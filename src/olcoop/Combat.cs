@@ -68,7 +68,7 @@ namespace OlCoop.Combat
     }
 
     // ===================================================================== loadout
-    public static class LNet { public const short Loadout = 170; public const short MissileGrant = 174; } // 170 J->H loadout; 174 H->J missile pickup
+    public static class LNet { public const short Loadout = 170; public const short MissileGrant = 174; public const short UpgradePoint = 195; } // 170 J->H loadout; 174 H->J missile pickup; 195 H->J upgrade point
 
     public class MissileGrantMsg : MessageBase
     {
@@ -83,6 +83,8 @@ namespace OlCoop.Combat
         public byte[] wlevel, mlevel; public bool[] wpicked;
         public int ammo; public int[] mammo; public float energy;
         public bool[] unlocks; // CoopLoadout.UnlockFieldNames order (ship upgrades: boost, boost speed/heatsink, headlight, ...)
+        public byte[] slevel;  // Player.m_upgrade_level (ship upgrade levels bought in the upgrade menu; [1] energy use, [2] ammo capacity)
+        public int points1, points2; // unspent upgrade points (normal / super)
         public override void Serialize(NetworkWriter w)
         {
             w.Write(weapon); w.Write(missile);
@@ -91,6 +93,8 @@ namespace OlCoop.Combat
             w.Write((byte)wpicked.Length); foreach (var b in wpicked) w.Write(b);
             w.Write(ammo); w.Write((byte)mammo.Length); foreach (var a in mammo) w.Write(a); w.Write(energy);
             w.Write((byte)unlocks.Length); foreach (var b in unlocks) w.Write(b);
+            w.Write((byte)slevel.Length); foreach (var b in slevel) w.Write(b);
+            w.Write(points1); w.Write(points2);
         }
         public override void Deserialize(NetworkReader r)
         {
@@ -101,12 +105,15 @@ namespace OlCoop.Combat
             ammo = r.ReadInt32(); mammo = new int[r.ReadByte()]; for (int i = 0; i < mammo.Length; i++) mammo[i] = r.ReadInt32();
             energy = r.ReadSingle();
             unlocks = new bool[r.ReadByte()]; for (int i = 0; i < unlocks.Length; i++) unlocks[i] = r.ReadBoolean();
+            slevel = new byte[r.ReadByte()]; for (int i = 0; i < slevel.Length; i++) slevel[i] = r.ReadByte();
+            points1 = r.ReadInt32(); points2 = r.ReadInt32();
         }
         public string Describe()
         {
             return "weapon=" + (WeaponType)weapon + " missile=" + (MissileType)missile + " wlevel=[" + string.Join(",", Array.ConvertAll(wlevel, b => b.ToString())) +
                    "] mlevel=[" + string.Join(",", Array.ConvertAll(mlevel, b => b.ToString())) + "] ammo=" + ammo +
-                   " missiles=[" + string.Join(",", Array.ConvertAll(mammo, a => a.ToString())) + "] energy=" + energy.ToString("F0") + " upgrades=" + CoopLoadout.UnlockNames(unlocks);
+                   " missiles=[" + string.Join(",", Array.ConvertAll(mammo, a => a.ToString())) + "] energy=" + energy.ToString("F0") + " upgrades=" + CoopLoadout.UnlockNames(unlocks) +
+                   " ship=[" + string.Join(",", Array.ConvertAll(slevel, b => b.ToString())) + "] points=" + points1 + "/" + points2;
         }
     }
 
@@ -201,6 +208,9 @@ namespace OlCoop.Combat
             for (int i = 0; i < m.mammo.Length; i++) m.mammo[i] = (int)p.m_missile_ammo[i];
             var uf = UnlockFields; m.unlocks = new bool[uf.Length];
             for (int i = 0; i < uf.Length; i++) m.unlocks[i] = uf[i] != null && (bool)uf[i].GetValue(p);
+            m.slevel = new byte[p.m_upgrade_level.Length];
+            for (int i = 0; i < m.slevel.Length; i++) m.slevel[i] = (byte)Math.Max(0, Math.Min(255, p.m_upgrade_level[i]));
+            m.points1 = p.m_upgrade_points1; m.points2 = p.m_upgrade_points2;
             return m;
         }
 
@@ -231,6 +241,8 @@ namespace OlCoop.Combat
             for (int i = 0; i < Math.Min(c.wpicked.Length, p.m_weapon_picked_up.Length); i++) if (c.wpicked[i]) p.m_weapon_picked_up[i] = true;
             var uf = UnlockFields;
             for (int i = 0; i < Math.Min(c.unlocks.Length, uf.Length); i++) if (uf[i] != null && c.unlocks[i]) uf[i].SetValue(p, true);
+            for (int i = 0; i < Math.Min(c.slevel.Length, p.m_upgrade_level.Length); i++) if (c.slevel[i] > p.m_upgrade_level[i]) p.m_upgrade_level[i] = c.slevel[i];
+            p.m_upgrade_points1 = c.points1; p.m_upgrade_points2 = c.points2;   // local copy; the host's copy gets them from msg 170
             for (int i = 0; i < Math.Min(c.mammo.Length, p.m_missile_ammo.Length); i++) p.m_missile_ammo[i] = c.mammo[i];
             p.m_ammo = c.ammo;
             p.m_energy = c.energy;
@@ -277,6 +289,8 @@ namespace OlCoop.Combat
             for (int i = 0; i < Math.Min(m.mammo.Length, target.m_missile_ammo.Length); i++) target.m_missile_ammo[i] = m.mammo[i];
             var uf = UnlockFields;
             for (int i = 0; i < Math.Min(m.unlocks.Length, uf.Length); i++) if (uf[i] != null) uf[i].SetValue(target, m.unlocks[i]);
+            for (int i = 0; i < Math.Min(m.slevel.Length, target.m_upgrade_level.Length); i++) target.m_upgrade_level[i] = m.slevel[i];
+            if (!local) { target.Networkm_upgrade_points1 = m.points1; target.Networkm_upgrade_points2 = m.points2; } // SyncVars: the host's copy is what syncs back
             target.m_ammo = m.ammo;
             target.m_energy = m.energy;
             if (local)
@@ -349,6 +363,7 @@ namespace OlCoop.Combat
             CoopConfig.EnsureInit();
             if (!CoopConfig.IsJoiner || Client.GetClient() == null) return;
             Client.GetClient().RegisterHandler(LNet.MissileGrant, CoopLoadout.OnMissileGrant);
+            Client.GetClient().RegisterHandler(LNet.UpgradePoint, OlCoop.World.CoopPickups.OnUpgradePoint);
         }
     }
 

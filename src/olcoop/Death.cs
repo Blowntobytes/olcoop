@@ -801,10 +801,16 @@ namespace OlCoop.Death
     [HarmonyPatch(typeof(PlayerShip), "ApplyDamage")]
     static class FF1_NoTeammateDamage
     {
-        static bool Prefix(PlayerShip __instance, DamageInfo di)
+        /// FRIENDLY FIRE ON: teammates take half damage from each other (user request after the 19:34-20:53 run).
+        public const float TeammateDamageScale = 0.5f;
+
+        static bool Prefix(PlayerShip __instance, ref DamageInfo di)
         {
-            if (!CoopConfig.Active || GameplayManager.IsMultiplayer || CoopSettings.FriendlyFire) return true;
-            return !FriendlyFireRules.IsTeammateDamage(__instance, di.owner);
+            if (!CoopConfig.Active || GameplayManager.IsMultiplayer) return true;
+            if (!FriendlyFireRules.IsTeammateDamage(__instance, di.owner)) return true;
+            if (!CoopSettings.FriendlyFire) return false;
+            di.damage *= TeammateDamageScale;
+            return true;
         }
     }
 

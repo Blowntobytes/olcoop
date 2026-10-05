@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using HarmonyLib;
 using Overload;
 using UnityEngine;
@@ -543,6 +544,41 @@ namespace OlCoop.World
             }
             catch (Exception ex) { CoopLog.Error("F8", ex); }
             finally { s_in = false; }
+        }
+    }
+
+    /// F18: closing the map. Automap.Update (INIT) collects the "_automap" markers of every Key-tagged object (security keys,
+    /// audio logs), cryotube and PropGeneric (incl. destructible switches) and the Door objects; EXIT calls SetActive(false) /
+    /// GetComponentInChildren on each. In co-op another player can pick up or destroy one of them while this map is open (the host's
+    /// pickup network-destroys it here), so EXIT threw a MissingReferenceException every frame and never returned true: the map
+    /// stayed open with a frozen picture (19:34 run, key picked up by the host 4 s after the joiner opened the map).
+    /// Drop destroyed entries before the stock EXIT code runs.
+    [HarmonyPatch(typeof(Automap), "Update")]
+    static class F18_AutomapCloseSafe
+    {
+        static readonly System.Reflection.FieldInfo f_state = AccessTools.Field(typeof(Automap), "m_automap_state");
+        static readonly System.Reflection.FieldInfo f_objects = AccessTools.Field(typeof(Automap), "m_automap_objects");
+        static readonly System.Reflection.FieldInfo f_doors = AccessTools.Field(typeof(Automap), "m_doors");
+
+        static void Prefix(Automap __instance)
+        {
+            if (!CoopConfig.Active) return;
+            try
+            {
+                if ((int)f_state.GetValue(__instance) != (int)Automap.AutomapState.EXIT) return;
+                int gone = 0;
+                var objs = f_objects.GetValue(__instance) as List<GameObject>;
+                if (objs != null) gone += objs.RemoveAll(o => o == null);
+                var doors = f_doors.GetValue(__instance) as GameObject[];
+                if (doors != null)
+                {
+                    var kept = new List<GameObject>(doors.Length);
+                    foreach (var d in doors) if (d != null) kept.Add(d);
+                    if (kept.Count != doors.Length) { gone += doors.Length - kept.Count; f_doors.SetValue(__instance, kept.ToArray()); }
+                }
+                if (gone > 0) CoopLog.Write("FLOW", "automap: closing; skipped " + gone + " map marker(s) removed while the map was open");
+            }
+            catch (Exception ex) { CoopLog.Error("F18", ex); }
         }
     }
 
