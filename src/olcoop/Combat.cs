@@ -1,4 +1,4 @@
-// olcoop 0.4.11-0.4.14: combat parity.
+// Combat parity between host and joiners.
 //  - Melee robots (claw/blade "Shredder", detonator, charger) damage the ship they actually hit, not always the host.
 //  - Joiner loadout (weapons, upgrade levels, ammo, missiles, energy) is applied to the host's copy of that joiner, so the host
 //    stops refusing the joiner's ammo-weapon and missile shots.

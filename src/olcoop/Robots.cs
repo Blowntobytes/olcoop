@@ -11,7 +11,7 @@ using UnityEngine.Networking.NetworkSystem;
 namespace OlCoop.Robots
 {
     /// <summary>
-    /// Phase 2a (docs/phase2a-design.md): host-authoritative robots.
+    /// Robots (docs/phase2a-design.md): host-authoritative robots.
     /// Host: runs robot AI, targets the nearest player, streams robot state/spawns/deaths/fire to joiners.
     /// Joiner: robots are kinematic puppets driven by host state; local AI, damage, deaths, drops and matcen spawns are off.
     /// </summary>
@@ -635,7 +635,7 @@ namespace OlCoop.Robots
 
     // ================================================================= patches
 
-    /// Handler registration (piggybacks on the Phase 1 registration points).
+    /// Handler registration (piggybacks on the session registration points).
     [HarmonyPatch(typeof(Server), "RegisterHandlers")]
     static class R0_ServerHandlers
     {

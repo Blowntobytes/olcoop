@@ -1,11 +1,18 @@
+# build output (release zips go to GitHub Releases)
+build/
+build-*/
+dist/
+releases/
+src/olcoop/Generated/
+*.log
+
+# never commit game or olmod files, or decompiled game code
 refs/
 lib/game/
-build/
-*.log
-src/olcoop/Generated/
-# never commit game or olmod binaries; built DLLs go to GitHub Releases
 Assembly-CSharp*.dll
 UnityEngine*.dll
 GameMod.dll
-build-*/
-releases/
+
+# local publishing helpers
+publish/
+*.bundle

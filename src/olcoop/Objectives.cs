@@ -7,7 +7,7 @@ using UnityEngine.Networking;
 namespace OlCoop.World
 {
     /// <summary>
-    /// Level objective counters on joiners (0.5.5).
+    /// Level objective counters on joiners.
     /// The HUD (UIElement.DrawHUD -> DrawHUDScoreInfo) draws two level objective counters from statics that only change where the
     /// level is simulated, i.e. on the host:
     ///  - LevelCustomInfo.Objective == 1 ("OPERATORS", e.g. Ymir Outpost): CustomCount - GameplayManager.m_total_robots_killed.
@@ -123,12 +123,9 @@ namespace OlCoop.World
             Client.GetClient().RegisterHandler(ObjNet.State, CoopObjectives.OnState);
         }
     }
-}
 
-namespace OlCoop.World
-{
     /// <summary>
-    /// OB4 (0.5.6): single-player score block on the HUD in co-op.
+    /// OB4: single-player score block on the HUD in co-op.
     /// UIElement.DrawHUDScoreInfo draws, when GameplayManager.IsMultiplayerActive, the MP block (match time, ping, anarchy/team
     /// mini scoreboard; olmod's MPScoreboards prefix adds its PvP variants), otherwise the single-player block: the
     /// DESTROYED counter (m_total_robots_killed) or, for LevelCustomInfo.Objective == DESTROY_BOTS, the OPERATORS counter.

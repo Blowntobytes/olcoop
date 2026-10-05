@@ -49,4 +49,5 @@ Targets unless noted: Overload 1.1.1886, olmod 0.5.14.
 | 0.5.7-online | 17 | 10-04 17:22 | tested (17:25-17:30 save; 17:33-17:46 fresh Ymir + Tarvos, both logs) | fresh level: host gets both keys + 5 audio logs; joiner broke the button | save: keys + audio log missing; fresh: keys/logs/some power-ups invisible on the joiner (pickup works) | tag v0.5.7 |
 | 0.5.8-online | 17 | 10-04 17:35 | not tested (17:33 run still on 0.5.7) | - | - | tag v0.5.8 |
 | 0.5.9-online | 17 | 10-04 18:05 | not tested (replaced by 0.5.10) | - | - | tag v0.5.9 |
-| 0.5.10-online | 17 | 10-04 18:15 | untested | - | - | tag v0.5.10, build-online, dist/olcoop-0.5.10-online.zip |
+| 0.5.10-online | 17 | 10-04 17:57 | tested (17:59-18:13, two PCs, both logs + Unity logs) | saved game: 72 saved items re-created incl. 2 keys + 6 audio logs; joiner broke a button through the host on a save; invite opened the Steam friends list; no exceptions in Unity logs (user: looks real good) | - | tag v0.5.10, build-online |
+| 0.6.0-alpha | 17 | 10-04 18:25 | untested (cleanup of 0.5.10) | - | - | tag v0.6.0-alpha, NEW build folder build-alpha, dist/olcoop-0.6.0-alpha.zip |

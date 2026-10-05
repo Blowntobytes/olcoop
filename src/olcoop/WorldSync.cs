@@ -11,7 +11,7 @@ using UnityEngine.Networking.NetworkSystem;
 namespace OlCoop.World
 {
     /// <summary>
-    /// Phase 2b (docs/phase2b-design.md): host-authoritative level logic.
+    /// World sync (docs/phase2b-design.md): host-authoritative level logic.
     ///  - The level's event graph (triggers, switches, pickups, robot deaths, destroyables -> "ActivateScriptLink" -> Script*) runs on
     ///    the host only. Every script activation on the host is sent to joiners by a stable id; joiners run only the client-visible
     ///    scripts (doors, comm/objective messages, music, forcefields, lights, objects) and never the robot/level-flow ones.

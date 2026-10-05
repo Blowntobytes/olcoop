@@ -1,6 +1,13 @@
 # Changelog
 
-## 0.5.10-online (2026-10-04), UNTESTED in game (all players must run 0.5.10; protocol 17)
+## 0.6.0-alpha (2026-10-04) - first public release, UNTESTED build (all players must run 0.6.0-alpha; protocol 17)
+Same gameplay code as 0.5.10, which passed the 17:59-18:13 run (two PCs over Steam; see 0.5.10 below). Release cleanup only:
+- Removed the temporary security-key and item diagnostics (they found the saved-game and joiner-visibility causes).
+- Source files named by feature instead of development phase (see README "Source layout"); no compiler warnings.
+- Repository: installer files in installer/, player zip built with package.sh (dist/ is no longer committed), LICENSE (MIT).
+- README: release download, current known issues (power-up and destructible issues fixed in 0.5.9/0.5.8 and confirmed).
+
+## 0.5.10-online (2026-10-04), 17:59-18:13 run: saved-game keys/audio logs restored, joiner sees items, joiner breaks buttons on a save, invite opens the Steam friends list (user: "looks real good") (all players must run 0.5.10; protocol 17)
 - Fix: INVITE THROUGH STEAM did nothing. It asked Steam for its in-game overlay, which isn't attached when the game is started
   through olmod (and isn't visible in VR). Now it opens the overlay invite if the overlay is there; otherwise it opens your Steam
   friends list on the desktop, where right-click a friend > Invite to Game invites them to your co-op game. The INVITE buttons

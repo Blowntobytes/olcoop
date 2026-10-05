@@ -1,4 +1,4 @@
-# olcoop handoff (state as of 2026-10-04 18:15 PT)
+# olcoop handoff (state as of 2026-10-04 18:25 PT)
 
 Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
@@ -10,8 +10,8 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   `Overload_Data\Managed\Assembly-CSharp.dll` locally if needed. Build references the game's Managed DLLs + GameMod.dll staged from the game folder.
 
 ## Build + delivery rules (user is strict about these)
-- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.5.10 online"). Protocol = 17 (in build.sh). Current build folder: build-online.
-- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 200 patches, 0 problems;
+- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.6.0 alpha"). Protocol = 17 (in build.sh). Current build folder: build-alpha (since 0.6.0-alpha; build-online held 0.5.x).
+- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 192 patches, 0 problems;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b (current). Bug fixes overwrite the current phase
   folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
@@ -408,3 +408,25 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   limit) and is not visible in VR. Now: SteamUtils.IsOverlayEnabled() -> dialog; else Application.OpenURL("steam://open/friends")
   (Steam client friends list; Invite to Game uses rich presence connect=+connect_lobby <id>). Status line + [STEAM] log either way.
   Per-friend INVITE rows (InviteUserToLobby) are unchanged and need no overlay.
+
+## 0.6.0-alpha status (2026-10-04 18:25) - installed, UNTESTED. First public release. New phase "alpha", build folder build-alpha
+- Installed SHA1 215d6225b2bdd70b246c6bbf5ddadda3410539c0 (216576 bytes), verified in game folder + build-alpha. Protocol 17. Tag v0.6.0-alpha. 192 patches, 0 problems,
+  0 compiler warnings. Player zip dist/olcoop-0.6.0-alpha.zip (SHA1 b338b1eb6fdac2fa63c6ca535d2658878ed467dc) from ./package.sh.
+- 0.5.10 run 17:59-18:13 (host pid11840 + joiner pid11972 + both unity.log, all 0.5.10): user "looks real good". Saved game (sp_outer_02):
+  SR captured 72 items, all 72 re-created and network-spawned (2 keys, 6 audio logs); Destroy trace confirmed the remover:
+  GameMod.UpdateDynamicManager_AddItem.Prefix destroyed the restored netId-0 items (so 0.5.7's SV1 idea was right but its prefix
+  never ran - unexplained; superseded by the restore). Joiner hit the button through the host on a save (18:05:59). Invite button:
+  overlay enabled=False -> steam://open/friends. Errors: only olmod MPTweaksOnLoadoutDataMessage KeyNotFound (host, per join) and
+  olmod ship smoothing NRE (joiner, once, suppressed). Unity logs: no exceptions.
+- Cleanup (no gameplay change; patch-target diff vs 0.5.10 = exactly the removed diagnostics): removed KeyTrace (KT1-KT5), SV1, SR3
+  Object.Destroy trace; SR1/SR2/IV1 -> Items.cs CoopItems (IT1 CompleteGameLoad prefix, IT2 one GameplayManager.Update postfix doing
+  restore + visibility); warnings fixed (Steam Callback fields kept - GC - with #pragma 414); version/phase labels stripped from
+  summaries; Objectives.cs single namespace.
+- File renames (history above uses the old names): Phase0Instrumentation=Diagnostics, Phase1Session=Session, Phase1Fixes=NetcodeFixes,
+  Phase2Robots=Robots, Phase2bWorld=WorldSync, Phase2bFlow=LevelFlow, Phase3Death=Death, Phase3Hud=Hud, Phase4Combat=Combat,
+  Phase5PostLevel=PostLevel, Phase6Lights=ShipState, Phase7Menus=CoopScreen, Phase7Steam=SteamTransport, Phase8Objectives=Objectives,
+  Phase10SaveItems=Items, CoopMenu=OptionsWindow, CoopOptionsMenu=OptionsScreen. Phase9KeyTrace deleted.
+- Repo: installer sources moved dist/ -> installer/ (git mv); dist/ ignored, old committed zips untracked; package.sh; LICENSE (MIT,
+  Blowntobytes); lib/README.md (Harmony 2.2.2, MIT); .gitignore also ignores publish/ and *.bundle.
+- Release flow from now on: ./build.sh, VerifyPatches, ./package.sh, copy DLL + installer files to the phase build folder, install,
+  SHA1 check, commit + tag, bundle. GitHub Release: the user creates it on github.com from the pushed tag and attaches the zip.

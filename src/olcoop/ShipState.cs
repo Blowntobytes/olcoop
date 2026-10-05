@@ -1,9 +1,8 @@
-// olcoop 0.4.21: headlight state sync.
-// 11:34 run (0.4.20): spectators followed a live ship whose copy on their machine had headlightsOn=False (all three headlight lights
-// off, fill light at 0.1), so they saw a dark level and no headlights. Stock Overload only toggles remote copies through
+// Ship state sync: headlights and boost.
+// Stock Overload only toggles remote headlight copies through
 // RpcToggleHeadlights, which (a) is only sent for ships the host doesn't own locally - the host's own toggles never reach joiners,
 // (b) is a toggle, so one missed/ignored message leaves a copy inverted for good, and (c) is dropped on clients unless
-// NetworkMatch.InGameplay. Respawns also reset it (after respawn logs: headlights=False on remote copies).
+// NetworkMatch.InGameplay. Respawns also reset it.
 // Now every player reports its own headlight state to the host, the host sends the state of every ship to everyone, and each copy
 // is set (not toggled) to match. The stock RPC is ignored in co-op.
 using System;
@@ -120,7 +119,7 @@ namespace OlCoop.Lights
         public static void Reset() { s_reported.Clear(); s_logged.Clear(); s_have_local = false; s_next_send = 0f; }
     }
 
-    /// 0.5.1: boost flames/sound on other players' ships. Stock sends RpcSetBoosting only from the host's simulated copy, which can
+    /// boost flames/sound on other players' ships. Stock sends RpcSetBoosting only from the host's simulated copy, which can
     /// disagree with what the owner actually does (the host decides a joiner's boost from forwarded inputs, heat and unlocks), and
     /// remote copies on clients can be overwritten by snapshots. Now each player's own boost state is reported to the host and
     /// relayed to everyone; every non-local copy shows exactly the owner's state (start/stop effects like the stock RPC).
@@ -299,7 +298,7 @@ namespace OlCoop.Lights
     {
         static void Postfix()
         {
-            // Registered whenever the server registers its handlers: the role can be chosen later in the game (0.5.0).
+            // Registered whenever the server registers its handlers: the role can be chosen later in the game.
             NetworkServer.RegisterHandler(HNet.Report, CoopLights.OnReport);
             NetworkServer.RegisterHandler(HNet.BoostReport, CoopBoost.OnReport);
         }

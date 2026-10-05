@@ -10,7 +10,7 @@ using UnityEngine.Networking.NetworkSystem;
 namespace OlCoop.Session
 {
     /// <summary>
-    /// Phase 1, "approach A" (docs/phase1-design.md): a second game joins a single-player host.
+    /// Session (docs/phase1-design.md): a second game joins a single-player host.
     /// The host keeps playing the campaign as a normal MISSION game; its built-in UNET server
     /// (present even in SP) accepts the joiner, tells it which campaign level to load, and spawns a
     /// networked ship for it. Both sides switch on the player netcode (IsMultiplayerActive + PLAYING).
@@ -609,7 +609,7 @@ namespace OlCoop.Session
     [HarmonyPatch(typeof(Client), "OnDisconnectMsg")]
     static class C2d_ClientOnDisconnect
     {
-        /// 0.5.2: the stock handler sends a disconnected player to the MULTIPLAYER menu (ExitMultiplayerToMainMenu -> MP_MENU) with the
+        /// the stock handler sends a disconnected player to the MULTIPLAYER menu (ExitMultiplayerToMainMenu -> MP_MENU) with the
         /// campaign level half torn down - "breaks the game". In co-op go to the main menu cleanly instead.
         static bool Prefix()
         {

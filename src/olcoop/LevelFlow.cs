@@ -8,7 +8,7 @@ using UnityEngine.Networking.NetworkSystem;
 namespace OlCoop.World
 {
     /// <summary>
-    /// Phase 2b, part 2: audio logs, exiting together, other players on the automap.
+    /// Level flow: audio logs, exiting together, other players on the automap.
     ///  - Audio logs (LOG_ENTRY items): GameplayManager.PickupLogEntry only runs on the host (real pickups are server-only in co-op).
     ///    The host tells joiners, and they run the same PickupLogEntry (same next-log counter, chime, voice/text queue).
     ///  - Exits: DoorExit only reacts to the machine's own ship, and a joiner used to finish the level alone. Now joiners never exit by

@@ -9,7 +9,7 @@ using UnityEngine.Networking;
 namespace OlCoop.Instrumentation
 {
     /// <summary>
-    /// Phase 0: read-only Harmony postfixes that log the game state we will later have to
+    /// Read-only Harmony postfixes that log the game state we will later have to
     /// synchronise. Nothing here changes game behaviour; every patch swallows its own errors.
     /// </summary>
     public static class StateDump

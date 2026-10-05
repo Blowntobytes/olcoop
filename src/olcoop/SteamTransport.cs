@@ -1,4 +1,4 @@
-// olcoop 0.5.0: play over the internet through Steam - no port forwarding.
+// Play over the internet through Steam - no port forwarding.
 //
 // Transport: Overload's networking is Unity UNET. UNET can carry a connection whose bytes travel by any means ("external
 // connection"): we subclass NetworkConnection, send its bytes with SteamNetworking.SendP2PPacket (Steam picks a direct route or its
@@ -88,10 +88,13 @@ namespace OlCoop.SteamNet
         static SteamConnection s_client;
         static byte[] s_buf = new byte[65536];
         static bool s_init;
+        // Steam callbacks must stay referenced, or they are garbage-collected and stop firing.
+#pragma warning disable 414
         static Callback<P2PSessionRequest_t> s_cbRequest;
         static Callback<P2PSessionConnectFail_t> s_cbFail;
         static Callback<GameLobbyJoinRequested_t> s_cbJoinReq;
         static Callback<LobbyEnter_t> s_cbEnter;
+#pragma warning restore 414
         static CallResult<LobbyCreated_t> s_crCreated;
         public static CSteamID Lobby = CSteamID.Nil;
         public static string LastStatus = "";
@@ -165,9 +168,9 @@ namespace OlCoop.SteamNet
             CoopLog.Write("STEAM", "invited " + Name(friend) + " (" + friend.m_SteamID + "): " + ok);
         }
 
-        /// INVITE THROUGH STEAM (0.5.10). ActivateGameOverlayInviteDialog only shows something when the Steam overlay is attached to the
-        /// game process, which it usually isn't when Overload is started by olmod.exe (and the overlay isn't visible in VR). 0.5.2-0.5.9
-        /// called it silently, so the button did nothing. Now: overlay enabled -> the overlay invite dialog; otherwise the Steam friends
+        /// INVITE THROUGH STEAM. ActivateGameOverlayInviteDialog only shows something when the Steam overlay is attached to the
+        /// game process, which it usually isn't when Overload is started by olmod.exe (and the overlay isn't visible in VR).
+        /// So: overlay enabled -> the overlay invite dialog; otherwise the Steam friends
         /// list opens on the desktop (steam://open/friends), where "Invite to Game" uses the lobby's rich presence (connect).
         public static void OpenInviteOverlay()
         {
@@ -645,7 +648,7 @@ namespace OlCoop.SteamNet
         }
     }
 
-    /// 0.5.2: quitting to the main menu (Esc menu QUIT TO MAIN MENU, or LEAVE SESSION / STOP HOSTING which use the same flow) ends
+    /// quitting to the main menu (Esc menu QUIT TO MAIN MENU, or LEAVE SESSION / STOP HOSTING which use the same flow) ends
     /// the co-op session. Before, a joiner was reconnected to the host straight away and the host kept its lobby.
     public static class SessionEnd
     {

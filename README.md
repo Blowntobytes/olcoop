@@ -4,7 +4,8 @@ Olcoop is an [olmod](https://github.com/overload-development-community/olmod) ad
 Cronus Frontier campaign together. The host's game runs the level (robots, doors, pickups, exits); joiners (up to 2) fly their own
 ships in it. Works flat-screen and in VR.
 
-**Status:** early alpha but playable (version 0.5.x). It has been played over the internet between two PCs; expect rough edges.
+**Status:** early alpha but playable (first public release: 0.6.0-alpha). It has been played over the internet between two PCs;
+expect rough edges. Download the latest zip from [Releases](https://github.com/Blowntobytes/olcoop/releases).
 
 ## What works
 - Up to 3 players in the host's campaign level, joining next to the host; joining from a saved game.
@@ -17,28 +18,54 @@ ships in it. Works flat-screen and in VR.
 - Online through Steam: the host invites friends from the game; no port forwarding.
 
 ## Known issues
-- Some power-ups don't show up for all players.
-- Destructibles don't synchronize between all players.
+- Pickups are shared per level, not per player (WIP): an item one player picks up is gone for everyone.
+- INVITE THROUGH STEAM opens the Steam friends list on your desktop (the Steam overlay isn't available when the game runs
+  through olmod): right-click a friend > Invite to Game. The INVITE button next to each friend on the CO-OP screen works in-game.
+- Every player must run the same olcoop version; the game refuses to connect otherwise.
 
 ## Install (players)
 Requirements: Overload on Steam, Steam running, and olmod 0.5.14 in the Overload folder. Every player needs the same olcoop version.
 1. Download the release zip and unzip it anywhere.
-2. Run `install.bat`. It finds your Overload folder (or asks for it), copies `Mod-olcoop.dll` and `olcoop.bat`, and checks the copy.
-3. Start the game with `olcoop.bat` IN THE GAME FOLDER, not the zip folder (not Steam's Play button, which starts the vanilla game).
+2. Run `install.bat`. It finds your Overload folder (or asks for it), copies `Mod-olcoop.dll` and `olcoop.bat`, checks the copy,
+   and puts an **olcoop** shortcut (orange and black icon) on your Desktop.
+3. Start the game with the **olcoop** shortcut, or `olcoop.bat` IN THE GAME FOLDER, not the zip folder (not Steam's Play button,
+   which starts the vanilla game).
 4. Main menu, bottom right: **CO-OP: HOST / JOIN**.
    - Host: HOST A CO-OP GAME, invite friends from the list, then BACK and start or continue the campaign.
    - Friend: accept the host's Steam invite while the game is running, or open CO-OP and pick the friend who is hosting.
 5. To remove it, run `uninstall.bat`. olmod and the game files are never modified.
 
-Same-PC testing: `olcoop-host.bat` and `olcoop-join.bat [ip]` start a host and joiners that connect over UDP port 7777.
+Same-PC testing (developers): `installer/olcoop-host.bat` and `installer/olcoop-join.bat [ip]` start a host and joiners that
+connect over UDP port 7777.
 Options: `-coopnolog` turns logging off, `-coopdump <sec>` sets the state-dump interval. Logs: `Overload\olcoop_logs\`.
 
 ## Build (developers)
 - Needs Mono `mcs`. The build references the game's own managed DLLs and the installed olmod `GameMod.dll`; neither is
   committed or redistributed.
-- `GAME_MANAGED=…/Overload_Data/Managed OLMOD_DLL=…/GameMod.dll ./build.sh` writes `build/Mod-olcoop.dll`.
+- `GAME_MANAGED=…/Overload_Data/Managed OLMOD_DLL=…/GameMod.dll ./build.sh` writes `build/Mod-olcoop.dll`;
+  `./package.sh` then writes the player zip `dist/olcoop-<version>.zip` (mod DLL + `installer/` files).
 - `tools/VerifyPatches.cs` checks offline that every Harmony patch target and parameter name exists in the game.
-- `refs/` holds the local decompilation and is git-ignored. Never commit it.
+- `refs/` holds the local decompilation (`tools/ildump.py`) and is git-ignored. Never commit it.
+
+### Source layout (`src/olcoop/`)
+| File | What it does |
+|---|---|
+| `CoopCore.cs` | Mod entry, role (host/joiner), command line, logging |
+| `Session.cs` | Joining the host's campaign level, handshake, player spawn |
+| `NetcodeFixes.cs` | Side effects of running campaign levels with multiplayer netcode on |
+| `SteamTransport.cs` | Steam P2P connection, lobby, invites, disconnect detection |
+| `CoopScreen.cs` | CO-OP main-menu screen, Esc-menu entries, skipped story scenes, READY UP |
+| `OptionsScreen.cs`, `OptionsWindow.cs` | CO-OP OPTIONS (death mode etc.), in-menu and F8 window |
+| `Robots.cs` | Host-authoritative robots streamed to joiners |
+| `WorldSync.cs` | Level scripts, doors, switches, destroyables, security keys |
+| `LevelFlow.cs` | Audio logs, exiting together, lockdowns, teammates on the automap |
+| `Items.cs` | Items restored from saved games, items switched on after a player joined |
+| `Combat.cs` | Melee damage routing, joiner loadouts, shot rate checks |
+| `Death.cs`, `Hud.cs` | Death modes (respawn / spectate / hardcore), respawn countdown, names and health bars |
+| `ShipState.cs` | Headlights and boost on other players' ships |
+| `Objectives.cs` | Objective counters (operators, cores) and the single-player score block |
+| `PostLevel.cs` | End-of-level screens on joiners, waiting for everyone to be ready |
+| `Diagnostics.cs` | Read-only state logging to `olcoop_logs` |
 
 ## Docs
 - `HANDOFF.md`: how the mod works, version by version, and the working rules.

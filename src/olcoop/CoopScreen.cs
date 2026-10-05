@@ -1,4 +1,4 @@
-// olcoop 0.5.0: in-game co-op setup, faster between-level flow.
+// In-game co-op setup and the between-level flow.
 //  - CO-OP screen (main menu, right of QUIT): HOST A CO-OP GAME / invite Steam friends / join a friend who is hosting / LEAVE.
 //    One launcher (olcoop.bat); the command-line -coophost/-coopjoin still work for same-PC testing.
 //  - Between levels the story scenes (prologue, briefing, debrief, intros, entity briefings) are skipped in co-op: level results
@@ -327,7 +327,7 @@ namespace OlCoop.World
 
 namespace OlCoop.UI
 {
-    /// 0.5.2: Esc menu entry under QUIT TO MAIN MENU: LEAVE SESSION (joiner) / STOP HOSTING (host). It runs the stock quit-to-menu
+    /// Esc menu entry under QUIT TO MAIN MENU: LEAVE SESSION (joiner) / STOP HOSTING (host). It runs the stock quit-to-menu
     /// flow (with its ARE YOU SURE? step); quitting to the menu in co-op ends the session (Phase7Steam ST6/ST7).
     public static class PauseLeave
     {

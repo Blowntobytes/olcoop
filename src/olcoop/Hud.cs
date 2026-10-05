@@ -9,7 +9,7 @@ using UnityEngine.Networking.NetworkSystem;
 namespace OlCoop.Hud
 {
     /// <summary>
-    /// 0.3.6 HUD additions:
+    /// HUD additions:
     ///  - the multiplayer-style yellow respawn countdown (same digits, colour and size as a PVP match) during a co-op RESPAWN cooldown
     ///  - pilot names above teammates (stock MP name tag, which olmod's team-health bar sits under), with a local SHOW PLAYER NAMES option
     /// The stock co-op HUD pass is UIManager.DrawMultiplayerNames, which already runs every frame in co-op (IsMultiplayerActive).
@@ -18,9 +18,9 @@ namespace OlCoop.Hud
     {
         // ---------------------------------------------------------------- respawn countdown
         static float s_respawn_at = -1f;
-        static bool s_logged_draw, s_logged_nohud;
+        static bool s_logged_draw;
 
-        public static void SetRespawnAt(float t) { s_respawn_at = t; s_logged_draw = false; s_logged_nohud = false; }
+        public static void SetRespawnAt(float t) { s_respawn_at = t; s_logged_draw = false; }
         public static void ClearRespawn() { s_respawn_at = -1f; try { EnsureOverlay(); } catch { } }
         public static bool TimerWanted
         {

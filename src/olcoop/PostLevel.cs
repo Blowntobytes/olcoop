@@ -1,6 +1,5 @@
-// olcoop 0.4.15: joiners run the stock end-of-level screens (results, stats, upgrade menu, briefing) like the host.
-// Before: a joiner's EscapeLevel was blocked (F6) and it waited, black, in the old level for the host's next one.
-// Now: F6 lets EscapeLevel/DoneLevel(Escaped) run, so the joiner's own menus come up. When its menu flow reaches PLAY_GAME it would
+// Joiners run the stock end-of-level screens (results, stats, upgrade menu, briefing) like the host.
+// F6 lets EscapeLevel/DoneLevel(Escaped) run, so the joiner's own menus come up. When its menu flow reaches PLAY_GAME it would
 // load the next campaign level by itself (MenuManager.PlayGameUpdate -> GameplayManager.LoadLevel); P1 holds it there instead,
 // keeps the loadout (with any upgrades just bought) for the next level, and waits for the host's level (C1). If the host's level
 // arrives while the joiner is still in its menus, C1 defers it until the joiner reaches that gate.
@@ -129,7 +128,7 @@ namespace OlCoop.World
         }
     }
 
-    /// 0.4.19: the host doesn't start the next level until every connected joiner has finished its end-of-level screens.
+    /// the host doesn't start the next level until every connected joiner has finished its end-of-level screens.
     public static class HostReady
     {
         static bool s_on;

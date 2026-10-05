@@ -12,7 +12,7 @@ namespace OlCoop
     /// </summary>
     public static class CoopConfig
     {
-        /// <summary>Phase 0 logging is read-only; it can be turned off with -coopnolog.</summary>
+        /// <summary>Logging is read-only; it can be turned off with -coopnolog.</summary>
         public static bool LoggingEnabled = true;
         /// <summary>Seconds between periodic state dumps while a level is running.</summary>
         public static float DumpInterval = 5f;
@@ -23,7 +23,7 @@ namespace OlCoop
         public static string JoinIp;
         /// <summary>-coopport &lt;n&gt; (default 7777).</summary>
         public static int Port = 7777;
-        /// <summary>Joining a Steam friend's game (0.5.0): the host's Steam id. Set from the CO-OP screen or a Steam invite.</summary>
+        /// <summary>Joining a Steam friend's game: the host's Steam id. Set from the CO-OP screen or a Steam invite.</summary>
         public static ulong JoinSteamId;
         public static bool IsJoiner { get { return !string.IsNullOrEmpty(JoinIp) || JoinSteamId != 0; } }
         public static string JoinTarget { get { return JoinSteamId != 0 ? "steam:" + JoinSteamId : JoinIp + ":" + Port; } }

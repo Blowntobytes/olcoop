@@ -129,7 +129,7 @@ namespace OlCoop.Death
         static readonly HashSet<uint> s_timer_sent = new HashSet<uint>();
         static float s_reset_at = -1f;
         static bool s_reset_latched;
-        /// 0.4.19: an exit has started this level. Exits win over deaths: no respawn timers, no hardcore/team-wipe restart; dead
+        /// an exit has started this level. Exits win over deaths: no respawn timers, no hardcore/team-wipe restart; dead
         /// players are revived next to the exit by CoopFlow instead.
         public static bool ExitInProgress;
 
@@ -344,7 +344,7 @@ namespace OlCoop.Death
                 GameplayManager.AddHUDMessage("YOU DIED - SPECTATING UNTIL THE LEVEL ENDS (FIRE TO SWITCH)", -1, true);
         }
 
-        static readonly FieldInfo f_died_timer = AccessTools.Field(typeof(PlayerShip), "m_player_died_due_to_timer");
+
 
         /// Replacement for PlayerShip.DeadUpdate in co-op: never ends the level, keeps the ship dead until the host respawns it.
         public static void DeadUpdate(PlayerShip s)
