@@ -1,5 +1,5 @@
-# Online / phase 0.5.0 test (build 0.5.9-online)
-All windows / PCs must show OLCOOP 0.5.9-ONLINE at the top-left of the main menu. Steam must be running.
+# Online / phase 0.5.0 test (build 0.5.10-online)
+All windows / PCs must show OLCOOP 0.5.10-ONLINE at the top-left of the main menu. Steam must be running.
 
 ## Same PC (two or three windows, olcoop-host.bat / olcoop-join.bat as before)
 1. Level end: results -> upgrades directly (no story scene in between); the joiners' briefing button says READY UP; the host's
@@ -9,7 +9,7 @@ All windows / PCs must show OLCOOP 0.5.9-ONLINE at the top-left of the main menu
 4. Respawn mode: die and respawn with headlights on: the others still see your headlights.
 5. Main menu shows CO-OP: HOSTING / CO-OP: JOINED bottom right; the CO-OP screen opens and BACK returns.
 
-## Two PCs (you + a friend, different Steam accounts) - friend installs dist/olcoop-0.5.9-online.zip
+## Two PCs (you + a friend, different Steam accounts) - friend installs dist/olcoop-0.5.10-online.zip
 6. Both start olcoop.bat. Host: CO-OP -> HOST A CO-OP GAME (status: HOSTING - FRIENDS CAN JOIN OR BE INVITED), INVITE the friend.
 7. Friend accepts the Steam chat invite (game running) -> joins; or friend opens CO-OP and picks the host -> JOIN.
 8. Host: BACK -> PLAY MISSION or LOAD SAVED GAME. The friend is taken into the host's level next to the host.
@@ -34,3 +34,5 @@ All windows / PCs must show OLCOOP 0.5.9-ONLINE at the top-left of the main menu
 20. Joiner breaks a shoot-to-open button (and the host one): the door opens for everyone. Send BOTH logs.
 21. Joiner visibility: on a fresh level the joiner flies to the security keys, audio logs and power-ups: all visible on the joiner.
     Host log: [ITEM] "sent ... to joiners" lines.
+22. INVITE THROUGH STEAM (host): either the Steam overlay invite opens, or the Steam friends list opens on the desktop; right-click
+    the friend > Invite to Game -> the friend gets the invite and joins. Host log: [STEAM] "invite button: overlay enabled=...".

@@ -48,4 +48,5 @@ Targets unless noted: Overload 1.1.1886, olmod 0.5.14.
 | 0.5.6-online | 17 | 10-04 17:00 | tested (16:59-17:17, host log only) | [KEY] trace: restored keys deleted right after loading a save | key + audio log missing on a hosted save; joiner could not break a button | tag v0.5.6 |
 | 0.5.7-online | 17 | 10-04 17:22 | tested (17:25-17:30 save; 17:33-17:46 fresh Ymir + Tarvos, both logs) | fresh level: host gets both keys + 5 audio logs; joiner broke the button | save: keys + audio log missing; fresh: keys/logs/some power-ups invisible on the joiner (pickup works) | tag v0.5.7 |
 | 0.5.8-online | 17 | 10-04 17:35 | not tested (17:33 run still on 0.5.7) | - | - | tag v0.5.8 |
-| 0.5.9-online | 17 | 10-04 18:05 | untested | - | - | tag v0.5.9, build-online, dist/olcoop-0.5.9-online.zip |
+| 0.5.9-online | 17 | 10-04 18:05 | not tested (replaced by 0.5.10) | - | - | tag v0.5.9 |
+| 0.5.10-online | 17 | 10-04 18:15 | untested | - | - | tag v0.5.10, build-online, dist/olcoop-0.5.10-online.zip |

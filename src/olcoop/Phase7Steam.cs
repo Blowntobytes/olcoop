@@ -165,9 +165,26 @@ namespace OlCoop.SteamNet
             CoopLog.Write("STEAM", "invited " + Name(friend) + " (" + friend.m_SteamID + "): " + ok);
         }
 
+        /// INVITE THROUGH STEAM (0.5.10). ActivateGameOverlayInviteDialog only shows something when the Steam overlay is attached to the
+        /// game process, which it usually isn't when Overload is started by olmod.exe (and the overlay isn't visible in VR). 0.5.2-0.5.9
+        /// called it silently, so the button did nothing. Now: overlay enabled -> the overlay invite dialog; otherwise the Steam friends
+        /// list opens on the desktop (steam://open/friends), where "Invite to Game" uses the lobby's rich presence (connect).
         public static void OpenInviteOverlay()
         {
-            if (Lobby != CSteamID.Nil) SteamFriends.ActivateGameOverlayInviteDialog(Lobby);
+            if (Lobby == CSteamID.Nil) { LastStatus = "HOST A CO-OP GAME FIRST"; CoopLog.Write("STEAM", "invite button: no lobby yet"); return; }
+            bool overlay = false;
+            try { overlay = SteamUtils.IsOverlayEnabled(); } catch (Exception ex) { CoopLog.Error("IsOverlayEnabled", ex); }
+            if (overlay)
+            {
+                SteamFriends.ActivateGameOverlayInviteDialog(Lobby);
+                LastStatus = "STEAM OVERLAY INVITE OPENED (SHIFT+TAB IF HIDDEN)";
+            }
+            else
+            {
+                Application.OpenURL("steam://open/friends");
+                LastStatus = "STEAM FRIENDS LIST OPENED ON DESKTOP: RIGHT-CLICK > INVITE TO GAME";
+            }
+            CoopLog.Write("STEAM", "invite button: overlay enabled=" + overlay + (overlay ? " -> overlay invite dialog" : " -> opened steam://open/friends"));
         }
 
         public static void JoinLobby(CSteamID lobby)

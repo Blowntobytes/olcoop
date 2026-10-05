@@ -1,4 +1,4 @@
-# olcoop handoff (state as of 2026-10-04 18:05 PT)
+# olcoop handoff (state as of 2026-10-04 18:15 PT)
 
 Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
@@ -10,7 +10,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   `Overload_Data\Managed\Assembly-CSharp.dll` locally if needed. Build references the game's Managed DLLs + GameMod.dll staged from the game folder.
 
 ## Build + delivery rules (user is strict about these)
-- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.5.9 online"). Protocol = 17 (in build.sh). Current build folder: build-online.
+- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.5.10 online"). Protocol = 17 (in build.sh). Current build folder: build-online.
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 200 patches, 0 problems;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b (current). Bug fixes overwrite the current phase
@@ -399,3 +399,12 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 - IV1 (Phase10SaveItems.cs): host, every 0.5 s, Item.m_ItemList: activeSelf && netId != 0 && a ready joiner conn (id != 0) missing from
   identity.observers -> RebuildObservers(true). Items only. [ITEM] "sent ... to joiners". Unverified in game.
 - Remaining: save-game button (joiner could not break it; on a fresh level it worked) - check after 0.5.8/0.5.9 on a save with both logs.
+
+## 0.5.10 status (2026-10-04 18:15) - installed, UNTESTED (includes untested 0.5.8 + 0.5.9)
+- Installed SHA1 af21132f2c0af43b57851c69a68ec1344d796fa1 (225280 bytes), verified in game folder + build-online. Protocol 17. Tag v0.5.10. 200 patches, 0 problems.
+  Friend zip dist/olcoop-0.5.10-online.zip (SHA1 264baafebb88ad812022a3f4b294202e176a647a).
+- User (17:55): INVITE THROUGH STEAM does nothing. Code: SteamLink.OpenInviteOverlay called SteamFriends.ActivateGameOverlayInviteDialog
+  only, no log (17:33 host log has no line for it). The overlay is not attached when Overload runs under olmod.exe (HANDOFF 0.5.0 known
+  limit) and is not visible in VR. Now: SteamUtils.IsOverlayEnabled() -> dialog; else Application.OpenURL("steam://open/friends")
+  (Steam client friends list; Invite to Game uses rich presence connect=+connect_lobby <id>). Status line + [STEAM] log either way.
+  Per-friend INVITE rows (InviteUserToLobby) are unchanged and need no overlay.

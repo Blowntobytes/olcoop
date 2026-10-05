@@ -1,6 +1,13 @@
 # Changelog
 
-## 0.5.9-online (2026-10-04), UNTESTED in game (all players must run 0.5.9; protocol 17)
+## 0.5.10-online (2026-10-04), UNTESTED in game (all players must run 0.5.10; protocol 17)
+- Fix: INVITE THROUGH STEAM did nothing. It asked Steam for its in-game overlay, which isn't attached when the game is started
+  through olmod (and isn't visible in VR). Now it opens the overlay invite if the overlay is there; otherwise it opens your Steam
+  friends list on the desktop, where right-click a friend > Invite to Game invites them to your co-op game. The INVITE buttons
+  next to each friend on the CO-OP screen invite directly and don't need the overlay.
+- Includes 0.5.9 (items visible on joiners) and 0.5.8 (saved games), both untested.
+
+## 0.5.9-online (2026-10-04), not tested before 0.5.10 (all players must run 0.5.9; protocol 17)
 - Fix: joiners could not see security keys, audio logs and some power-ups (they could still pick them up). The game switches
   many items on only after the level has started (when a player gets close); the network layer only sends a joining player the
   items that are already switched on at that moment, so those items never appeared for joiners (17:33-17:46 runs, fresh Ymir
