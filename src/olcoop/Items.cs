@@ -292,6 +292,53 @@ namespace OlCoop.World
         }
     }
 
+    /// IT9: armor/energy cap. Player.Awake sets the static Player.MAX_HITPOINTS = MAX_ENERGY to 200 (single player) or 120
+    /// (IsMultiplayerActive). The host's Player is created in the main menu (200) and a joiner's Player.Awake on the host flips the
+    /// static to 120 mid-level, so the host carried 200 into co-op levels from its saves while refills stopped at 120 (07:03 run:
+    /// started Tarvos at 200, later refilled to exactly 120 twice). User decision (2026-10-05): multiplayer rules for everyone -
+    /// 120 cap, set at every co-op level start and Player.Awake, and anything above it clamped.
+    public static class CoopCaps
+    {
+        public const float Max = 120f;
+        static int s_logged;
+
+        public static void Apply(string why)
+        {
+            if (!CoopConfig.Active || GameplayManager.IsMultiplayer) return;
+            Player.MAX_HITPOINTS = Max; Player.MAX_ENERGY = Max;
+            foreach (var p in Overload.NetworkManager.m_Players) Clamp(p, why);
+            Clamp(GameManager.m_local_player, why);
+        }
+
+        public static void Clamp(Player p, string why)
+        {
+            if (p == null) return;
+            float hp = p.m_hitpoints, en = p.m_energy;
+            if (NetworkServer.active && hp > Max) p.m_hitpoints = Max;            // armor: server-owned
+            if ((p.isLocalPlayer || NetworkServer.active) && en > Max) p.m_energy = Max; // energy: owned by the player (olmod sniper)
+            if ((hp > Max || en > Max) && s_logged++ < 10)
+                CoopLog.Write("ITEM", "cap " + Max + " (" + why + "): netId=" + p.netId.Value + " armor " + hp.ToString("F0") + " energy " + en.ToString("F0") + " clamped");
+        }
+    }
+
+    [HarmonyPatch(typeof(Player), "Awake")]
+    static class IT9_CapOnAwake
+    {
+        static void Postfix() { try { CoopCaps.Apply("player created"); } catch (Exception ex) { CoopLog.Error("IT9", ex); } }
+    }
+
+    [HarmonyPatch(typeof(SaveLoad), "CompleteGameLoad")]
+    static class IT9c_CapAfterSave
+    {
+        static void Postfix() { try { CoopCaps.Apply("saved game loaded"); } catch (Exception ex) { CoopLog.Error("IT9c", ex); } }
+    }
+
+    [HarmonyPatch(typeof(Player), "OnStartLocalPlayer")]
+    static class IT9b_CapOnShipStart
+    {
+        static void Postfix() { try { CoopCaps.Apply("level start"); } catch (Exception ex) { CoopLog.Error("IT9b", ex); } }
+    }
+
     public class UpgradePointMsg : MessageBase
     {
         public bool super, shared; public int total;

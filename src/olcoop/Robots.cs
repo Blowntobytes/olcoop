@@ -128,6 +128,8 @@ namespace OlCoop.Robots
     {
         public float t0 = -1f, t1 = -1f; public Vector3 p0, p1, v1; public Quaternion r0, r1;
         public byte lastMode = 255;
+        // 0.6.2 prediction: what is on screen minus the prediction, decayed to zero, so a new host state never snaps the robot.
+        public Vector3 err; public Quaternion rerr = Quaternion.identity; public bool rebase, shown;
     }
 
     public static class CoopRobots
@@ -531,7 +533,7 @@ namespace OlCoop.Robots
                 if (!CoopRobots.Puppets.TryGetValue(s.id, out p)) { p = new Puppet(); CoopRobots.Puppets[s.id] = p; }
                 if (p.t1 < 0f) { p.t0 = m.hostTime - 0.05f; p.p0 = s.pos; p.r0 = s.rot; }
                 else { p.t0 = p.t1; p.p0 = p.p1; p.r0 = p.r1; }
-                p.t1 = m.hostTime; p.p1 = s.pos; p.r1 = s.rot; p.v1 = s.vel;
+                p.t1 = m.hostTime; p.p1 = s.pos; p.r1 = s.rot; p.v1 = s.vel; p.rebase = true;
                 ApplyFields(r, s, p);
             }
         }
@@ -550,9 +552,74 @@ namespace OlCoop.Robots
             p.lastMode = s.mode;
         }
 
+        // ---- display time
+        // Up to 0.6.1 robots were drawn 0.1 s behind the newest host state (interpolation between two 20 Hz states). With the
+        // one-way network delay on top, a joiner saw and shot at robots ~150 ms in the past at CA-WI distance, while its shots are
+        // judged on the host against the robots' present. Now (default) they are drawn where they should be on the host *now* plus
+        // the shot's trip there: HostNow() (= host clock of the newest state's send time, i.e. one-way delay behind) + round trip,
+        // capped at CoopConfig.RobotLeadMax, by dead reckoning from the last state's position and velocity. A new state moves the
+        // prediction; the difference to what is on screen fades out over ~0.1 s (Puppet.err), with a snap above 4 units.
+        // -cooprobots interp restores the old display for A/B tests.
+        const float SnapDistance = 4f, ErrTau = 0.1f, MaxExtrapolation = 0.35f;
+        static float s_next_render_log; static int s_snaps; static float s_err_sum; static int s_err_n;
+
+        public static float Lead()
+        {
+            float rtt = OlCoop.Session.CoopLobby.MyRtt;
+            return rtt < 0f ? 0f : Mathf.Clamp(rtt, 0f, CoopConfig.RobotLeadMax);
+        }
+
         public static void Tick()
         {
             if (!s_offset_valid) return;
+            if (!CoopConfig.RobotPredict) { TickInterp(); return; }
+            float lead = Lead();
+            float render = HostNow() + lead;
+            float k = Mathf.Exp(-Time.deltaTime / ErrTau);
+            foreach (var kv in CoopRobots.Puppets)
+            {
+                Robot r;
+                if (!CoopRobots.ById.TryGetValue(kv.Key, out r) || r == null || !r.alive || r.m_dying) continue;
+                var p = kv.Value;
+                if (p.t1 < 0f) continue;
+                float ex = Mathf.Clamp(render - p.t1, 0f, MaxExtrapolation);
+                Vector3 target = p.p1 + p.v1 * ex; Quaternion trot = p.r1;
+                if (p.rebase)
+                {
+                    p.rebase = false;
+                    if (p.shown)
+                    {
+                        Vector3 e = r.c_transform.position - target;
+                        if (e.sqrMagnitude > SnapDistance * SnapDistance) { p.err = Vector3.zero; p.rerr = Quaternion.identity; s_snaps++; }
+                        else { p.err = e; p.rerr = r.c_transform.rotation * Quaternion.Inverse(trot); s_err_sum += e.magnitude; s_err_n++; }
+                    }
+                }
+                p.err *= k;
+                p.rerr = Quaternion.Slerp(Quaternion.identity, p.rerr, k);
+                Place(r, target + p.err, p.rerr * trot);
+                p.shown = true;
+            }
+            if (Time.realtimeSinceStartup >= s_next_render_log)
+            {
+                s_next_render_log = Time.realtimeSinceStartup + 15f;
+                float rtt = OlCoop.Session.CoopLobby.MyRtt;
+                CoopLog.Write("RSYNC", "joiner robots: predict lead=" + Mathf.RoundToInt(lead * 1000f) + " ms (rtt " + (rtt < 0f ? "?" : Mathf.RoundToInt(rtt * 1000f) + " ms") +
+                    ", cap " + Mathf.RoundToInt(CoopConfig.RobotLeadMax * 1000f) + ") corrections avg " + (s_err_n > 0 ? (s_err_sum / s_err_n).ToString("F2") : "0") + " u over " + s_err_n + ", snaps " + s_snaps);
+                s_err_sum = 0f; s_err_n = 0; s_snaps = 0;
+            }
+        }
+
+        static void Place(Robot r, Vector3 pos, Quaternion rot)
+        {
+            if ((r.c_transform.position - pos).sqrMagnitude > 0.25f) r.m_believed_valid_current_segment = false;
+            r.c_transform.position = pos; r.c_transform.rotation = rot;
+            r.c_transform_position = pos; r.c_transform_rotation = rot;
+            r.c_transform_forward = rot * Vector3.forward; r.c_transform_right = rot * Vector3.right; r.c_transform_up = rot * Vector3.up;
+        }
+
+        /// 0.6.1 display: 0.1 s behind the newest host state.
+        static void TickInterp()
+        {
             float render = HostNow() - 0.1f;
             foreach (var kv in CoopRobots.Puppets)
             {
@@ -571,10 +638,7 @@ namespace OlCoop.Robots
                     float ex = Mathf.Clamp(render - p.t1, 0f, 0.2f);
                     pos = p.p1 + p.v1 * ex; rot = p.r1;
                 }
-                if ((r.c_transform.position - pos).sqrMagnitude > 0.25f) r.m_believed_valid_current_segment = false;
-                r.c_transform.position = pos; r.c_transform.rotation = rot;
-                r.c_transform_position = pos; r.c_transform_rotation = rot;
-                r.c_transform_forward = rot * Vector3.forward; r.c_transform_right = rot * Vector3.right; r.c_transform_up = rot * Vector3.up;
+                Place(r, pos, rot);
             }
         }
 

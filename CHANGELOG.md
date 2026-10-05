@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.6.2-alpha (2026-10-05) - session list, robot prediction, 120 armor/energy cap, UNTESTED build (all players must run 0.6.2-alpha; protocol 19)
+From the 06:58-07:17 run on 0.6.1 (BlownToBits hosting a saved game, PeetzaGuest joining; both logs). Host pickup sounds confirmed
+by the user ("appears to be working now").
+- New: session list. The CO-OP screen and the F8 window show everyone in the session with pilot name, Steam name, what they are
+  doing (in menus, in the level, dead, on the results screen, ready) and their ping. The host sends it to joiners every second.
+- New: ping measurement in both directions (shown in the list and logged every 30 s).
+- Change: robots on joiners are drawn where they are on the host now (predicted from their speed, one round trip ahead, at most
+  150 ms) instead of 0.1 s behind the host plus the network delay. Corrections fade out instead of jumping. `-cooprobots interp`
+  brings back the old display, `-cooprobotlead <ms>` changes the limit.
+- Fix: the host had up to 200 armor and energy (single-player maximum, carried in from its saves) while refills stopped at 120
+  (multiplayer maximum, switched on when a joiner's ship appears). Co-op now uses the multiplayer maximum, 120, for everyone
+  (user decision); higher values are lowered at level start and after loading a save.
+- Fix: changing the death mode in the F8 window turned friendly fire off on joiners (the setting wasn't sent along).
+
 ## 0.6.1-alpha (2026-10-04) - fixes from the first long internet session, UNTESTED build (all players must run 0.6.1-alpha; protocol 18)
 From the 19:20-20:53 run (California - Wisconsin, JosheM hosting) and the 21:03-21:12 run (PeetzaGuest hosting):
 - Fix: closing the map could freeze the game. When the map opens, the game collects the map markers of keys, audio logs,

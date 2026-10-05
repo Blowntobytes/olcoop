@@ -1,4 +1,4 @@
-# olcoop handoff (state as of 2026-10-04 23:30 PT)
+# olcoop handoff (state as of 2026-10-05 08:30 PT)
 
 Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
@@ -13,7 +13,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.6.1 alpha"). Protocol = 18 (in build.sh). Current build folder: build-alpha (since 0.6.0-alpha; build-online held 0.5.x).
+  `VERSION` ("0.6.2 alpha"). Protocol = 19 (in build.sh). Current build folder: build-alpha (since 0.6.0-alpha; build-online held 0.5.x).
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 192 patches, 0 problems;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-alpha (current).
@@ -474,3 +474,24 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   user (adaptive delay, dead reckoning to host time, RTT logging first); nothing changed.
 - Wishlist from the user (not started): lobby member list on the CO-OP screen, 4 players, map/world ping visible through walls for
   15 s to everyone, weapons available to every player (per-player weapon pickups).
+
+## 0.6.2-alpha status (2026-10-05 08:30) - installed, UNTESTED. Protocol 19 (new msgs 196 roster, 197 ping)
+- Installed SHA1 daf3a050f91140daf67abae46abaadddb367157c (233472 bytes), verified in game folder + build-alpha. Tag v0.6.2-alpha.
+  206 patches, 0 problems, 0 warnings. Zip dist/olcoop-0.6.2-alpha.zip (SHA1 1e0cc80153a55b042c6b4f04753830defe85f374).
+- 0.6.1 run 06:58-07:17 (host BlownToBits pid12164 + joiner PeetzaGuest pid19068, both 0.6.1, saved sp_outer_02): user confirms
+  host pickup sounds. Host hp=200 at OnStartLocalPlayer (save), refills later stopped at exactly 120 (07:14:07, 07:17:12).
+  Cause: static Player.MAX_HITPOINTS/MAX_ENERGY set in every Player.Awake (200 SP / 120 IsMultiplayerActive); host's Player is from
+  the main menu, joiner Players flip it to 120. User chose multiplayer rules: CoopCaps (Items.cs IT9/IT9b/IT9c): 120 on co-op
+  Player.Awake, OnStartLocalPlayer, after SaveLoad.CompleteGameLoad; clamps armor (server) and energy (owner); Merge clamps energy.
+  Reactor "maybe doubled" sound: not reproduced in logs (no per-sound logging); nothing changed, on the test list.
+- Lobby.cs: msg 197 PingMsg {reply, t} on unreliable channel 2, 2/s both ways (host -> verified conns, joiner -> host), EWMA 0.2;
+  CoopLobby.MyRtt (joiner). Msg 196 RosterMsg (host -> verified, 1/s): {pilot, steam, RosterState, ping ms, host}. States from
+  CoopHost.Verified, m_Players (dead flag), HostReady.On/IsReady (new accessor), host GameManager state. CO-OP screen section
+  "IN THIS SESSION (n/4)" (friend rows now stop above BACK), F8 window section (IMGUI: not visible in VR). [LOBBY] log on change.
+  Tick: Overload.NetworkManager.Update postfix (runs in menus and levels).
+- Robots.cs joiner display (default "predict"): render = HostNow() + Lead(), Lead = clamp(MyRtt, 0, RobotLeadMax=0.15);
+  target = p1 + v1 * clamp(render - t1, 0, 0.35); on a new state Puppet.err = shown - target (snap > 4 u), decays with tau 0.1 s;
+  rotation the same via Puppet.rerr. Old display in TickInterp (-cooprobots interp). [RSYNC] "joiner robots: predict ..." every 15 s
+  with average correction (u) and snaps - use it to tune RobotLeadMax. Not changed: robot projectiles still start at the host's
+  muzzle position (now slightly behind the drawn robot); host-side lag compensation for joiner shots (rewind) not done.
+- F8 window Broadcast sent ConfigMsg without ff (friendly fire switched off on joiners when the mode was changed there): fixed.

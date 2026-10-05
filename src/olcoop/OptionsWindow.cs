@@ -15,7 +15,7 @@ namespace OlCoop.UI
     {
         static CoopMenu s_inst;
         bool m_open;
-        Rect m_rect = new Rect(0, 0, 520, 390);
+        Rect m_rect = new Rect(0, 0, 520, 520);
         bool m_prev_visible; CursorLockMode m_prev_lock;
         GUIStyle m_title, m_body, m_small;
 
@@ -96,6 +96,15 @@ namespace OlCoop.UI
                 CoopLog.Write("SETTINGS", "changed to " + CoopSettings.Describe());
             }
 
+            if (CoopConfig.Active)
+            {
+                GUILayout.Space(10);
+                var roster = Session.CoopLobby.Current();
+                GUILayout.Label("In this session (" + roster.Count + "/" + Session.CoopLobby.MaxPlayers + "):", m_title);
+                if (roster.Count == 0) GUILayout.Label(CoopConfig.IsJoiner ? "waiting for the host..." : "nobody yet", m_small);
+                foreach (var e in roster) GUILayout.Label("  " + Session.CoopLobby.Line(e), m_body);
+            }
+
             GUILayout.FlexibleSpace();
             GUILayout.BeginHorizontal();
             GUILayout.FlexibleSpace();
@@ -119,7 +128,7 @@ namespace OlCoop.UI
         static void Broadcast()
         {
             if (!CoopConfig.IsHost || !NetworkServer.active) return;
-            var m = new ConfigMsg { mode = (byte)CoopSettings.Mode, delay = CoopSettings.RespawnDelay };
+            var m = new ConfigMsg { mode = (byte)CoopSettings.Mode, delay = CoopSettings.RespawnDelay, ff = CoopSettings.FriendlyFire }; // ff was missing: changing the mode here switched friendly fire off on joiners
             foreach (var c in NetworkServer.connections)
                 if (c != null && c.connectionId != 0 && c.isConnected && Session.CoopHost.Verified.Contains(c.connectionId)) c.Send(DNet.Config, m);
             if (GameplayManager.LevelIsLoaded) GameplayManager.AddHUDMessage("CO-OP DEATH MODE: " + CoopSettings.Describe().ToUpperInvariant(), -1, true);

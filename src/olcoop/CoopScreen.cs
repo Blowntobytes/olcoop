@@ -97,6 +97,24 @@ namespace OlCoop.UI
                 pos.y += 62f;
             }
 
+            if (CoopConfig.Active)
+            {
+                var roster = OlCoop.Session.CoopLobby.Current();
+                uie.DrawStringSmall("IN THIS SESSION (" + roster.Count + "/" + OlCoop.Session.CoopLobby.MaxPlayers + "):", pos + Vector2.up * 4f, 0.45f, StringOffset.CENTER, UIManager.m_col_ui2, 1f, -1f);
+                pos.y += 30f;
+                if (roster.Count == 0)
+                {
+                    uie.DrawStringSmall(CoopConfig.IsJoiner ? "WAITING FOR THE HOST..." : "NOBODY YET", pos, 0.4f, StringOffset.CENTER, UIManager.m_col_ui1, 1f, -1f);
+                    pos.y += 26f;
+                }
+                foreach (var e in roster)
+                {
+                    uie.DrawStringSmall(OlCoop.Session.CoopLobby.Line(e), pos, 0.4f, StringOffset.CENTER, e.host ? UIManager.m_col_hi4 : UIManager.m_col_ui1, 1f, -1f);
+                    pos.y += 26f;
+                }
+                pos.y += 16f;
+            }
+
             if (!steam)
             {
                 uie.DrawStringSmall("STEAM IS NOT AVAILABLE - START STEAM AND RESTART THE GAME TO PLAY WITH FRIENDS", pos + Vector2.up * 10f, 0.4f, StringOffset.CENTER, UIManager.m_col_ui2, 1f, -1f);
@@ -112,6 +130,7 @@ namespace OlCoop.UI
                         pos, 0.4f, StringOffset.CENTER, UIManager.m_col_ui1, 1f, -1f);
                 for (int i = 0; i < rows.Count; i++)
                 {
+                    if (pos.y > UIManager.UI_BOTTOM - 95f) break; // keep clear of BACK (the session list above takes room)
                     var f = rows[i];
                     string tag = CoopConfig.IsHost ? (f.InOverload ? "INVITE  (IN OVERLOAD)" : "INVITE") : "JOIN";
                     uie.SelectAndDrawItem(Clip(f.Name) + "  -  " + tag, pos, ID_FRIEND0 + i, false, 1f, 0.6f);

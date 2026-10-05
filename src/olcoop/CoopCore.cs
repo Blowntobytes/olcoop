@@ -16,6 +16,10 @@ namespace OlCoop
         public static bool LoggingEnabled = true;
         /// <summary>Seconds between periodic state dumps while a level is running.</summary>
         public static float DumpInterval = 5f;
+        /// <summary>Joiner robot display: true = predicted to the host's present + ping (0.6.2), false = old 100 ms interpolation
+        /// (-cooprobots interp). -cooprobotlead &lt;ms&gt; caps how far ahead robots are predicted (default 150).</summary>
+        public static bool RobotPredict = true;
+        public static float RobotLeadMax = 0.15f;
 
         /// <summary>-coophost: this instance hosts a co-op session (listens on Port).</summary>
         public static bool IsHost;
@@ -72,6 +76,13 @@ namespace OlCoop
                 if (args[i] == "-coophost") IsHost = true;
                 if (args[i] == "-coopjoin" && i + 1 < args.Length) JoinIp = args[i + 1];
                 if (args[i] == "-coopport" && i + 1 < args.Length) int.TryParse(args[i + 1], out Port);
+                if (args[i] == "-cooprobots" && i + 1 < args.Length) RobotPredict = args[i + 1].ToLowerInvariant() != "interp";
+                if (args[i] == "-cooprobotlead" && i + 1 < args.Length)
+                {
+                    float ms;
+                    if (float.TryParse(args[i + 1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out ms))
+                        RobotLeadMax = Mathf.Clamp(ms, 0f, 300f) / 1000f;
+                }
                 if (args[i] == "-coopdump" && i + 1 < args.Length)
                 {
                     float f;
@@ -85,6 +96,7 @@ namespace OlCoop
             CoopLog.Write("INIT", CoopVersion.Full + " protocol=" + CoopVersion.Protocol +
                 " game=" + typeof(Overload.GameManager).Assembly.GetName().Version +
                 " logging=" + LoggingEnabled + " dumpInterval=" + DumpInterval +
+                " robots=" + (RobotPredict ? "predict(max " + (int)(RobotLeadMax * 1000f) + " ms)" : "interp") +
                 " coop=" + (IsHost ? "HOST" : IsJoiner ? "JOIN " + JoinTarget : "off (choose HOST or JOIN on the CO-OP screen)") + " port=" + Port);
             if (IsHost && IsJoiner) { CoopLog.Write("INIT", "both -coophost and -coopjoin given; acting as joiner only"); IsHost = false; }
         }

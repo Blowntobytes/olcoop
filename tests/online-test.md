@@ -1,9 +1,22 @@
-# Online test (build 0.6.1-alpha)
-All windows / PCs must show OLCOOP 0.6.1-ALPHA at the top-left of the main menu (0.6.0 can't join 0.6.1: protocol 18).
+# Online test (build 0.6.2-alpha)
+All windows / PCs must show OLCOOP 0.6.2-ALPHA at the top-left of the main menu (older versions can't join: protocol 19).
 Steam must be running. Send BOTH PCs' `Overload\olcoop_logs` folders after the run (the host's log matters most for
 pickups and upgrade points), and say which PC hosted.
 
-## New in 0.6.1 (check these first)
+## New in 0.6.2 (check these first)
+A. Session list: host and joiner open CO-OP (main menu): "IN THIS SESSION (n/4)" lists every player - pilot name (Steam name),
+   IN MENUS / IN LEVEL / DEAD / LEVEL RESULTS / READY / CONNECTING, ping in ms. Same list in the F8 window (also in a level).
+   Host log: [LOBBY] "n/4: ..." on every change and "host: round trip conn 20=.. ms" every 30 s; joiner: "round trip to host".
+B. Robots on the joiner (long-distance game): they should feel closer to where the host sees them, and joiner shots should hit
+   moving robots more reliably. Joiner log every 15 s: [RSYNC] "joiner robots: predict lead=.. ms (rtt ..) corrections avg .. u,
+   snaps ..". A/B: add -cooprobots interp to the joiner's olcoop.bat line for the old 0.6.1 display; -cooprobotlead 80 limits
+   how far ahead robots are drawn (default 150 ms). Report robots jittering, sliding into walls or popping.
+C. Armor/energy cap 120 for everyone (multiplayer rules): host continuing a save that had 200 starts at 120; pickups stop at 120.
+   Host log: [ITEM] "cap 120 (...)" when something was clamped.
+D. F8 window: changing the death mode no longer turns friendly fire off for joiners.
+E. Reactor: does the reactor explosion sound play twice on the host? (Reported once, unconfirmed; nothing changed for it.)
+
+## Still to confirm from 0.6.1
 1. Map while the host picks something up (the 19:34 freeze): joiner opens the map (M) and keeps it open while the host picks
    up a security key or audio log, or breaks a destructible switch. Joiner closes the map: it closes normally.
    Joiner log: [FLOW] "automap: closing; skipped N map marker(s) removed while the map was open".

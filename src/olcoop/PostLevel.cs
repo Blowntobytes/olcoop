@@ -141,6 +141,8 @@ namespace OlCoop.World
         public static void Begin() { s_on = true; s_ready.Clear(); s_shown_ready = -1; s_shown_total = -1; CoopLog.Write("FLOW", "host: level done; the next level waits until every joiner is ready"); }
         public static void End() { if (s_on || DeadFinish) { s_on = false; DeadFinish = false; s_ready.Clear(); CoopStatus.Clear(); } }
 
+        public static bool IsReady(int conn) { return s_on && s_ready.Contains(conn); }
+
         public static void Mark(int conn)
         {
             if (!s_on || !s_ready.Add(conn)) return;

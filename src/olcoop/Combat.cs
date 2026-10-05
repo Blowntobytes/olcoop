@@ -245,7 +245,7 @@ namespace OlCoop.Combat
             p.m_upgrade_points1 = c.points1; p.m_upgrade_points2 = c.points2;   // local copy; the host's copy gets them from msg 170
             for (int i = 0; i < Math.Min(c.mammo.Length, p.m_missile_ammo.Length); i++) p.m_missile_ammo[i] = c.mammo[i];
             p.m_ammo = c.ammo;
-            p.m_energy = c.energy;
+            p.m_energy = Math.Min(c.energy, OlCoop.World.CoopCaps.Max);
             if (p.m_weapon_level[c.weapon] != WeaponUnlock.LOCKED) p.m_weapon_type = (WeaponType)c.weapon;
             if (p.m_missile_level[c.missile] != WeaponUnlock.LOCKED) p.m_missile_type = (MissileType)c.missile;
             try { p.UpdateCurrentWeaponName(); p.UpdateCurrentMissileName(); } catch { }

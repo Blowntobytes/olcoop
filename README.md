@@ -40,7 +40,8 @@ Requirements: Overload on Steam, Steam running, and olmod 0.5.14 in the Overload
 
 Same-PC testing (developers): `installer/olcoop-host.bat` and `installer/olcoop-join.bat [ip]` start a host and joiners that
 connect over UDP port 7777.
-Options: `-coopnolog` turns logging off, `-coopdump <sec>` sets the state-dump interval. Logs: `Overload\olcoop_logs\`.
+Options: `-coopnolog` turns logging off, `-coopdump <sec>` sets the state-dump interval, `-cooprobots interp` / `-cooprobotlead <ms>`
+change how joiners display robots. Logs: `Overload\olcoop_logs\`.
 
 ## Build (developers)
 - Needs Mono `mcs`. The build references the game's own managed DLLs and the installed olmod `GameMod.dll`; neither is
@@ -58,8 +59,9 @@ Options: `-coopnolog` turns logging off, `-coopdump <sec>` sets the state-dump i
 | `NetcodeFixes.cs` | Side effects of running campaign levels with multiplayer netcode on |
 | `SteamTransport.cs` | Steam P2P connection, lobby, invites, disconnect detection |
 | `CoopScreen.cs` | CO-OP main-menu screen, Esc-menu entries, skipped story scenes, READY UP |
+| `Lobby.cs` | Session list (who is in the game, state, ping) and round-trip measurement |
 | `OptionsScreen.cs`, `OptionsWindow.cs` | CO-OP OPTIONS (death mode, friendly fire etc.), in-menu and F8 window |
-| `Robots.cs` | Host-authoritative robots streamed to joiners |
+| `Robots.cs` | Host-authoritative robots streamed to joiners, predicted on joiners |
 | `WorldSync.cs` | Level scripts, doors, switches, destroyables, security keys |
 | `LevelFlow.cs` | Audio logs, exiting together, lockdowns, teammates on the automap, closing the map safely |
 | `Items.cs` | Saved-game items, late-activated items, pickup sounds/ammo/energy, shared upgrade points, hologuide item list |

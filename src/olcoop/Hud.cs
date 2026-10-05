@@ -112,6 +112,7 @@ namespace OlCoop.Hud
         }
 
         public static void Forget(int connId) { s_names.Remove(connId); }
+        public static string NameOf(int connId) { string n; return s_names.TryGetValue(connId, out n) ? n : null; }
 
         public static void SendMyName()
         {
