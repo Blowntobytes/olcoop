@@ -431,6 +431,58 @@ namespace OlCoop.World
         }
     }
 
+    /// W9 (0.6.4, diagnostics): 15:53 run - the user shot a button, but no Destroyable.ApplyDamage ran anywhere (not even for the
+    /// host's own shots). Log what player shots actually hit when it is a destroyable, a force field or a shield (first 40 per level).
+    [HarmonyPatch(typeof(Projectile), "ProcessCollision")]
+    static class W9_LogShotTargets
+    {
+        static int s_logged; static string s_level;
+        static void Prefix(Projectile __instance, GameObject collider)
+        {
+            if (!CoopWorld.Active || collider == null || !__instance.m_alive || __instance.m_team == ProjTeam.ENEMY) return;
+            try
+            {
+                string lvl = GameplayManager.LevelFileName; if (lvl != s_level) { s_level = lvl; s_logged = 0; }
+                if (s_logged >= 40) return;
+                var d = collider.GetComponentInParent<Destroyable>();
+                var ff = collider.GetComponentInParent<Forcefield>();
+                var sh = collider.GetComponentInParent<SimpleShield>();
+                if (d == null && ff == null && sh == null && collider.layer != 24) return;
+                s_logged++;
+                var ps = __instance.m_owner != null ? __instance.m_owner.GetComponentInParent<PlayerShip>() : null;
+                string who = ps == null ? "?" : "netId=" + ps.c_player.netId.Value + (ps.isLocalPlayer ? " (mine)" : "");
+                string what = d != null ? "destroyable '" + d.gameObject.name + "' hp=" + d.m_hp.ToString("F1") + (d.m_invulnerable ? " INVULNERABLE (shielded)" : "") + ((bool)d.m_dying ? " dying" : "")
+                            : ff != null ? "force field '" + ff.gameObject.name + "'" : sh != null ? "shield '" + sh.gameObject.name + "'" : "layer-24 object '" + collider.name + "'";
+                CoopLog.Write("WORLD", (CoopWorld.IsHost ? "host" : "joiner") + ": shot " + __instance.m_type + " by " + who + " hit " + what + " (collider '" + collider.name + "' layer " + collider.layer + ")");
+            }
+            catch (Exception ex) { CoopLog.Error("W9", ex); }
+        }
+    }
+
+    /// W9b: the same for the trigger path (Projectile.OnTriggerEnter). Upgraded player shots (m_upgrade >= LEVEL_1) skip the
+    /// destroyable branch there; log when such a shot passes through a destroyable without damaging it.
+    [HarmonyPatch(typeof(Projectile), "OnTriggerEnter")]
+    static class W9b_LogTriggerTargets
+    {
+        static readonly FieldInfo f_upgrade = AccessTools.Field(typeof(Projectile), "m_upgrade");
+        static int s_logged;
+        static void Prefix(Projectile __instance, Collider other)
+        {
+            if (!CoopWorld.Active || other == null || other.isTrigger || s_logged >= 20 || __instance.m_team == ProjTeam.ENEMY) return;
+            try
+            {
+                if ((int)(WeaponUnlock)f_upgrade.GetValue(__instance) < (int)WeaponUnlock.LEVEL_1) return;
+                if (other.GetComponentInParent<Robot>() != null) return;
+                var d = other.GetComponentInParent<Destroyable>();
+                if (d == null) return;
+                s_logged++;
+                CoopLog.Write("WORLD", (CoopWorld.IsHost ? "host" : "joiner") + ": upgraded " + __instance.m_type + " passed through destroyable '" + d.gameObject.name +
+                    "' (trigger path; stock code doesn't damage it there) collider '" + other.name + "' layer " + other.gameObject.layer);
+            }
+            catch (Exception ex) { CoopLog.Error("W9b", ex); }
+        }
+    }
+
     /// W3: destroyable destruction. Host broadcasts; joiner only destroys on the host's word.
     [HarmonyPatch(typeof(Destroyable), "StartExploding")]
     static class W3_DestroyableExplode

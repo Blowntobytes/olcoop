@@ -1,8 +1,17 @@
-# Online test (build 0.6.3-alpha)
-All windows / PCs must show OLCOOP 0.6.3-ALPHA at the top-left of the main menu (older versions can't join: protocol 20).
+# Online test (build 0.6.4-alpha)
+All windows / PCs must show OLCOOP 0.6.4-ALPHA at the top-left of the main menu (older versions can't join: protocol 21).
 Steam must be running. Send BOTH PCs' `Overload\olcoop_logs` folders after the run, and say which PC hosted.
 
-## New in 0.6.3 (check these first)
+## New in 0.6.4
+6. Spectating (Spectate mode, and while waiting to respawn in Respawn mode): you see the followed player's cockpit from their seat,
+   and at the bottom: SPECTATING <name>, ARMOR / ENERGY / AMMO, weapon and missile with count. FIRE switches player. Check both
+   ways (host spectating a joiner, joiner spectating the host): the numbers change as they fire and get hit.
+   Log: [SPECT] "drawing spectator readout for netId=..".
+7. Buttons: shoot a shoot-to-open button (host and joiner) and note which one. Logs show what each shot hit: [WORLD] "shot X by
+   netId=.. hit destroyable '...' hp=.." (or "INVULNERABLE (shielded)", or a force field/shield), and "upgraded X passed through
+   destroyable" if the shot went through it without damage.
+
+## New in 0.6.3 (untested; check these too)
 1. Map: open the map (host and joiner) while holding thrust/fire keys: the ship doesn't move or fire while the map is open; after
    closing it, controls work normally. Log: [FLOW] "automap open: ship controls and weapons held".
 2. Joiner pickups: the joiner flies through security keys, upgrade points, audio logs and powerups (also on a saved game): each one

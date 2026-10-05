@@ -217,3 +217,147 @@ namespace OlCoop.Hud
         }
     }
 }
+
+namespace OlCoop.Hud
+{
+    /// <summary>
+    /// Spectator readout (0.6.4): while spectating (spectate mode or waiting to respawn), the followed ship's armor, energy, ammo,
+    /// weapon and missile are shown (overlay slot 2, drawn like the respawn timer so it shows over the death fade, also in VR).
+    /// The host has every ship's real values (armor is the server's; joiners' energy/ammo arrive with olmod's msg 136) and sends them
+    /// to joiners 4x/s (msg 200). A joiner's own copy of the host's energy/ammo is stale (olmod ignores RpcSetEnergy/Ammo on clients).
+    /// </summary>
+    public static class SpectateHud
+    {
+        public const short MsgStats = 200;
+        public static readonly UIElementType uiSpectOverlay = (UIElementType)124;
+        const int Slot = 2;
+        static bool s_on, s_logged;
+        static float s_next_send;
+
+        public struct Stats { public float hp, energy; public int ammo, weapon, missile, missileAmmo; public float time; }
+        static readonly Dictionary<uint, Stats> s_stats = new Dictionary<uint, Stats>();
+
+        public class StatsMsg : MessageBase
+        {
+            public List<KeyValuePair<uint, Stats>> e = new List<KeyValuePair<uint, Stats>>();
+            public override void Serialize(NetworkWriter w)
+            {
+                w.Write((byte)e.Count);
+                foreach (var kv in e)
+                {
+                    var s = kv.Value;
+                    w.WritePackedUInt32(kv.Key); w.Write((short)Mathf.RoundToInt(s.hp)); w.Write((short)Mathf.RoundToInt(s.energy)); w.Write((short)s.ammo);
+                    w.Write((byte)s.weapon); w.Write((byte)s.missile); w.Write((short)s.missileAmmo);
+                }
+            }
+            public override void Deserialize(NetworkReader r)
+            {
+                int n = r.ReadByte(); e.Clear();
+                for (int i = 0; i < n; i++)
+                {
+                    uint id = r.ReadPackedUInt32();
+                    var s = new Stats { hp = r.ReadInt16(), energy = r.ReadInt16(), ammo = r.ReadInt16(), weapon = r.ReadByte(), missile = r.ReadByte(), missileAmmo = r.ReadInt16() };
+                    e.Add(new KeyValuePair<uint, Stats>(id, s));
+                }
+            }
+        }
+
+        static Stats Read(Player p)
+        {
+            int mt = (int)p.m_missile_type;
+            return new Stats { hp = p.m_hitpoints, energy = p.m_energy, ammo = p.m_ammo, weapon = (int)p.m_weapon_type, missile = mt,
+                missileAmmo = mt >= 0 && mt < p.m_missile_ammo.Length ? (int)p.m_missile_ammo[mt] : 0 };
+        }
+
+        public static void HostTick()
+        {
+            if (!CoopConfig.IsHost || !NetworkServer.active || GameplayManager.IsMultiplayer || !GameplayManager.LevelIsLoaded) return;
+            if (Time.realtimeSinceStartup < s_next_send) return;
+            s_next_send = Time.realtimeSinceStartup + 0.25f;
+            var m = new StatsMsg();
+            foreach (var p in Overload.NetworkManager.m_Players) if (p != null) m.e.Add(new KeyValuePair<uint, Stats>(p.netId.Value, Read(p)));
+            if (m.e.Count < 2) return;
+            foreach (var c in NetworkServer.connections)
+                if (c != null && c.connectionId != 0 && c.isConnected && OlCoop.Session.CoopHost.Verified.Contains(c.connectionId))
+                    c.SendByChannel(MsgStats, m, OlCoop.Session.LNet2.ChUnrel);
+        }
+
+        public static void OnStats(NetworkMessage msg)
+        {
+            try
+            {
+                var m = msg.ReadMessage<StatsMsg>();
+                float now = Time.realtimeSinceStartup;
+                foreach (var kv in m.e) { var s = kv.Value; s.time = now; s_stats[kv.Key] = s; }
+            }
+            catch (Exception ex) { CoopLog.Error("OnStats", ex); }
+        }
+
+        /// The followed ship's values: the host reads its own copies; a joiner uses the host's (< 2 s old), else its own copy.
+        static Stats For(Player p)
+        {
+            Stats s;
+            if (!CoopConfig.IsHost && s_stats.TryGetValue(p.netId.Value, out s) && Time.realtimeSinceStartup - s.time < 2f) return s;
+            return Read(p);
+        }
+
+        static PlayerShip Target { get { return OlCoop.Death.Spectate.Target; } }
+
+        public static void Ensure()
+        {
+            bool want = OlCoop.Death.Spectate.On && Target != null;
+            if (want && !s_on) { UIManager.CreateOverlayElement(Vector2.zero, Slot, uiSpectOverlay, -1f); s_on = true; s_logged = false; }
+            else if (!want && s_on) { UIManager.ClearOverlayElement(Slot); s_on = false; }
+        }
+
+        static string WeaponName(int w) { return ((WeaponType)w).ToString().Replace('_', ' '); }
+        static string MissileName(int m) { var t = (MissileType)m; return t == MissileType.MISSILE_POD ? "MISSILE POD" : t == MissileType.NOVA ? "NOVA" : t.ToString().Replace('_', ' '); }
+
+        public static void Draw(UIElement uie)
+        {
+            var t = Target;
+            if (t == null || t.c_player == null) return;
+            var s = For(t.c_player);
+            string name = CoopHud.NameOf(t.c_player);
+            var pos = new Vector2(0f, 205f);
+            uie.DrawStringSmall("SPECTATING " + name + "   (FIRE: NEXT PLAYER)", pos, 0.5f, StringOffset.CENTER, UIManager.m_col_ui2, 1f, -1f);
+            pos.y += 30f;
+            uie.DrawStringSmall("ARMOR " + Mathf.Max(0, Mathf.RoundToInt(s.hp)) + "     ENERGY " + Mathf.Max(0, Mathf.RoundToInt(s.energy)) + "     AMMO " + Mathf.Max(0, s.ammo),
+                pos, 0.6f, StringOffset.CENTER, UIManager.m_col_hi4, 1f, -1f);
+            pos.y += 30f;
+            uie.DrawStringSmall(WeaponName(s.weapon) + "     " + MissileName(s.missile) + " x" + Mathf.Max(0, s.missileAmmo), pos, 0.5f, StringOffset.CENTER, UIManager.m_col_ui1, 1f, -1f);
+            if (!s_logged) { s_logged = true; CoopLog.Write("SPECT", "drawing spectator readout for netId=" + t.c_player.netId.Value + " (" + (CoopConfig.IsHost ? "host values" : "host-sent values") + ")"); }
+        }
+    }
+
+    [HarmonyPatch(typeof(UIElement), "Draw")]
+    static class HUD6_SpectateDraw
+    {
+        static void Postfix(UIElement __instance)
+        {
+            if (__instance.m_type != SpectateHud.uiSpectOverlay) return;
+            try { SpectateHud.Draw(__instance); } catch (Exception ex) { CoopLog.Error("HUD6", ex); }
+        }
+    }
+
+    [HarmonyPatch(typeof(GameplayManager), "Update")]
+    static class HUD7_SpectateTick
+    {
+        static void Postfix()
+        {
+            if (!CoopConfig.Active || GameplayManager.IsMultiplayer) return;
+            try { SpectateHud.HostTick(); SpectateHud.Ensure(); } catch (Exception ex) { CoopLog.Error("HUD7", ex); }
+        }
+    }
+
+    [HarmonyPatch(typeof(Client), "RegisterHandlers")]
+    static class HUD8_ClientHandlers
+    {
+        static void Postfix()
+        {
+            CoopConfig.EnsureInit();
+            if (!CoopConfig.IsJoiner || Client.GetClient() == null) return;
+            Client.GetClient().RegisterHandler(SpectateHud.MsgStats, SpectateHud.OnStats);
+        }
+    }
+}

@@ -362,15 +362,21 @@ namespace OlCoop.Death
         static readonly Dictionary<int, List<MeshRenderer>> s_hidden = new Dictionary<int, List<MeshRenderer>>();
 
         /// Hide only renderers that are currently visible, and later re-show exactly those (some ship meshes are normally off).
-        public static void HideShip(PlayerShip s, bool hide)
+        public static void HideShip(PlayerShip s, bool hide) { HideShip(s, hide, false); }
+
+        /// keepCockpit (0.6.4, spectating): hide only the outside model; the cockpit (PlayerShip.c_cockpit, active on remote ships too)
+        /// stays visible, so the spectator sees the followed ship's interior.
+        public static void HideShip(PlayerShip s, bool hide, bool keepCockpit)
         {
             if (s == null) return;
+            Transform cockpit = keepCockpit && s.c_cockpit != null ? s.c_cockpit.transform : null;
             int key = s.GetInstanceID();
             List<MeshRenderer> list;
             if (hide)
             {
                 if (!s_hidden.TryGetValue(key, out list)) { list = new List<MeshRenderer>(); s_hidden[key] = list; }
-                foreach (var r in s.GetComponentsInChildren<MeshRenderer>(true)) if (r.enabled) { r.enabled = false; list.Add(r); }
+                foreach (var r in s.GetComponentsInChildren<MeshRenderer>(true))
+                    if (r.enabled && (cockpit == null || !r.transform.IsChildOf(cockpit))) { r.enabled = false; list.Add(r); }
             }
             else if (s_hidden.TryGetValue(key, out list))
             {
@@ -422,6 +428,18 @@ namespace OlCoop.Death
         static PlayerShip s_owner;
 
         public static bool On { get { return s_rig != null; } }
+        public static PlayerShip Target { get { return s_rig != null ? s_target : null; } }
+        static bool s_cockpit_was_active = true;
+
+        /// Where the followed pilot's eyes are: the ship's camera parent (cockpit view), else the ship's centre.
+        static Transform Eye(PlayerShip t) { return t.m_camera_parent != null ? t.m_camera_parent : t.c_transform; }
+
+        static void ShowCockpit(PlayerShip t, bool on)
+        {
+            if (t == null || t.c_cockpit == null) return;
+            if (on) { s_cockpit_was_active = t.c_cockpit.activeSelf; if (!s_cockpit_was_active) t.c_cockpit.SetActive(true); }
+            else if (!s_cockpit_was_active) t.c_cockpit.SetActive(false);
+        }
 
         // 0.4.20: spectators saw a darker level and no headlights from the ship they followed (11:13 run). A remote ship's lights are
         // ordinary Auto lights competing for the few per-pixel light slots, while our own ship's lights are dead/off. While following a
@@ -522,7 +540,7 @@ namespace OlCoop.Death
                 o.ResetCameraPosition();
             }
             CoopLog.Write("SPECT", "stop");
-            if (s_target != null) CoopDeath.HideShip(s_target, false);
+            if (s_target != null) { CoopDeath.HideShip(s_target, false); ShowCockpit(s_target, false); }
             RestoreLights();
             // Never destroy the game's camera with the rig: move anything still parented to it back to the ship first.
             var home = o != null ? (o.c_cam_controller != null ? o.c_cam_controller : o.m_camera_parent) : null;
@@ -544,9 +562,10 @@ namespace OlCoop.Death
             if (living.Count == 0) { if (Time.time >= s_next_log) CoopLog.Write("SPECT", "no living teammate to follow (ships=" + ships.Count + ")"); return; }
             int i = Mathf.Max(-1, living.IndexOf(s_target));
             var t = living[((i + dir) % living.Count + living.Count) % living.Count];
-            if (s_target != null && s_target != t) CoopDeath.HideShip(s_target, false);
+            if (s_target != null && s_target != t) { CoopDeath.HideShip(s_target, false); ShowCockpit(s_target, false); }
             s_target = t;
-            CoopDeath.HideShip(s_target, true); // first-person view from inside their ship
+            CoopDeath.HideShip(s_target, true, true); // first-person view from inside their ship: hull hidden, cockpit shown
+            ShowCockpit(s_target, true);
             BoostLights(s_target);
             GameplayManager.AddHUDMessage("SPECTATING " + Hud.CoopHud.NameOf(s_target.c_player), -1, true);
             CoopLog.Write("SPECT", "following netId=" + s_target.c_player.netId.Value);
@@ -567,13 +586,14 @@ namespace OlCoop.Death
                     " cam=" + (cam != null ? cam.position.ToString("F1") + " parent=" + (cam.parent != null ? cam.parent.name : "null") : "null") +
                     " camEnabled=" + (Camera.main != null && Camera.main.enabled));
             }
-            if (s_target == null || (bool)s_target.m_dying || (bool)s_target.m_dead) { if (s_target != null) CoopDeath.HideShip(s_target, false); s_target = null; Next(+1); }
+            if (s_target == null || (bool)s_target.m_dying || (bool)s_target.m_dead) { if (s_target != null) { CoopDeath.HideShip(s_target, false); ShowCockpit(s_target, false); } s_target = null; Next(+1); }
             if (Controls.JustPressed(CCInput.FIRE_WEAPON)) Next(+1);
             if (s_target == null) return;
             KeepLights(s_target);
             if (Time.time >= s_next_light_log) { s_next_light_log = Time.time + 15f; LogLights("tick", s_target); }
-            s_rig.transform.position = s_target.c_transform.position;
-            s_rig.transform.rotation = Quaternion.Slerp(s_rig.transform.rotation, s_target.c_transform.rotation, 0.35f);
+            var eye = Eye(s_target);
+            s_rig.transform.position = eye.position;
+            s_rig.transform.rotation = Quaternion.Slerp(s_rig.transform.rotation, eye.rotation, 0.35f);
         }
     }
 

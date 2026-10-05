@@ -1,4 +1,4 @@
-# olcoop handoff (state as of 2026-10-05 17:00 PT)
+# olcoop handoff (state as of 2026-10-05 17:45 PT)
 
 Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
@@ -13,7 +13,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.6.3 alpha"). Protocol = 20 (in build.sh). Current build folder: build-alpha (since 0.6.0-alpha; build-online held 0.5.x).
+  `VERSION` ("0.6.4 alpha"). Protocol = 21 (in build.sh). Current build folder: build-alpha (since 0.6.0-alpha; build-online held 0.5.x).
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 192 patches, 0 problems;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-alpha (current).
@@ -520,3 +520,21 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 - Weapons shared (CoopPickups.ShareWeapon from IT3): WEAPON_* pickup -> UnlockWeapon(wt, false, true) on every other player still
   LOCKED (stock gives starter ammo 200 / energy 10 with an unlock). Missiles/armor/energy/ammo not shared (user).
 - Esc menu (PM3, CoopScreen.cs): DrawPauseMenu postfix draws the roster at UI_LEFT + 40, y from -124 (two lines per player).
+
+## 0.6.4-alpha status (2026-10-05 17:45) - installed, UNTESTED (includes untested 0.6.3). Protocol 21 (new msg 200 ship stats)
+- Installed SHA1 2e8051b8fec703d19bbc53963c4e7c2f0f5eae1c (245760 bytes), verified in game folder + build-alpha. Tag v0.6.4-alpha.
+  218 patches, 0 problems, 0 warnings. Zip dist/olcoop-0.6.4-alpha.zip (SHA1 798466882fc1fa46591d5872030923be226bce13).
+- User (16:33): "clearly shot at a button" in the 15:53 run. Both logs have no Destroyable.ApplyDamage at all (W2 logs every call on
+  the host via HostNoteHit, first 30), so no shot reached a destroyable's damage code - not the joiner's and not the host's own. Not
+  explained yet. Candidates (unproven): the shots hit a Forcefield/SimpleShield (layer 24 "Bounce"; SimpleShield.ApplyDamage, not
+  logged) in front of the button; or the button's collider is a trigger and upgraded shots take the trigger branch that ignores
+  destroyables (Projectile.OnTriggerEnter, m_upgrade >= LEVEL_1). W9 (ProcessCollision prefix) logs player shots that hit a
+  Destroyable (hp, m_invulnerable, dying), Forcefield, SimpleShield or layer 24 (40 per level); W9b (OnTriggerEnter prefix) logs
+  upgraded player shots passing a Destroyable through the trigger branch (20). Next run decides.
+- Spectate (Death.cs): HideShip(s, hide, keepCockpit) skips renderers under PlayerShip.c_cockpit (active on remote ships, see
+  Player.RestorePlayerShipDataAfterRespawn else-branch); followed ship's c_cockpit forced active and restored; rig follows
+  m_camera_parent (eye) instead of c_transform. Spectate.Target exposed.
+- SpectateHud (Hud.cs): overlay slot 2 (stock uses 0/1), UIElementType 124, y 205/235/265 from centre: name, ARMOR/ENERGY/AMMO,
+  weapon + missile xN. Host sends msg 200 StatsMsg {netId, hp, energy, ammo, weapon, missile, missile ammo} 4/s on channel 2 to
+  verified joiners while a level runs (>= 2 players); joiner uses entries < 2 s old, else its own copy. Joiner copies of the host's
+  energy/ammo are stale otherwise (olmod MPSniperPacketsDisableRpcSetEnergy/Ammo: client side always skipped).

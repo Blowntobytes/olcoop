@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.4-alpha (2026-10-05) - spectator cockpit + readout, shot diagnostics, UNTESTED build (all players must run 0.6.4-alpha; protocol 21)
+Includes the untested 0.6.3 changes.
+- New: when spectating (Spectate mode or waiting to respawn) you see the followed player's cockpit from their seat (it used to
+  hide their whole ship), and their armor, energy, ammo, weapon and missile count at the bottom of the screen. The host sends every
+  player's values to the joiners 4 times a second (a joiner's own copy of the host's energy and ammo isn't kept up to date).
+- Diagnostics: in the 15:53 run no shot reached any button's damage code, not even the host's own. The logs now name what each
+  player shot hits when it is a button/destroyable (with its health and whether it is shielded), a force field or a shield, and
+  when an upgraded shot passes through a button without damaging it.
+
 ## 0.6.3-alpha (2026-10-05) - map controls, joiner pickups and buttons, Esc-menu session list, shared weapons, UNTESTED build (all players must run 0.6.3-alpha; protocol 20)
 From the 15:51-16:01 run on 0.6.2 (BlownToBits hosting a saved Titan level, PeetzaGuest joining; both logs). Confirmed by the user:
 hologuide, starting armor/energy, session list. Joiner ammo pickups worked (log: 200 -> 250).
