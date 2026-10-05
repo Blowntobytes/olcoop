@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.6.3-alpha (2026-10-05) - map controls, joiner pickups and buttons, Esc-menu session list, shared weapons, UNTESTED build (all players must run 0.6.3-alpha; protocol 20)
+From the 15:51-16:01 run on 0.6.2 (BlownToBits hosting a saved Titan level, PeetzaGuest joining; both logs). Confirmed by the user:
+hologuide, starting armor/energy, session list. Joiner ammo pickups worked (log: 200 -> 250).
+- Fix: the ship flew and fired while the map was open (co-op doesn't pause the game; the map keys also steered the ship).
+  Controls and weapons are held while your map is open.
+- Fix: keys, upgrade points and audio logs sometimes didn't count when a joiner flew through them. The joiner's game hides the item
+  and plays the sound right away, but the real pickup only happened if the host's copy of the joiner's ship touched it too. The
+  joiner now tells the host what it touched; the host checks and gives it (or the item shows up again if it can't be taken).
+- Fix: some shoot-to-open buttons couldn't be broken by a joiner. With upgraded weapons a joiner's own shots never registered a
+  button hit (only the host's copy of the shot could). The joiner now reports those hits like its other button hits.
+- New: the session list (players, state, ping) is in the Esc menu too.
+- Change: weapons are shared. When anyone picks up a new weapon, every player gets it. Armor, energy, ammo and missiles are not shared.
+
 ## 0.6.2-alpha (2026-10-05) - session list, robot prediction, 120 armor/energy cap, UNTESTED build (all players must run 0.6.2-alpha; protocol 19)
 From the 06:58-07:17 run on 0.6.1 (BlownToBits hosting a saved game, PeetzaGuest joining; both logs). Host pickup sounds confirmed
 by the user ("appears to be working now").

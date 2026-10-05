@@ -151,6 +151,12 @@ namespace OlCoop.Session
             }
         }
 
+        public static string ShortName(RosterEntry e)
+        {
+            string n = string.IsNullOrEmpty(e.pilot) ? (e.steam ?? "?").ToUpperInvariant() : e.pilot;
+            return n.Length > 18 ? n.Substring(0, 17) + "." : n;
+        }
+
         public static string Line(RosterEntry e)
         {
             string name = string.IsNullOrEmpty(e.pilot) ? (e.steam ?? "?").ToUpperInvariant() : e.pilot;

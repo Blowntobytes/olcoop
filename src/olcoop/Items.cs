@@ -6,6 +6,7 @@ using Newtonsoft.Json.Linq;
 using Overload;
 using UnityEngine;
 using UnityEngine.Networking;
+using UnityEngine.Networking.NetworkSystem;
 
 namespace OlCoop.World
 {
@@ -180,6 +181,22 @@ namespace OlCoop.World
     public static class CoopPickups
     {
         internal static Item Current;   // the item whose OnTriggerEnter is running (host)
+        internal static bool PickedUp;  // that OnTriggerEnter announced a pickup (CallRpcPlayItemPickupFX)
+        internal static bool LastPickedUp(Item it) { return CoopTouch.IsConsumed(it); }
+
+        // ------------------------------------------------------------ weapons for everyone (0.6.3, user request)
+        // A weapon pickup unlocks that weapon for every player who doesn't have it yet (stock UnlockWeapon on the server: level 0,
+        // starter ammo/energy, RpcUnlockWeaponClient to that player). Armor, energy, ammo and missiles stay with the one who took them.
+        internal static void ShareWeapon(Player picker, Item it)
+        {
+            if (!CoopConfig.IsHost || !NetworkServer.active || GameplayManager.IsMultiplayer) return;
+            if (!((it.m_type >= ItemType.WEAPON_DRILLER && it.m_type <= ItemType.WEAPON_SHOTGUN) || it.m_type == ItemType.WEAPON_LANCER)) return;
+            var wt = Item.ItemToWeaponType(it.m_type);
+            int n = 0;
+            foreach (var p in Overload.NetworkManager.m_Players)
+                if (p != null && p != picker && p.m_weapon_level[(int)wt] == WeaponUnlock.LOCKED) { p.UnlockWeapon(wt, false, true); n++; }
+            CoopLog.Write("ITEM", "host: " + wt + " picked up by netId=" + picker.netId.Value + "; unlocked for " + n + " other player(s)");
+        }
         internal static readonly System.Reflection.MethodInfo m_fx = AccessTools.Method(typeof(Item), "PlayItemPickupFX");
         static int s_logged;
 
@@ -360,7 +377,14 @@ namespace OlCoop.World
     static class IT3a_TrackItem
     {
         [HarmonyPriority(Priority.First)]
-        static void Prefix(Item __instance) { CoopPickups.Current = __instance; }
+        static bool Prefix(Item __instance)
+        {
+            // An item is destroyed at the end of the frame, so a second touch in the same frame (host trigger + joiner report, or two
+            // ships) would pick it up twice. Once picked up it is consumed.
+            if (CoopConfig.IsHost && CoopTouch.IsConsumed(__instance)) return false;
+            CoopPickups.Current = __instance; CoopPickups.PickedUp = false;
+            return true;
+        }
         static void Finalizer() { CoopPickups.Current = null; }
     }
 
@@ -369,8 +393,143 @@ namespace OlCoop.World
     {
         static void Postfix(Player __instance)
         {
-            try { CoopPickups.HostLocalFx(__instance); } catch (Exception ex) { CoopLog.Error("IT3", ex); }
+            try
+            {
+                var it = CoopPickups.Current;
+                if (it != null && CoopConfig.IsHost) { CoopPickups.PickedUp = true; CoopTouch.Consume(it); CoopPickups.ShareWeapon(__instance, it); }
+                CoopPickups.HostLocalFx(__instance);
+            }
+            catch (Exception ex) { CoopLog.Error("IT3", ex); }
         }
+    }
+
+    /// <summary>
+    /// Joiner pickups judged by the joiner's own touch (0.6.3). A joiner flying through an item runs Item.TryFakePickup on its own
+    /// game: the item is hidden (SetActive(false), never undone) and the pickup sound plays, but the real pickup only happens if the
+    /// host's copy of the joiner's ship also enters the item's trigger. When it didn't (15:53 run: keys, upgrade points and audio
+    /// logs "not registering"), the item vanished for the joiner with nothing gained. Now the joiner reports the touch (msg 198); the
+    /// host checks the item still exists and the joiner's ship is near it (12 u) and runs the stock pickup with that ship. If the host
+    /// can't give it (full, too far, gone), it answers msg 199 and the joiner shows the item again.
+    /// </summary>
+    public static class CoopTouch
+    {
+        public const short Touch = 198, Reject = 199;
+        const float MaxDistance = 12f;
+        static readonly HashSet<int> s_consumed = new HashSet<int>();
+        static readonly System.Reflection.MethodInfo m_trigger = AccessTools.Method(typeof(Item), "OnTriggerEnter");
+        static readonly System.Reflection.FieldInfo f_fake = AccessTools.Field(typeof(Item), "m_fake_picked_up");
+        static int s_logged;
+
+        public static bool IsConsumed(Item it) { return it != null && s_consumed.Contains(it.GetInstanceID()); }
+        public static void Consume(Item it) { if (it != null) s_consumed.Add(it.GetInstanceID()); }
+        public static void ResetForLevel() { s_consumed.Clear(); }
+
+        // ---- joiner
+        public static void JoinerFakePickup(Item it)
+        {
+            var id = it.GetComponent<NetworkIdentity>();
+            var c = Client.GetClient();
+            if (id == null || c == null || !c.isConnected) return;
+            if (id.netId.Value == 0) { CoopLog.Write("ITEM", "joiner: touched " + it.m_type + " that has no network id; can't report it"); return; }
+            c.Send(Touch, new IntegerMessage((int)id.netId.Value));
+            if (s_logged++ < 40) CoopLog.Write("ITEM", "joiner: touched " + it.m_type + " netId=" + id.netId.Value + " -> host");
+        }
+
+        public static void OnReject(NetworkMessage msg)
+        {
+            try
+            {
+                uint nid = (uint)msg.ReadMessage<IntegerMessage>().value;
+                var go = ClientScene.FindLocalObject(new NetworkInstanceId(nid));
+                var it = go != null ? go.GetComponent<Item>() : null;
+                if (it == null) return;
+                f_fake.SetValue(it, false);
+                it.gameObject.SetActive(true);
+                CoopLog.Write("ITEM", "joiner: host didn't give " + it.m_type + " netId=" + nid + "; shown again");
+            }
+            catch (Exception ex) { CoopLog.Error("OnReject", ex); }
+        }
+
+        // ---- host
+        public static void OnTouch(NetworkMessage msg)
+        {
+            try
+            {
+                uint nid = (uint)msg.ReadMessage<IntegerMessage>().value;
+                var go = NetworkServer.FindLocalObject(new NetworkInstanceId(nid));
+                var it = go != null ? go.GetComponent<Item>() : null;
+                Player pl = null;
+                foreach (var p in Overload.NetworkManager.m_Players)
+                    if (p != null && !p.isLocalPlayer && p.connectionToClient != null && p.connectionToClient.connectionId == msg.conn.connectionId) pl = p;
+                string why = null;
+                if (it == null) why = "gone";                         // already picked up (by anyone); the joiner's copy is being removed
+                else if (IsConsumed(it)) why = "already picked up";
+                else if (pl == null || pl.c_player_ship == null) why = "no ship";
+                else if ((bool)pl.c_player_ship.m_dying || (bool)pl.c_player_ship.m_dead) why = "ship dead";
+                if (why == null)
+                {
+                    var ship = pl.c_player_ship;
+                    float d = Vector3.Distance(ship.c_transform.position, it.transform.position);
+                    if (d > MaxDistance) why = "joiner's ship is " + d.ToString("F1") + " u away on the host";
+                    else
+                    {
+                        Collider col = ship.c_mesh_collider != null ? (Collider)ship.c_mesh_collider : ship.GetComponentInChildren<Collider>();
+                        if (col == null || col.attachedRigidbody == null) why = "no ship collider";
+                        else
+                        {
+                            m_trigger.Invoke(it, new object[] { col });
+                            bool got = CoopPickups.LastPickedUp(it);
+                            CoopLog.Write("ITEM", "host: conn " + msg.conn.connectionId + " touched " + it.m_type + " netId=" + nid + " (" + d.ToString("F1") + " u): " + (got ? "picked up" : "not picked up (full / can't use)"));
+                            if (!got) msg.conn.Send(Reject, new IntegerMessage((int)nid));
+                            return;
+                        }
+                    }
+                }
+                if (why != "gone" && why != "already picked up") msg.conn.Send(Reject, new IntegerMessage((int)nid));
+                CoopLog.Write("ITEM", "host: conn " + msg.conn.connectionId + " touched netId=" + nid + (it != null ? " " + it.m_type : "") + ": " + why);
+            }
+            catch (Exception ex) { CoopLog.Error("OnTouch", ex); }
+        }
+    }
+
+    [HarmonyPatch(typeof(Item), "TryFakePickup")]
+    static class IT10_JoinerTouch
+    {
+        static readonly System.Reflection.FieldInfo f_fake = AccessTools.Field(typeof(Item), "m_fake_picked_up");
+        static void Postfix(Item __instance)
+        {
+            if (!CoopConfig.IsJoiner || GameplayManager.IsMultiplayer) return;
+            try { if ((bool)f_fake.GetValue(__instance)) CoopTouch.JoinerFakePickup(__instance); }
+            catch (Exception ex) { CoopLog.Error("IT10", ex); }
+        }
+    }
+
+    [HarmonyPatch(typeof(Server), "RegisterHandlers")]
+    static class IT11_ServerHandlers
+    {
+        static void Postfix()
+        {
+            CoopConfig.EnsureInit();
+            if (!CoopConfig.IsHost) return;
+            NetworkServer.RegisterHandler(CoopTouch.Touch, CoopTouch.OnTouch);
+        }
+    }
+
+    [HarmonyPatch(typeof(Client), "RegisterHandlers")]
+    static class IT11b_ClientHandlers
+    {
+        static void Postfix()
+        {
+            CoopConfig.EnsureInit();
+            if (!CoopConfig.IsJoiner || Client.GetClient() == null) return;
+            Client.GetClient().RegisterHandler(CoopTouch.Reject, CoopTouch.OnReject);
+        }
+    }
+
+    [HarmonyPatch(typeof(GameplayManager), "StartLevel")]
+    static class IT12_ResetTouch
+    {
+        static void Postfix() { CoopTouch.ResetForLevel(); }
     }
 
     [HarmonyPatch]

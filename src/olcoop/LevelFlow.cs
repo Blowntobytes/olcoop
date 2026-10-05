@@ -582,6 +582,31 @@ namespace OlCoop.World
         }
     }
 
+    /// F19 (0.6.3): the map doesn't pause co-op (S4 opens it while the game runs), and PlayerShip.FixedUpdateReadControls kept
+    /// reading the local controls, so the keys that pan/rotate the map also flew and fired the ship. While the local map is open,
+    /// read nothing (the stock non-gameplay branch: cleared input and buttons); a joiner still sends that empty input to the host.
+    [HarmonyPatch(typeof(PlayerShip), "FixedUpdateReadControls")]
+    static class F19_NoControlsInMap
+    {
+        static int s_logged;
+        static bool Prefix(PlayerShip __instance, ref PlayerEncodedInput __result)
+        {
+            if (!CoopConfig.Active || GameplayManager.IsMultiplayer || GameplayManager.m_gameplay_state != GameplayState.AUTOMAP) return true;
+            try
+            {
+                var p = __instance.c_player;
+                p.ClearCachedInput();
+                p.UpdateCachedButtons();
+                p.ClearCachedButtons();
+                __result = null;
+                if (GameplayManager.IsMultiplayerActive && !Server.IsActive() && p.NeedToSendFixedUpdateMessages()) __result = p.SendPlayerControlsToServer();
+                if (s_logged++ == 0) CoopLog.Write("FLOW", "automap open: ship controls and weapons held");
+                return false;
+            }
+            catch (Exception ex) { CoopLog.Error("F19", ex); return true; }
+        }
+    }
+
     /// F12: remember which ship last set off a trigger (host) - the lockdown regroup point.
     [HarmonyPatch(typeof(TriggerBase), "OnTrigger")]
     static class F12_NoteTrigger

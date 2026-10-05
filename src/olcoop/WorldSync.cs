@@ -405,6 +405,32 @@ namespace OlCoop.World
         }
     }
 
+    /// W8 (0.6.3): a joiner's own shot hitting a destroyable. Projectile.ProcessCollision applies damage only where
+    /// NetworkManager.IsServer(), so on a joiner it never reaches Destroyable.ApplyDamage (W2) and nothing was reported; only the
+    /// trigger path for non-upgraded player shots did. With upgraded weapons (wlevel >= 1) a joiner's button hits then depended on
+    /// the host's copy of the shot alone ("some buttons not destructible for the joiner"). Report what the server would have applied.
+    [HarmonyPatch(typeof(Projectile), "ProcessCollision")]
+    static class W8_JoinerShotHitsDestroyable
+    {
+        static readonly FieldInfo f_damage = AccessTools.Field(typeof(Projectile), "m_damage");
+        static void Prefix(Projectile __instance, GameObject collider)
+        {
+            if (!(CoopWorld.IsJoiner && CoopWorld.Matched) || collider == null || !__instance.m_alive) return;
+            try
+            {
+                var me = GameManager.m_player_ship;
+                var owner = __instance.m_owner;
+                if (me == null || owner == null || !(owner == me.gameObject || owner.transform.IsChildOf(me.transform))) return;
+                var d = collider.GetComponentInParent<Destroyable>();
+                if (d == null || d.m_dying) return;
+                var di = new DamageInfo { damage = (float)f_damage.GetValue(__instance), type = __instance.m_damage_energy ? DamageType.ENERGY : DamageType.GENERIC,
+                    owner = owner, pos = __instance.c_transform.localPosition, push_dir = __instance.c_transform.forward, weapon = __instance.m_type };
+                CoopWorld.SendHit(d, di);
+            }
+            catch (Exception ex) { CoopLog.Error("W8", ex); }
+        }
+    }
+
     /// W3: destroyable destruction. Host broadcasts; joiner only destroys on the host's word.
     [HarmonyPatch(typeof(Destroyable), "StartExploding")]
     static class W3_DestroyableExplode

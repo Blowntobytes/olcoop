@@ -1,4 +1,4 @@
-# olcoop handoff (state as of 2026-10-05 08:30 PT)
+# olcoop handoff (state as of 2026-10-05 17:00 PT)
 
 Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
@@ -13,7 +13,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.6.2 alpha"). Protocol = 19 (in build.sh). Current build folder: build-alpha (since 0.6.0-alpha; build-online held 0.5.x).
+  `VERSION` ("0.6.3 alpha"). Protocol = 20 (in build.sh). Current build folder: build-alpha (since 0.6.0-alpha; build-online held 0.5.x).
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 192 patches, 0 problems;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-alpha (current).
@@ -495,3 +495,28 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   with average correction (u) and snaps - use it to tune RobotLeadMax. Not changed: robot projectiles still start at the host's
   muzzle position (now slightly behind the drawn robot); host-side lag compensation for joiner shots (rewind) not done.
 - F8 window Broadcast sent ConfigMsg without ff (friendly fire switched off on joiners when the mode was changed there): fixed.
+
+
+## 0.6.3-alpha status (2026-10-05 17:00) - installed, UNTESTED. Protocol 20 (new msgs 198 item touch J->H, 199 reject H->J)
+- Installed SHA1 3d2910665b1be4d05a9d62b7ab24ac842e8912e1 (239616 bytes), verified in game folder + build-alpha. Tag v0.6.3-alpha.
+  213 patches, 0 problems, 0 warnings. Zip dist/olcoop-0.6.3-alpha.zip (SHA1 2ac3bcf487203e6193f63b1b1a2e1ddf0a6a9485).
+- 0.6.2 run 15:51-16:01 (host BlownToBits pid16556, joiner PeetzaGuest pid21632, LAN rtt 8-23 ms, saved sp_titan_06, 93 items
+  re-created): user confirms hologuide, starting armor/energy, session list. Joiner ammo 200 -> 250 (0.6.1 sniper fix works).
+  No destroyable hit at all in either log (no button attempt captured).
+- Map (F19, LevelFlow.cs): PlayerShip.FixedUpdateReadControls prefix while GameplayState.AUTOMAP in co-op: ClearCachedInput,
+  UpdateCachedButtons, ClearCachedButtons, joiner still SendPlayerControlsToServer (empty). Same as the stock non-GAMEPLAY branch.
+- Joiner pickups (Items.cs CoopTouch): Item.OnTriggerEnter on a client = TryFakePickup -> HideItem (SetActive(false), never undone)
+  + FX; the real pickup needed the host-side joiner ship in the trigger. IT10 (TryFakePickup postfix, joiner, m_fake_picked_up)
+  sends 198 {item netId}. Host OnTouch: item via NetworkServer.FindLocalObject, joiner Player by conn, alive, distance <= 12 u,
+  then invokes the item's own OnTriggerEnter with the joiner ship's c_mesh_collider (stock checks incl. ItemIsReachable). Not
+  picked up (full / unreachable / too far / no ship) -> 199 -> joiner sets m_fake_picked_up=false + SetActive(true). Double pickups:
+  IT3 marks an item consumed (instance id) when CallRpcPlayItemPickupFX fires; IT3a prefix skips OnTriggerEnter for consumed
+  items (also covers same-frame double triggers). Reset on GameplayManager.StartLevel. Why the host-side trigger misses was not
+  proven (no per-touch logs before this build); the new [ITEM] touch lines show distance on the host for every joiner touch.
+- Joiner buttons (W8, WorldSync.cs): Projectile.ProcessCollision applies damage only if NetworkManager.IsServer(); the always-on
+  path (Projectile.OnTriggerEnter -> Destroyable.ApplyDamage) is skipped for upgraded player shots (m_upgrade >= LEVEL_1). W8
+  prefix on the joiner: own shot + Destroyable in the collider's parents -> CoopWorld.SendHit (msg 179, existing host path).
+  The host's copy of the same shot can also hit: a destroyable may take two hits for one shot (buttons only need one or two).
+- Weapons shared (CoopPickups.ShareWeapon from IT3): WEAPON_* pickup -> UnlockWeapon(wt, false, true) on every other player still
+  LOCKED (stock gives starter ammo 200 / energy 10 with an unlock). Missiles/armor/energy/ammo not shared (user).
+- Esc menu (PM3, CoopScreen.cs): DrawPauseMenu postfix draws the roster at UI_LEFT + 40, y from -124 (two lines per player).

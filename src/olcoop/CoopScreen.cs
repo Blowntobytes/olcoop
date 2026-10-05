@@ -394,6 +394,33 @@ namespace OlCoop.UI
         }
     }
 
+    /// PM3 (0.6.3): the session list in the Esc menu too (left side, beside the menu items): who is in the game, state, ping.
+    [HarmonyPatch(typeof(UIElement), "DrawPauseMenu")]
+    static class PM3_SessionList
+    {
+        static void Postfix(UIElement __instance)
+        {
+            if (!CoopConfig.Active || GameplayManager.IsMultiplayer || MenuManager.m_menu_micro_state != 0) return;
+            try
+            {
+                var roster = OlCoop.Session.CoopLobby.Current();
+                var pos = new Vector2(UIManager.UI_LEFT + 40f, -124f);
+                __instance.DrawStringSmall("IN THIS SESSION (" + roster.Count + "/" + OlCoop.Session.CoopLobby.MaxPlayers + ")", pos, 0.45f, StringOffset.LEFT, UIManager.m_col_ui2, 1f, -1f);
+                pos.y += 30f;
+                if (roster.Count == 0)
+                    __instance.DrawStringSmall(CoopConfig.IsJoiner ? "WAITING FOR THE HOST..." : "NOBODY YET", pos, 0.4f, StringOffset.LEFT, UIManager.m_col_ui1, 1f, -1f);
+                foreach (var e in roster)
+                {
+                    __instance.DrawStringSmall(OlCoop.Session.CoopLobby.ShortName(e), pos, 0.42f, StringOffset.LEFT, e.host ? UIManager.m_col_hi4 : UIManager.m_col_ui1, 1f, -1f);
+                    pos.y += 22f;
+                    __instance.DrawStringSmall("  " + OlCoop.Session.CoopLobby.StateText(e.state) + "  " + (e.host ? "HOST" : (e.ping > 0 ? e.ping + " MS" : "-")), pos, 0.36f, StringOffset.LEFT, UIManager.m_col_ui2, 1f, -1f);
+                    pos.y += 28f;
+                }
+            }
+            catch (Exception ex) { CoopLog.Error("PM3", ex); }
+        }
+    }
+
     /// Selecting it = selecting QUIT TO MAIN MENU (same confirmation and exit; the session ends on the way out).
     [HarmonyPatch(typeof(MenuManager), "PausedUpdate")]
     static class PM2_LeaveSelect

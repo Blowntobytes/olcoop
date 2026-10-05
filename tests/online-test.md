@@ -1,9 +1,21 @@
-# Online test (build 0.6.2-alpha)
-All windows / PCs must show OLCOOP 0.6.2-ALPHA at the top-left of the main menu (older versions can't join: protocol 19).
-Steam must be running. Send BOTH PCs' `Overload\olcoop_logs` folders after the run (the host's log matters most for
-pickups and upgrade points), and say which PC hosted.
+# Online test (build 0.6.3-alpha)
+All windows / PCs must show OLCOOP 0.6.3-ALPHA at the top-left of the main menu (older versions can't join: protocol 20).
+Steam must be running. Send BOTH PCs' `Overload\olcoop_logs` folders after the run, and say which PC hosted.
 
-## New in 0.6.2 (check these first)
+## New in 0.6.3 (check these first)
+1. Map: open the map (host and joiner) while holding thrust/fire keys: the ship doesn't move or fire while the map is open; after
+   closing it, controls work normally. Log: [FLOW] "automap open: ship controls and weapons held".
+2. Joiner pickups: the joiner flies through security keys, upgrade points, audio logs and powerups (also on a saved game): each one
+   counts. Joiner log: [ITEM] "joiner: touched X netId=.. -> host"; host log: [ITEM] "host: conn 20 touched X ...: picked up"
+   (or the reason it wasn't, then the item shows again for the joiner: "shown again").
+3. Joiner buttons: the joiner shoots shoot-to-open buttons with an upgraded weapon (impulse/cyclone level 1+): they break and the
+   door opens for everyone. Joiner log: [WORLD] "joiner: hit destroyable .. -> host"; host log: "host: joiner conn 20 hit destroyable".
+   Note which button, if one still doesn't break.
+4. Esc menu: the left side shows IN THIS SESSION with each player's name, state and ping (host and joiner).
+5. Weapons for everyone: one player picks up a new weapon: every player gets it (each gets the "weapon unlocked" message);
+   armor/energy/ammo/missile pickups stay with the one who took them. Host log: [ITEM] "host: X picked up by ..; unlocked for N".
+
+## From 0.6.2 (confirmed: session list, starting armor/energy; still to check: robots at long distance, reactor sound)
 A. Session list: host and joiner open CO-OP (main menu): "IN THIS SESSION (n/4)" lists every player - pilot name (Steam name),
    IN MENUS / IN LEVEL / DEAD / LEVEL RESULTS / READY / CONNECTING, ping in ms. Same list in the F8 window (also in a level).
    Host log: [LOBBY] "n/4: ..." on every change and "host: round trip conn 20=.. ms" every 30 s; joiner: "round trip to host".

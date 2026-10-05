@@ -12,6 +12,7 @@ expect rough edges. Download the latest zip from [Releases](https://github.com/B
 - Robots, bosses, doors, switches, keys, audio logs, lockdowns (everyone is pulled into the room), exits (everyone leaves
   together, lined up behind the player who reached the exit).
 - Weapons, ammo weapons, missiles and pickups is per instance, not per player yet(WIP); upgrades and loadouts carry over to the next level.
+  A weapon one player picks up is given to every player.
 - Death modes (CO-OP OPTIONS): Respawn next to a teammate, Spectate until the level ends, or Hardcore (any death restarts).
 - Between levels: everyone gets the results and upgrade screens; story scenes are skipped; the next level starts when every
   joiner has pressed READY UP.
@@ -59,12 +60,12 @@ change how joiners display robots. Logs: `Overload\olcoop_logs\`.
 | `NetcodeFixes.cs` | Side effects of running campaign levels with multiplayer netcode on |
 | `SteamTransport.cs` | Steam P2P connection, lobby, invites, disconnect detection |
 | `CoopScreen.cs` | CO-OP main-menu screen, Esc-menu entries, skipped story scenes, READY UP |
-| `Lobby.cs` | Session list (who is in the game, state, ping) and round-trip measurement |
+| `Lobby.cs` | Session list (who is in the game, state, ping; CO-OP screen, Esc menu, F8) and round-trip measurement |
 | `OptionsScreen.cs`, `OptionsWindow.cs` | CO-OP OPTIONS (death mode, friendly fire etc.), in-menu and F8 window |
 | `Robots.cs` | Host-authoritative robots streamed to joiners, predicted on joiners |
 | `WorldSync.cs` | Level scripts, doors, switches, destroyables, security keys |
 | `LevelFlow.cs` | Audio logs, exiting together, lockdowns, teammates on the automap, closing the map safely |
-| `Items.cs` | Saved-game items, late-activated items, pickup sounds/ammo/energy, shared upgrade points, hologuide item list |
+| `Items.cs` | Saved-game items, late-activated items, joiner pickups, pickup sounds/ammo/energy, shared upgrade points and weapons, armor/energy cap, hologuide item list |
 | `Combat.cs` | Melee damage routing, joiner loadouts and carry-over between levels, shot rate checks |
 | `Death.cs`, `Hud.cs` | Death modes (respawn / spectate / hardcore), friendly fire, respawn countdown, names and health bars |
 | `ShipState.cs` | Headlights and boost on other players' ships |
