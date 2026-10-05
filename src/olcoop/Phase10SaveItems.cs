@@ -163,3 +163,59 @@ namespace OlCoop.World
         }
     }
 }
+
+namespace OlCoop.World
+{
+    /// <summary>
+    /// IV1 (0.5.9): items become visible on joiners when the host's game switches them on.
+    /// Level items are UNET scene objects. Overload keeps many of them inactive at the start of the level and switches them on later
+    /// (0.5.7 run 17:33, host: both Ymir keys activeSelf=False at the census, active at 17:35:05 / 17:39:25 when the host got near).
+    /// UNET NetworkServer.SetClientReadyInternal only sends spawn messages for objects whose GameObject is activeSelf when the client
+    /// becomes ready; nothing re-checks later, so the joiner's copies stayed netId 0 / inactive (joiner log 17:38: keys, audio logs,
+    /// some power-ups invisible, but pickups still worked because pickups run on the host).
+    /// Host, every 0.5 s: every active Item with a NetworkIdentity that lacks a ready joiner connection among its observers ->
+    /// NetworkIdentity.RebuildObservers(true) (adds every ready connection; AddObserver -> AddToVisList -> ShowForConnection sends the
+    /// spawn, and the joiner's ClientScene activates its scene copy by sceneId). Items only - robots have their own sync.
+    /// </summary>
+    public static class ItemVisibility
+    {
+        static float s_next;
+        static int s_logged, s_total;
+
+        public static void HostTick()
+        {
+            if (!CoopConfig.IsHost || GameplayManager.IsMultiplayer || !UnityEngine.Networking.NetworkServer.active || !GameplayManager.LevelIsLoaded) return;
+            if (Time.unscaledTime < s_next) return;
+            s_next = Time.unscaledTime + 0.5f;
+            var ready = new List<UnityEngine.Networking.NetworkConnection>();
+            foreach (var c in UnityEngine.Networking.NetworkServer.connections)
+                if (c != null && c.connectionId != 0 && c.isConnected && c.isReady) ready.Add(c);
+            if (ready.Count == 0) return;
+            foreach (var it in Item.m_ItemList)
+            {
+                if (it == null || !it.gameObject.activeSelf) continue;
+                var id = it.GetComponent<UnityEngine.Networking.NetworkIdentity>();
+                if (id == null || id.netId.Value == 0) continue;
+                var obs = id.observers;
+                bool missing = false;
+                foreach (var c in ready) if (obs == null || !obs.Contains(c)) { missing = true; break; }
+                if (!missing) continue;
+                try
+                {
+                    id.RebuildObservers(true);
+                    s_total++;
+                    if (s_logged++ < 60 || (int)it.m_type == 25 || (int)it.m_type == 27)
+                        CoopLog.Write("ITEM", "host: sent " + it.m_type + " netId=" + id.netId.Value + " at " + it.transform.position.ToString("F0") +
+                            " to joiners (switched on after they joined; total " + s_total + ")");
+                }
+                catch (Exception ex) { CoopLog.Error("IV1 " + it.m_type, ex); }
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(GameplayManager), "Update")]
+    static class IV1_ItemVisibilityTick
+    {
+        static void Postfix() { try { ItemVisibility.HostTick(); } catch (Exception ex) { CoopLog.Error("IV1", ex); } }
+    }
+}

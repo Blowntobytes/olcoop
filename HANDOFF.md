@@ -1,4 +1,4 @@
-# olcoop handoff (state as of 2026-10-04 17:50 PT)
+# olcoop handoff (state as of 2026-10-04 18:05 PT)
 
 Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
@@ -10,8 +10,8 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   `Overload_Data\Managed\Assembly-CSharp.dll` locally if needed. Build references the game's Managed DLLs + GameMod.dll staged from the game folder.
 
 ## Build + delivery rules (user is strict about these)
-- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.5.8 online"). Protocol = 17 (in build.sh). Current build folder: build-online.
-- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 199 patches, 0 problems;
+- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.5.9 online"). Protocol = 17 (in build.sh). Current build folder: build-online.
+- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 200 patches, 0 problems;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b (current). Bug fixes overwrite the current phase
   folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
@@ -384,3 +384,18 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   SR3: Object.Destroy(Object) prefix (TargetMethods, 10 s window from the load) logs the stack for KEY_SECURITY / LOG_ENTRY items.
 - Next run: read [ITEM] "save lists ..." (are keys/LOG_ENTRY in the save?), "restored missing saved ...", "Destroy(...) by:" (root
   cause), and [KEY] GONE/DESTROYED after the restore (would mean the remover also acts later). Joiner [KEY] APPEARED lines.
+
+## 0.5.9 status (2026-10-04 18:05) - installed, UNTESTED (includes untested 0.5.8)
+- Installed SHA1 c2b5b58b061f497456dfbb886eef8116a2e070f3 (224768 bytes), verified in game folder + build-online. Protocol 17. Tag v0.5.9. 200 patches, 0 problems.
+  Friend zip dist/olcoop-0.5.9-online.zip (SHA1 cec1c3659e926dc53d23690ab4e7e44ad08bb8d5).
+- 17:33 host (pid27288) / 17:38 joiner (pid19588) logs were STILL 0.5.7 (games started before the 0.5.8 install). Fresh new game
+  sp_outer_01 then sp_outer_02. User: host sees keys + audio logs; joiner doesn't see them but can pick them up; also some power-ups;
+  joiner could break the button on the fresh level (the unbreakable button was on the saved game).
+- Log: host keys netId 16/21 activeSelf=False at the +3 s census, switched on at 17:35:05 / 17:39:25 (player nearby), picked up by the
+  host (AddKey -> level 1, 2). Joiner keys stayed netId=0 inactive all level (never spawned). Audio logs: host picked 5, joiner played them.
+- IL (UnityEngine.Networking, refs/UNET via tools/ildump.py): NetworkServer.SetClientReadyInternal spawns only objects with
+  gameObject.activeSelf; nothing re-sends when an object is switched on later. NetworkIdentity.AddObserver -> NetworkConnection.AddToVisList
+  -> NetworkServer.ShowForConnection (sends the spawn); RebuildObservers(true) adds every ready connection.
+- IV1 (Phase10SaveItems.cs): host, every 0.5 s, Item.m_ItemList: activeSelf && netId != 0 && a ready joiner conn (id != 0) missing from
+  identity.observers -> RebuildObservers(true). Items only. [ITEM] "sent ... to joiners". Unverified in game.
+- Remaining: save-game button (joiner could not break it; on a fresh level it worked) - check after 0.5.8/0.5.9 on a save with both logs.

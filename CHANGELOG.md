@@ -1,6 +1,14 @@
 # Changelog
 
-## 0.5.8-online (2026-10-04), UNTESTED in game (all players must run 0.5.8; protocol 17)
+## 0.5.9-online (2026-10-04), UNTESTED in game (all players must run 0.5.9; protocol 17)
+- Fix: joiners could not see security keys, audio logs and some power-ups (they could still pick them up). The game switches
+  many items on only after the level has started (when a player gets close); the network layer only sends a joining player the
+  items that are already switched on at that moment, so those items never appeared for joiners (17:33-17:46 runs, fresh Ymir
+  and Tarvos). The host now sends each item to the joiners as soon as its game switches it on. [ITEM] "sent ... to joiners" lines.
+- Includes 0.5.8 (saved games: missing keys/audio logs re-created by the host), which the 17:33 run did not test (it ran 0.5.7).
+- Known issues: the destructible-button problem only showed on a saved game (fresh level: the joiner could break it).
+
+## 0.5.8-online (2026-10-04), not tested before 0.5.9 (all players must run 0.5.8; protocol 17)
 - Fix (second attempt): security keys and audio logs missing when the host continues a saved game (17:25 run on 0.5.7: still
   missing; the 0.5.7 change never triggered, so its explanation was wrong). After a saved game is loaded, the host now checks
   every item the save lists and re-creates any that are missing, spawned over the network so they stay and every player gets
