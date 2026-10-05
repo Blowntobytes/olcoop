@@ -1,4 +1,4 @@
-# olcoop handoff (state as of 2026-10-04 17:40 PT)
+# olcoop handoff (state as of 2026-10-04 17:50 PT)
 
 Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
@@ -10,8 +10,8 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   `Overload_Data\Managed\Assembly-CSharp.dll` locally if needed. Build references the game's Managed DLLs + GameMod.dll staged from the game folder.
 
 ## Build + delivery rules (user is strict about these)
-- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.5.7 online"). Protocol = 17 (in build.sh). Current build folder: build-online.
-- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 196 patches, 0 problems;
+- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.5.8 online"). Protocol = 17 (in build.sh). Current build folder: build-online.
+- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 199 patches, 0 problems;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b (current). Bug fixes overwrite the current phase
   folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
@@ -367,3 +367,20 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   super item keeps its super state on joiners (spawn handler instantiates the plain prefab), and pickup sync of these items.
 - Open: joiner could not break a button (17:01 run, host log shows no joiner hit at all; host's own hit at 17:03:23 worked). Need the
   joiner's log. Possibly save-related too (host level from a save, joiner's from the scene) - check the joiner's [WORLD] lines.
+
+## 0.5.8 status (2026-10-04 17:50) - installed, UNTESTED
+- Installed SHA1 7a85ecdc12654a50188c8c281a8093511ee55685 (223232 bytes), verified in game folder + build-online. Protocol 17. Tag v0.5.8. 199 patches, 0 problems.
+  Friend zip dist/olcoop-0.5.8-online.zip (SHA1 0323addb5216743ae9ce73e039ae9e292ea6c917).
+- 0.5.7 run 17:25 (host pid19988, saved=True sp_outer_02) / 17:26 (joiner pid11832, scene load): keys still missing. 0.5.7's
+  diagnosis was WRONG: no [ITEM] line, SV1 never ran; the destroyed restored keys had activeSelf=False (destroyed before Start).
+  Order of the Destroy batch (OnDestroy at end of frame): CTF flag objects (entity_item_cloak(Clone), m_type 25, pos 0, olmod
+  CTFRegisterSpawnHandlers - DontDestroyOnLoad, not in item_prefabs), scene keys netId 5/35, then the restored keys at the key
+  positions. Host census at +3 s: 0 keys. Joiner: scene keys exist locally but never spawned (netId 0, inactive) - host destroyed them.
+  Remover of the restored keys still unidentified (single CompleteGameLoad call in StartLevel; not mod code: grep for Destroy/SetActive).
+- Fix independent of the remover (Phase10SaveItems.cs): SR1 CompleteGameLoad prefix copies m_game_root["Items"] (private static, nulled at
+  the end of CompleteGameLoad; entry = {"Item":{type,index,secret,amount,super,...},"gameObject":{"transform":{localPosition,
+  localRotation}}}). SR2: 1.5 s after gameplay PLAYING, for each saved item without a live Item of that type within 1.5 u ->
+  Instantiate(SaveLoad.GetPrefabFromItemType(type)) at the saved pose, copy index/secret/super/amount, NetworkSpawnItem.Spawn.
+  SR3: Object.Destroy(Object) prefix (TargetMethods, 10 s window from the load) logs the stack for KEY_SECURITY / LOG_ENTRY items.
+- Next run: read [ITEM] "save lists ..." (are keys/LOG_ENTRY in the save?), "restored missing saved ...", "Destroy(...) by:" (root
+  cause), and [KEY] GONE/DESTROYED after the restore (would mean the remover also acts later). Joiner [KEY] APPEARED lines.

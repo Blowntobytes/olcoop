@@ -1,6 +1,13 @@
 # Changelog
 
-## 0.5.7-online (2026-10-04), UNTESTED in game (all players must run 0.5.7; protocol 17)
+## 0.5.8-online (2026-10-04), UNTESTED in game (all players must run 0.5.8; protocol 17)
+- Fix (second attempt): security keys and audio logs missing when the host continues a saved game (17:25 run on 0.5.7: still
+  missing; the 0.5.7 change never triggered, so its explanation was wrong). After a saved game is loaded, the host now checks
+  every item the save lists and re-creates any that are missing, spawned over the network so they stay and every player gets
+  them (same way as robot drops). [ITEM] log lines list what the save contains and what was re-created.
+- Diagnostics: the exact code that removes a key or audio log during those first 10 s is logged with its call stack.
+
+## 0.5.7-online (2026-10-04), 17:25 run: did not fix it (fix never triggered) (all players must run 0.5.7; protocol 17)
 - Fix: security keys, audio logs and power-ups were missing for everyone when the host continued a saved game (17:01 and 17:16
   runs, Tarvos Outpost from a save; in single player the same save had the key). Loading a save makes the game remove the
   level's items and put back the ones the save still has; olmod deletes such re-created items in multiplayer games because a
