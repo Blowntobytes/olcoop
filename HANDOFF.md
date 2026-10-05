@@ -1,4 +1,4 @@
-# olcoop handoff (state as of 2026-10-04 17:00 PT)
+# olcoop handoff (state as of 2026-10-04 17:40 PT)
 
 Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
@@ -10,8 +10,8 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   `Overload_Data\Managed\Assembly-CSharp.dll` locally if needed. Build references the game's Managed DLLs + GameMod.dll staged from the game folder.
 
 ## Build + delivery rules (user is strict about these)
-- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.5.6 online"). Protocol = 17 (in build.sh). Current build folder: build-online.
-- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 195 patches, 0 problems;
+- Build: `./build.sh` (Mono mcs). Version comes from `VERSION` ("0.5.7 online"). Protocol = 17 (in build.sh). Current build folder: build-online.
+- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 196 patches, 0 problems;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b (current). Bug fixes overwrite the current phase
   folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
@@ -349,3 +349,21 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   within 45u: SECRET/open), 10-s diff (APPEARED / changed / GONE), Item.OnDestroy of keys with stack, Item.OnTriggerEnter of keys
   (who, server, throttled 2 s), Player.AddKey postfix, secret DoorAnimating.OpenDoor (first per door). Next run on sp_outer_01
   decides the fix; remove or reduce KeyTrace afterwards.
+
+## 0.5.7 status (2026-10-04 17:40) - installed, UNTESTED
+- Installed SHA1 f017d824448178e791d41dfa8a58801df631d90b (218112 bytes), verified in game folder + build-online. Protocol 17. Tag v0.5.7. 196 patches, 0 problems.
+  Friend zip dist/olcoop-0.5.7-online.zip (SHA1 6606e666d0ab713709e7587eb0a8a2b9e08b145d).
+- 0.5.6 runs 16:59 / 17:14 (host log only; user: "not hosting the key is there, hosting it disappears"; also an audio log missing;
+  joiner could not break a button). Level was sp_outer_02 = TARVOS OUTPOST (Unity analytics line), continued from a save
+  (CreateNewGame saved=True), not Ymir. The 15:07 Ymir run was a new game and its first key worked.
+- Cause (IL + [KEY] log): SaveLoad.CompleteGameLoad -> DeserializeObjectsTransient<Item> SetActive(false)+Destroy on every scene Item,
+  then SaveLoad.CreateNew (Instantiate of ItemTypeToPrefab, netId 0) per saved item. Item.Start -> UpdateDynamicManager.AddItem ->
+  olmod GameMod.UpdateDynamicManager_AddItem prefix: IsMultiplayerActive && netId == 0 -> Destroy(c_go). Log 17:16:08.842: scene keys
+  (netId 84/114, by DeserializeObjectsTransient) and the restored keys (netId 0, negative instance ids) destroyed after StartLevel.
+  KeyTrace OnDestroy stacks are useless (Destroy is deferred to the end of the frame).
+- SV1 (Phase9KeyTrace.cs): UpdateDynamicManager.AddItem prefix, Priority.First (before olmod's): host, co-op, NetworkServer.active,
+  netId 0, has NetworkIdentity -> NetworkSpawnItem.Spawn(go) (NetworkServer.Spawn with the prefab assetId; joiners have
+  NetworkSpawnItemHandler from NetworkSpawnItem.RegisterSpawnHandlers at game init). [ITEM] log. Unverified: whether a restored
+  super item keeps its super state on joiners (spawn handler instantiates the plain prefab), and pickup sync of these items.
+- Open: joiner could not break a button (17:01 run, host log shows no joiner hit at all; host's own hit at 17:03:23 worked). Need the
+  joiner's log. Possibly save-related too (host level from a save, joiner's from the scene) - check the joiner's [WORLD] lines.

@@ -211,3 +211,42 @@ namespace OlCoop.World
         }
     }
 }
+
+namespace OlCoop.World
+{
+    /// <summary>
+    /// SV1 (0.5.7): items restored from a saved game survive in co-op.
+    /// Continuing a save (CreateNewGame saved=True) runs SaveLoad.CompleteGameLoad -> DeserializeObjectsTransient&lt;Item&gt;: every placed
+    /// scene Item is destroyed and the saved ones are re-created with SaveLoad.CreateNew (plain Object.Instantiate of the item prefab,
+    /// netId 0, not network-spawned). Their Item.Start -> UpdateDynamicManager.AddItem hits olmod's UpdateDynamicManager_AddItem
+    /// prefix, which destroys any item with netId 0 while IsMultiplayerActive (in real MP the server spawns items). Co-op runs with
+    /// IsMultiplayerActive, so on a hosted save every restored item was deleted: 0.5.6 [KEY] log 17:16:08.842 (sp_outer_02 from a
+    /// save): the restored keys (netId 0) destroyed right after StartLevel; single player keeps them (IsMultiplayerActive false).
+    /// Host fix: before olmod's prefix (Priority.First), network-spawn such items with the game's own NetworkSpawnItem.Spawn
+    /// (NetworkServer.Spawn with the prefab assetId; joiners have NetworkSpawnItemHandler registered at startup), so they get a
+    /// netId, stay on the host and appear on joiners. Joiners keep olmod's behaviour (their copies come from the host).
+    /// </summary>
+    [HarmonyPatch(typeof(UpdateDynamicManager), "AddItem")]
+    [HarmonyPriority(Priority.First)]
+    static class SV1_SpawnRestoredItems
+    {
+        static int s_spawned, s_logged;
+        static float s_summary_at;
+
+        static void Prefix(Item item)
+        {
+            if (!CoopConfig.IsHost || item == null || GameplayManager.IsMultiplayer || !UnityEngine.Networking.NetworkServer.active) return;
+            try
+            {
+                if (item.netId.Value != 0) return;
+                if (item.GetComponent<UnityEngine.Networking.NetworkIdentity>() == null) return;
+                NetworkSpawnItem.Spawn(item.gameObject);
+                s_spawned++;
+                if (s_logged++ < 30 || KeyTrace.IsKey(item))
+                    CoopLog.Write("ITEM", "host: network-spawned restored " + item.m_type + " '" + item.gameObject.name + "' netId=" + item.netId.Value + " at " + item.transform.position.ToString("F0"));
+                if (Time.unscaledTime > s_summary_at) { s_summary_at = Time.unscaledTime + 5f; CoopLog.Write("ITEM", "host: restored items network-spawned so far: " + s_spawned); }
+            }
+            catch (Exception ex) { CoopLog.Error("SV1", ex); }
+        }
+    }
+}

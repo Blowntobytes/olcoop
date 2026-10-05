@@ -1,6 +1,16 @@
 # Changelog
 
-## 0.5.6-online (2026-10-04), UNTESTED in game (all players must run 0.5.6; protocol 17)
+## 0.5.7-online (2026-10-04), UNTESTED in game (all players must run 0.5.7; protocol 17)
+- Fix: security keys, audio logs and power-ups were missing for everyone when the host continued a saved game (17:01 and 17:16
+  runs, Tarvos Outpost from a save; in single player the same save had the key). Loading a save makes the game remove the
+  level's items and put back the ones the save still has; olmod deletes such re-created items in multiplayer games because a
+  multiplayer server normally spawns all items itself. The host now spawns the restored items over the network, so they stay
+  and the other players get them too. New games were not affected (Ymir 15:07 run: first key picked up normally).
+- [ITEM] log lines: items restored from a save and network-spawned by the host.
+- Still open: a joiner could not break a button to open a door in the 17:01 run (the host received no hit from the joiner);
+  needs the joiner's log.
+
+## 0.5.6-online (2026-10-04), 16:59-17:17 runs: key trace found the cause (keys deleted after loading a save); joiner button not breakable (all players must run 0.5.6; protocol 17)
 - HUD: co-op now shows the single-player score block (top right) instead of olmod's multiplayer PvP scoreboard: DESTROYED
   on normal levels, OPERATORS remaining on kill-objective levels (Ymir Outpost), with the team's numbers from 0.5.5.
 - Security key investigation (Ymir Outpost, 15:07 run): the first key was picked up (team security level 1 at 15:13:29); the
