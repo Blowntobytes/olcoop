@@ -1,7 +1,7 @@
 // Map pings (0.6.5).
 //  - In the map, the view centre shows a small white sphere (child of MapCamera.m_map_focus, the map's own pulsing focus point).
 //  - Setting the map marker (stock key: FIRE FLARE while the map is open) also pings that spot for every player: "<NAME> PINGED",
-//    a sound, and a white marker visible through walls for 15 s, in the level and on the map. One ping per player.
+//    a sound, and a teal marker visible through walls for 30 s, in the level and on the map. One ping per player.
 //  - Hologuide: if the guide is out when a ping arrives (or comes out while a ping is shown), it leads to the ping (stock cryotube
 //    lead mode with the ping's segment as goal; reached within 8 u). Any command from its wheel takes over. Map hint: USE FLARE TO PING.
 // Network: msg 201 PingMsg {pos, name}: joiner -> host -> every other player; the host's own ping -> every joiner.
@@ -25,7 +25,7 @@ namespace OlCoop.World
     public static class CoopPing
     {
         public const short MsgPing = 201;
-        public const float Lifetime = 15f, ReachDistance = 8f;
+        public const float Lifetime = 30f, ReachDistance = 8f; // 0.6.8: 30 s (user)
 
         class Marker { public GameObject world, map; public float until; public Vector3 pos; }
         static readonly Dictionary<string, Marker> s_markers = new Dictionary<string, Marker>();
@@ -120,7 +120,7 @@ namespace OlCoop.World
             CoopLog.Write("PING", (mine ? "sent" : "from " + who) + " at " + m.pos.ToString("F0"));
         }
 
-        /// Per frame: fade/scale markers (constant on-screen size), expire after 15 s; hologuide arrival.
+        /// Per frame: fade/scale markers (constant on-screen size), expire after 30 s; hologuide arrival.
         public static void Tick()
         {
             if (s_markers.Count > 0)

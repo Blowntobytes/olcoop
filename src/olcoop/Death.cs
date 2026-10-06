@@ -26,6 +26,7 @@ namespace OlCoop.Death
         public static bool FriendlyFire = false;
         /// Local preference (not set by the host): pilot names above teammates.
         public static bool ShowNames = true;
+        public static int FlareColor = 0; // own setting (0.6.8): index into OlCoop.World.CoopFlares.Names
         public const float MinDelay = 3f, MaxDelay = 60f;
         public static bool FromHost; // joiner: values came from the host
 
@@ -49,6 +50,7 @@ namespace OlCoop.Death
                     if (kv.Length != 2) continue;
                     string k = kv[0].Trim().ToLowerInvariant(), v = kv[1].Trim();
                     if (k == "deathmode") { try { Mode = (DeathMode)Enum.Parse(typeof(DeathMode), v, true); } catch { } }
+                    if (k == "flarecolor") { int fc; if (int.TryParse(v, out fc)) FlareColor = fc; }
                     if (k == "shownames") ShowNames = !(v == "0" || v.ToLowerInvariant() == "false" || v.ToLowerInvariant() == "off");
                     if (k == "friendlyfire") FriendlyFire = v == "1" || v.ToLowerInvariant() == "true" || v.ToLowerInvariant() == "on";
                     if (k == "respawndelay")
@@ -69,7 +71,7 @@ namespace OlCoop.Death
             {
                 File.WriteAllText(FilePath, "# olcoop co-op options (host decides for everyone)\r\ndeathmode=" + Mode + "\r\nrespawndelay=" +
                     RespawnDelay.ToString("0", System.Globalization.CultureInfo.InvariantCulture) + "\r\nfriendlyfire=" + (FriendlyFire ? "on" : "off") +
-                    "\r\n# shownames is your own setting, not the host's\r\nshownames=" + (ShowNames ? "on" : "off") + "\r\n");
+                    "\r\n# shownames is your own setting, not the host's\r\nshownames=" + (ShowNames ? "on" : "off") + "\r\nflarecolor=" + FlareColor + "\r\n");
             }
             catch (Exception ex) { CoopLog.Error("CoopSettings.Save", ex); }
         }

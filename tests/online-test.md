@@ -1,16 +1,22 @@
-# Online test (build 0.6.7-alpha)
-All windows / PCs must show OLCOOP 0.6.7-ALPHA at the top-left of the main menu (older versions can't join: protocol 22).
+# Online test (build 0.6.8-alpha)
+All windows / PCs must show OLCOOP 0.6.8-ALPHA at the top-left of the main menu (older versions can't join: protocol 23).
 Steam must be running. Send BOTH PCs' `Overload\olcoop_logs` folders after the run, and say which PC hosted.
 
-## New in 0.6.5 (check these first)
+## New in 0.6.8
+14. Flare colors: each player sets CO-OP OPTIONS > FLARE COLOR (ORIGINAL, RED, ORANGE, YELLOW, GREEN, PURPLE; also joiners).
+    Fire flares: everyone sees each flare in its owner's color, and a colored flare lights the room as brightly as the original.
+    Log: [FLARE] "flare colored RED (light x1.66, 3 glows, lens flare)".
+15. Pings last 30 s.
+
+## New in 0.6.5
 8. Spectating: the screen looks like playing from the followed player's seat - their cockpit and the normal HUD with THEIR armor,
    energy, ammo, weapons, reticle - plus "SPECTATING <name>" at the top. Log: [SPECT] "HUD moved to the spectate camera",
    "drawing the HUD for netId=..".
 9. Map ping: open the map; a small teal sphere sits at the centre of the view. Press FIRE FLARE (the map-marker key): every player
-   gets "<NAME> PINGED" and a sound, and sees a small teal marker at that spot through all walls, from anywhere in the level, (in the level and on their map) for 15 s.
+   gets "<NAME> PINGED" and a sound, and sees a small teal marker at that spot through all walls, from anywhere in the level, (in the level and on their map) for 30 s.
    Log: [PING] "sent at ..." / "from NBOOB at ...".
 10. Hologuide to a ping: with the hologuide out, someone pings: the guide says FOLLOW ME TO THE PING and leads there (also when it
-    is called out while a ping is still shown). Picking any command from its wheel stops that. The map shows USE FLARE TO PING.
+    is called out while a ping is still shown, 30 s). Picking any command from its wheel stops that. The map shows USE FLARE TO PING.
     Log: [PING] "hologuide: heading to ..'s ping" / "reached the ping" / "ping lead stopped (command from the guide wheel)".
 11. Claws and other sleeping robots: a joiner flies (and shoots) near lurking claws while the host is elsewhere / sitting still:
     they wake up and attack the joiner. Host log: [RSYNC] "host: joiner netId=.. fired; waking sleeping robots near it",

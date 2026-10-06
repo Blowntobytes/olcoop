@@ -20,7 +20,7 @@ namespace OlCoop.UI
         public static readonly UIElementType uiCoopOptions = (UIElementType)120;  // stock 0-89, olmod 89-93
         public const int OptionsItemId = 10;                                       // free id in the OPTIONS list
 
-        const int ID_COOLDOWN = 3, ID_FF = 4, ID_NAMES = 5, ID_BACK = 100;
+        const int ID_COOLDOWN = 3, ID_FF = 4, ID_NAMES = 5, ID_FLARE = 6, ID_BACK = 100;
         const string FFDesc = "WHEN CHECKED, PLAYERS CAN DAMAGE EACH OTHER WITH SHOTS, EXPLOSIONS AND RAMMING (HALF DAMAGE)";
         const string NamesDesc = "YOUR OWN SETTING: SHOW TEAMMATES' PILOT NAMES ABOVE THEIR HEALTH BARS";
         static readonly MethodInfo s_goBack = AccessTools.Method(typeof(MenuManager), "GoBack");
@@ -84,7 +84,7 @@ namespace OlCoop.UI
             uie.DrawStringSmall(CoopVersion.Full.ToUpperInvariant() + (CoopConfig.IsHost ? " - HOST" : CoopConfig.IsJoiner ? " - JOINER" : ""),
                 Vector2.up * (UIManager.UI_TOP + 52f), 0.45f, StringOffset.CENTER, UIManager.m_col_ui2, 1f, -1f);
             Vector2 position = uie.m_position;
-            position.y -= 217f; // one row higher than 0.3.5 to fit SHOW PLAYER NAMES
+            position.y -= 248f; // 0.6.8: half a row higher again to fit FLARE COLOR
             bool ro = ReadOnly;
             uie.DrawLabelSmall(position - Vector2.up * 80f, ro
                 ? (CoopSettings.FromHost ? "WHEN A PLAYER DIES - SET BY THE HOST" : "WHEN A PLAYER DIES - WAITING FOR THE HOST'S SETTINGS")
@@ -120,6 +120,9 @@ namespace OlCoop.UI
                 UIElement.ToolTipTitle = "SHOW PLAYER NAMES";
                 UIElement.ToolTipDescription = NamesDesc;
             }
+            position.y += 62f;
+            uie.SelectAndDrawStringOptionItem("FLARE COLOR", position, ID_FLARE, OlCoop.World.CoopFlares.Name(CoopSettings.FlareColor),
+                "YOUR OWN SETTING: THE COLOR OF YOUR FLARES, AS EVERY PLAYER SEES THEM", 1.5f, false); // local, never read-only
             uie.DrawMenuSeparator(position + Vector2.up * 40f);
             uie.DrawMenuToolTip(position + Vector2.up * 40f);
             position.y = UIManager.UI_BOTTOM - 30f;
@@ -183,6 +186,15 @@ namespace OlCoop.UI
                         CoopSettings.Save();
                         CoopLog.Write("SETTINGS", "show player names " + (CoopSettings.ShowNames ? "ON" : "OFF") + " (local)");
                         MenuManager.PlaySelectSound();
+                    }
+                    else if (sel == ID_FLARE)
+                    {
+                        int n = OlCoop.World.CoopFlares.Count;
+                        CoopSettings.FlareColor = ((CoopSettings.FlareColor + (UIManager.m_select_dir < 0 ? -1 : 1)) % n + n) % n;
+                        CoopSettings.Save();
+                        OlCoop.World.CoopFlares.MyColorChanged();
+                        CoopLog.Write("SETTINGS", "flare color " + OlCoop.World.CoopFlares.Name(CoopSettings.FlareColor) + " (local)");
+                        MenuManager.PlayCycleSound(1f, UIManager.m_select_dir);
                     }
                     else if (!ReadOnly && sel == ID_FF)
                     {

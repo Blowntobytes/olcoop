@@ -67,6 +67,7 @@ change how joiners display robots. Logs: `Overload\olcoop_logs\`.
 | `WorldSync.cs` | Level scripts, doors, switches, destroyables, security keys |
 | `LevelFlow.cs` | Audio logs, exiting together, lockdowns, teammates on the automap, closing the map safely, no flying in the map |
 | `Ping.cs` | Map pings shown to every player, hologuide to a ping |
+| `FlareColors.cs` | Per-player flare colors |
 | `Items.cs` | Saved-game items, late-activated items, joiner pickups, pickup sounds/ammo/energy, shared upgrade points and weapons, armor/energy cap, hologuide item list |
 | `Combat.cs` | Melee damage routing, joiner loadouts and carry-over between levels, shot rate checks |
 | `Death.cs`, `Hud.cs` | Death modes (respawn / spectate / hardcore), friendly fire, spectating with the full HUD, respawn countdown, names and health bars |

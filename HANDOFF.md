@@ -1,4 +1,4 @@
-# olcoop handoff (state as of 2026-10-05 20:00 PT)
+# olcoop handoff (state as of 2026-10-05 20:45 PT)
 
 Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
@@ -13,7 +13,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.6.7 alpha"). Protocol = 22 (in build.sh). Current build folder: build-alpha (since 0.6.0-alpha; build-online held 0.5.x).
+  `VERSION` ("0.6.8 alpha"). Protocol = 23 (in build.sh). Current build folder: build-alpha (since 0.6.0-alpha; build-online held 0.5.x).
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 192 patches, 0 problems;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-alpha (current).
@@ -590,3 +590,19 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   GuidebotSetGoal -> FindSegmentContainingCryotube, PG4 returns the ping segment while s_guiding). PG3 is now a postfix:
   IssueGuidebotCommandFromWheel returned true -> CancelGuide. PG8: UIElement.DrawMapHUD postfix draws the hint at
   (0, UI_BOTTOM - 32), teal.
+
+## 0.6.8-alpha status (2026-10-05 20:45) - installed, UNTESTED. Protocol 23 (new msgs 202 own flare color J->H, 203 table H->J)
+- Installed SHA1 7169d434534dfedfbfbc9bf192f048c2542d2a1c (264704 bytes), verified in game folder + build-alpha. Tag v0.6.8-alpha.
+  239 patches, 0 problems, 0 warnings. Zip dist/olcoop-0.6.8-alpha.zip (SHA1 2e12878398b678bda08b065ac6d079b44d2e3138).
+- User (18:01): 0.6.7 "looks good"; pings 30 s; per-player flare colors (6 choices), as bright as the original.
+- Flare prefab read from Overload_Data/resources.assets with UnityPy (tools: /tmp script, not committed): proj_flare = Light
+  (0.353, 0.647, 1; intensity set every frame in Projectile.UpdateDynamic), child _fill_light Light (0.551, 0.703, 1, 0.4, range 20),
+  _glow/_glow2/_glow3 ParticleSystems, _lens_flare ProFlare (GlobalTintColor). Materials live in sharedassets0.assets (not read).
+- FlareColors.cs: CoopSettings.FlareColor (own setting, flarecolor= in olcoop-settings.txt; CO-OP OPTIONS item ID_FLARE, cycles,
+  never read-only). Projectile.Fire postfix (flare types, co-op): owner ship -> color (local setting, else table by netId) -> Apply:
+  originals remembered per projectile instance (pooled) and restored for ORIGINAL; lights' color = tint; fill intensity x Boost;
+  particle startColor = tint x max(original rgb) (alpha kept) + already-emitted particles recolored; ProFlare.GlobalTintColor = tint.
+  UpdateDynamic postfix: main light intensity x Boost. Boost = clamp(lum(original light)/lum(tint), 1, 2): RED 1.66, PURPLE 1.24,
+  others 1. Table: joiner sends 202 every 2 s in a level; host sends 203 (all players incl. its own) every 2 s.
+  build.sh now references UnityEngine.ParticleSystemModule.
+- Ping.cs Lifetime 15 -> 30 s (markers and the hologuide start window).

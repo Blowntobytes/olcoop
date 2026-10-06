@@ -26,14 +26,14 @@ namespace OlCoop
         public const string Built = "$(date -u +%Y-%m-%dT%H:%MZ)";
         public static string Full { get { return "olcoop $VER-$PHASE"; } }
         /// <summary>Wire-protocol version. Host and clients must match exactly.</summary>
-        public const int Protocol = 22;
+        public const int Protocol = 23;
     }
 }
 EOV
 REFS=()
 for r in Assembly-CSharp Assembly-CSharp-firstpass System System.Core UnityEngine UnityEngine.CoreModule \
          UnityEngine.Networking UnityEngine.UNETModule UnityEngine.PhysicsModule UnityEngine.IMGUIModule \
-         UnityEngine.AudioModule UnityEngine.TextRenderingModule UnityEngine.InputModule UnityEngine.VRModule Newtonsoft.Json; do
+         UnityEngine.AudioModule UnityEngine.ParticleSystemModule UnityEngine.TextRenderingModule UnityEngine.InputModule UnityEngine.VRModule Newtonsoft.Json; do
   REFS+=("-r:$GAME_MANAGED/$r.dll")
 done
 mcs -nostdlib -r:"$GAME_MANAGED/mscorlib.dll" "${REFS[@]}" -r:lib/0Harmony.dll -r:"$OLMOD_DLL" \

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.8-alpha (2026-10-05) - flare colors, 30 s pings, UNTESTED build (all players must run 0.6.8-alpha; protocol 23)
+- New: flare colors. CO-OP OPTIONS > FLARE COLOR (your own setting): ORIGINAL, RED, ORANGE, YELLOW, GREEN or PURPLE. Every player
+  sees your flares in your color - the flare's two lights, its glow and its lens flare. Darker colors (red, purple) get a stronger
+  light so they light the level as much as the original flare.
+- Pings last 30 seconds (hologuide too).
+
 ## 0.6.7-alpha (2026-10-05) - ping tweaks, UNTESTED build (all players must run 0.6.7-alpha; protocol 22)
 - Ping markers and the map centre sphere 25% larger than in 0.6.6.
 - The guide wheel's CRYOTUBE slot stays CRYOTUBE. Instead, when the hologuide is out and a ping arrives (or it comes out while a
