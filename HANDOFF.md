@@ -1,4 +1,4 @@
-# olcoop handoff (state as of 2026-10-05 19:00 PT)
+# olcoop handoff (state as of 2026-10-05 19:30 PT)
 
 Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
@@ -13,7 +13,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.6.5 alpha"). Protocol = 22 (in build.sh). Current build folder: build-alpha (since 0.6.0-alpha; build-online held 0.5.x).
+  `VERSION` ("0.6.6 alpha"). Protocol = 22 (in build.sh). Current build folder: build-alpha (since 0.6.0-alpha; build-online held 0.5.x).
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 192 patches, 0 problems;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-alpha (current).
@@ -570,3 +570,12 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   (CreatePathToSegment) and sets Robot.m_guidebot_special_goal_segment; within 8 u -> Robot.m_player_reached_cryotube = true.
 - Installer: olcoop-vr.bat renamed olcoop-steamvr.bat; new olcoop-oculus.bat (-vrmode oculus); shortcuts "olcoop SteamVR" /
   "olcoop Oculus" (install removes "olcoop VR.lnk" and the old bat).
+
+## 0.6.6-alpha status (2026-10-05 19:30) - installed, UNTESTED. Protocol 22 (no wire change)
+- Installed SHA1 a9c712dddd8d2d76c7c9875bd312f26d256d2412 (257536 bytes), verified in game folder + build-alpha. Tag v0.6.6-alpha.
+  232 patches, 0 problems, 0 warnings. Zip dist/olcoop-0.6.6-alpha.zip (SHA1 f3135f15548437cafe94d1f1a90837fe80b971dd).
+- User (17:31): sphere 75% smaller, teal, through all geometry from anywhere. Ping.cs: material colour (0, 0.8, 0.75, 0.9); focus
+  sphere 1.2 -> 0.3, map ping 2.5 -> 0.625, world ping max(0.6, d*0.025) -> max(0.15, d*0.00625); MeshRenderer
+  allowOcclusionWhenDynamic = false (Unity occlusion culling skipped it behind walls before _ZTest Always applied - likely, not
+  confirmed); beyond 0.9 x Camera.farClipPlane the world marker is placed on the same line of sight at that distance, scaled to keep
+  its apparent size.

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.6-alpha (2026-10-05) - ping markers smaller, teal, visible from anywhere, UNTESTED build (all players must run 0.6.6-alpha; protocol 22)
+- Ping markers and the map's centre sphere are 75% smaller and teal.
+- Ping markers show through all geometry from anywhere: Unity's occlusion culling no longer hides them behind walls, and a ping
+  beyond the camera's view distance is drawn along the same line of sight inside it.
+
 ## 0.6.5-alpha (2026-10-05) - spectating with the full HUD, map pings + hologuide to a ping, sleeping robots wake for joiners, VR launchers, UNTESTED build (all players must run 0.6.5-alpha; protocol 22)
 From the 16:42-16:52 run on 0.6.4 (PeetzaGuest hosting a saved Titan level, BlownToBits joining; both logs): joiner pickups by
 touch worked (16 of 16 counted), spectating started and showed the readout; no button was shot in this run.

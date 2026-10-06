@@ -55,4 +55,5 @@ Targets unless noted: Overload 1.1.1886, olmod 0.5.14.
 | 0.6.2-alpha | 19 | 10-05 08:24 | tested (15:51-16:01 LAN, both logs, saved Titan) | session list, starting armor/energy 120, hologuide (user); joiner ammo pickup (log) | ship moves/fires in the map; some joiner pickups and buttons don't register | tag v0.6.2-alpha |
 | 0.6.3-alpha | 20 | 10-05 17:03 | not tested (replaced by 0.6.4) | - | - | tag v0.6.3-alpha |
 | 0.6.4-alpha | 21 | 10-05 17:16 | tested (16:42-16:52 LAN, both logs, saved Titan, PeetzaGuest host) | joiner touch pickups 16/16 (log); controls held in the map (log); spectate readout drawn (log) | spectating doesn't look like playing; claws sometimes ignore players | tag v0.6.4-alpha |
-| 0.6.5-alpha | 22 | 10-05 17:52 | untested | - | - | tag v0.6.5-alpha, build-alpha, dist/olcoop-0.6.5-alpha.zip |
+| 0.6.5-alpha | 22 | 10-05 17:52 | partly tested (user saw the ping sphere) | ping sphere shown | too big; not visible through geometry everywhere | tag v0.6.5-alpha |
+| 0.6.6-alpha | 22 | 10-05 18:12 | untested | - | - | tag v0.6.6-alpha, build-alpha, dist/olcoop-0.6.6-alpha.zip |

@@ -43,7 +43,7 @@ namespace OlCoop.World
             s_mat.SetInt("_SrcBlend", (int)BlendMode.SrcAlpha); s_mat.SetInt("_DstBlend", (int)BlendMode.OneMinusSrcAlpha);
             s_mat.SetInt("_Cull", (int)CullMode.Off); s_mat.SetInt("_ZWrite", 0);
             s_mat.SetInt("_ZTest", (int)CompareFunction.Always); // through walls
-            s_mat.color = new Color(1f, 1f, 1f, 0.85f);
+            s_mat.color = new Color(0f, 0.8f, 0.75f, 0.9f); // teal (0.6.6, user)
             s_mat.renderQueue = 4000;
             return s_mat;
         }
@@ -54,6 +54,7 @@ namespace OlCoop.World
             go.name = name;
             var col = go.GetComponent<Collider>(); if (col != null) UnityEngine.Object.Destroy(col);
             var r = go.GetComponent<MeshRenderer>(); r.sharedMaterial = Mat(); r.shadowCastingMode = ShadowCastingMode.Off; r.receiveShadows = false;
+            r.allowOcclusionWhenDynamic = false; // occlusion culling would skip it behind walls before _ZTest Always matters
             go.layer = layer;
             return go;
         }
@@ -67,7 +68,7 @@ namespace OlCoop.World
                 s_focus_sphere = Sphere("olcoop_map_focus", MapCamera.m_map_focus.gameObject.layer);
                 s_focus_sphere.transform.SetParent(MapCamera.m_map_focus, false);
                 s_focus_sphere.transform.localPosition = Vector3.zero;
-                s_focus_sphere.transform.localScale = Vector3.one * 1.2f;
+                s_focus_sphere.transform.localScale = Vector3.one * 0.3f; // 75% smaller (0.6.6)
             }
             else if (!want && s_focus_sphere != null) { UnityEngine.Object.Destroy(s_focus_sphere); s_focus_sphere = null; }
         }
@@ -112,7 +113,7 @@ namespace OlCoop.World
             if (mk.map == null && MapCamera.m_map_focus != null) mk.map = Sphere("olcoop_ping_map_" + who, MapCamera.m_map_focus.gameObject.layer);
             mk.pos = m.pos; mk.until = Time.time + Lifetime;
             mk.world.transform.position = m.pos;
-            if (mk.map != null) { mk.map.transform.position = m.pos; mk.map.transform.localScale = Vector3.one * 2.5f; }
+            if (mk.map != null) { mk.map.transform.position = m.pos; mk.map.transform.localScale = Vector3.one * 0.625f; }
             LastPos = m.pos; LastTime = Time.time; LastName = who;
             GameplayManager.AddHUDMessage(mine ? "YOU PINGED A SPOT" : who + " PINGED", -1, true);
             try { SFXCueManager.PlayCue2D(SFXCue.hud_weapon_cycle_picker, 0.8f, 0.3f); } catch { }
@@ -138,9 +139,14 @@ namespace OlCoop.World
                     }
                     if (mk.world != null && cam != null)
                     {
-                        float d = Vector3.Distance(cam.transform.position, mk.pos);
+                        // Always drawn, from anywhere: beyond the camera's far clip the marker is moved along the same line of sight
+                        // to just inside it (same direction on screen, same apparent size).
+                        Vector3 cp = cam.transform.position, to = mk.pos - cp;
+                        float d = to.magnitude, maxD = cam.farClipPlane * 0.9f;
+                        mk.world.transform.position = d > maxD && d > 0.01f ? cp + to / d * maxD : mk.pos;
+                        float shown = Mathf.Min(d, maxD);
                         float pulse = 1f + 0.15f * Mathf.Sin(Time.time * 6f);
-                        mk.world.transform.localScale = Vector3.one * Mathf.Max(0.6f, d * 0.025f) * pulse;
+                        mk.world.transform.localScale = Vector3.one * Mathf.Max(0.15f, d * 0.00625f) * (shown / Mathf.Max(d, 0.01f)) * pulse; // 75% smaller (0.6.6)
                     }
                 }
                 if (dead != null) foreach (var k in dead) s_markers.Remove(k);
