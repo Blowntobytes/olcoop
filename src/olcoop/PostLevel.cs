@@ -29,10 +29,47 @@ namespace OlCoop.World
         public static bool ManualReady;
         /// Show the READY UP button: joined from the menus (no end-of-level screens of our own), host waiting, not ready yet.
         public static bool ReadyButton { get { return CoopConfig.IsJoiner && HostWaiting && !ManualReady && !s_active && GameManager.m_game_state == GameManager.GameState.MENU; } }
+        /// 0.6.10: the host's next level and the upgrade points it had for it (msg 206), sent with status 3 after a level end.
+        static string s_offer_scene; static int s_offer_p1, s_offer_p2; static float s_offer_time = -100f;
+        public static void ClearOffer() { s_offer_scene = null; }
+        public static void OnOffer(NetworkMessage msg)
+        {
+            try
+            {
+                var m = msg.ReadMessage<UpgradeOfferMsg>();
+                bool first = s_offer_scene != m.scene;
+                s_offer_scene = m.scene; s_offer_p1 = m.points1; s_offer_p2 = m.points2; s_offer_time = Time.realtimeSinceStartup;
+                if (first) CoopLog.Write("FLOW", "joiner: host's next level '" + m.scene + "', upgrade points " + m.points1 + "/" + m.points2);
+            }
+            catch (Exception ex) { CoopLog.Error("OnOffer", ex); }
+        }
+
         public static void PressReady()
         {
+            if (s_offer_scene != null && Time.realtimeSinceStartup - s_offer_time < 10f && (s_offer_p1 > 0 || s_offer_p2 > 0) && StartUpgrades()) return;
             ManualReady = true; s_ready_next = 0f;
             CoopLog.Write("FLOW", "joiner: READY UP pressed (joined while the host was between levels)");
+        }
+
+        /// A player who joins while the host is on its upgrade screen spends the same upgrade points: the stock upgrade menu for the
+        /// host's next level, then its level briefing (READY UP) and the PLAY_GAME gate - the same flow as after a level of our own.
+        static bool StartUpgrades()
+        {
+            try
+            {
+                var story = GameManager.StoryMission;
+                int idx = story != null ? story.FindLevelIndex(s_offer_scene) : -1;
+                if (idx < 0) { CoopLog.Write("FLOW", "joiner: host's next level '" + s_offer_scene + "' not in the campaign; plain READY UP"); return false; }
+                GameplayManager.CreateNewGame(story, idx);
+                var lp = GameManager.m_local_player;
+                lp.m_upgrade_points1 = s_offer_p1; lp.m_upgrade_points2 = s_offer_p2;
+                Begin();
+                UIManager.DestroyAll();
+                MenuManager.ChangeMenuState(MenuState.UPGRADE_MENU);
+                CoopLog.Write("FLOW", "joiner: READY UP -> upgrade screen for '" + s_offer_scene + "' with the host's " + s_offer_p1 + "/" + s_offer_p2 + " upgrade points");
+                return true;
+            }
+            catch (Exception ex) { CoopLog.Error("StartUpgrades", ex); return false; }
         }
         public static bool Active { get { return s_active; } }
 
@@ -153,21 +190,52 @@ namespace OlCoop.World
         public static bool DeadFinish;
         public static bool On { get { return s_on; } }
 
-        public static void Begin() { s_on = true; s_ready.Clear(); s_shown_ready = -1; s_shown_total = -1; CoopLog.Write("FLOW", "host: level done; the next level waits until every joiner is ready"); }
-        public static void End() { if (s_on || DeadFinish) { s_on = false; DeadFinish = false; s_ready.Clear(); CoopStatus.Clear(); } }
+        static bool s_after_level, s_released;
+        static int s_points1, s_points2;
+        public static void Begin()
+        {
+            s_on = true; s_after_level = true; s_ready.Clear(); s_shown_ready = -1; s_shown_total = -1;
+            var lp = GameManager.m_local_player;
+            s_points1 = lp != null ? lp.m_upgrade_points1 : 0; s_points2 = lp != null ? lp.m_upgrade_points2 : 0;
+            CoopLog.Write("FLOW", "host: level done; the next level waits until every joiner is ready (upgrade points " + s_points1 + "/" + s_points2 + ")");
+        }
+        public static void End() { s_released = false; if (s_on || DeadFinish) { s_on = false; DeadFinish = false; s_ready.Clear(); CoopStatus.Clear(); } }
+
+        static int Joiners()
+        {
+            int n = 0;
+            foreach (var c in NetworkServer.connections)
+                if (c != null && c.connectionId != 0 && c.isConnected && Session.CoopHost.Verified.Contains(c.connectionId)) n++;
+            return n;
+        }
+
+        /// The host's next level: after the results screen it is GameplayManager.Level (AdvanceLevel), before it the one after.
+        static string NextScene()
+        {
+            try
+            {
+                var li = GameplayManager.LevelIsLoaded ? GameplayManager.GetNextLevel() : GameplayManager.Level;
+                return li != null ? li.FileName : null;
+            }
+            catch { return null; }
+        }
 
         public static bool IsReady(int conn) { return s_on && s_ready.Contains(conn); }
 
         static float s_next_remind;
-        /// Host, every menu frame: while holding for ready players, tell every verified joiner that isn't ready yet (status 3), so a
+        /// Host, every menu frame: while holding for ready players, tell every verified joiner (status 3), so a
         /// player who joined from the main menu during the end-of-level screens gets a READY UP button.
         public static void Remind()
         {
             if (!s_on || !CoopWorld.IsHost || Time.realtimeSinceStartup < s_next_remind) return;
             s_next_remind = Time.realtimeSinceStartup + 3f;
+            string next = s_after_level ? NextScene() : null;
             foreach (var c in NetworkServer.connections)
-                if (c != null && c.connectionId != 0 && c.isConnected && Session.CoopHost.Verified.Contains(c.connectionId) && !s_ready.Contains(c.connectionId))
-                    c.Send(FNet.Status, new UnityEngine.Networking.NetworkSystem.IntegerMessage(3));
+                if (c != null && c.connectionId != 0 && c.isConnected && Session.CoopHost.Verified.Contains(c.connectionId))
+                {
+                    c.Send(FNet.Status, new UnityEngine.Networking.NetworkSystem.IntegerMessage(3)); // also to ready ones: "WAITING FOR HOST"
+                    if (next != null && !s_ready.Contains(c.connectionId)) c.Send(FNet.Offer, new UpgradeOfferMsg { scene = next, points1 = s_points1, points2 = s_points2 });
+                }
         }
 
         public static void Mark(int conn)
@@ -177,8 +245,17 @@ namespace OlCoop.World
         }
 
         /// MenuManager.PlayGameUpdate on the host after a level end. False = hold on this screen.
-        public static bool Gate()
+        public static bool Gate(bool returningFromSecret)
         {
+            // PlayGameUpdate runs every frame of INIT (LoadLevel), ACTIVE (loading) and START; only INIT, before the load, may hold it.
+            if (MenuManager.m_menu_sub_state != MenuSubState.INIT) return true;
+            if (!s_on && !s_released && !returningFromSecret && Joiners() > 0)
+            {
+                // 0.6.10: also before a level the host didn't just finish (new campaign / saved game, first level of the session):
+                // joiners get READY UP and the level starts when they're ready
+                s_on = true; s_after_level = false; s_ready.Clear(); s_shown_ready = -1; s_shown_total = -1;
+                CoopLog.Write("FLOW", "host: starting a level with " + Joiners() + " joiner(s) connected; waiting until they're ready");
+            }
             if (!s_on) return true;
             int total = 0, ready = 0;
             foreach (var c in NetworkServer.connections)
@@ -189,7 +266,7 @@ namespace OlCoop.World
             if (ready >= total)
             {
                 CoopLog.Write("FLOW", "host: all joiners ready (" + ready + "/" + total + "); starting the next level");
-                s_on = false; CoopStatus.Clear();
+                s_on = false; s_released = true; CoopStatus.Clear();
                 return true;
             }
             if (ready != s_shown_ready || total != s_shown_total)
@@ -236,12 +313,19 @@ namespace OlCoop.World
         [HarmonyPatch(typeof(MenuManager), "PlayGameUpdate")]
     static class P1_JoinerPlayGate
     {
-        static bool Prefix()
+        static bool Prefix(bool returning_from_secret)
         {
             if (!CoopWorld.Active) return true;
-            if (CoopWorld.IsHost) { try { return HostReady.Gate(); } catch (Exception ex) { CoopLog.Error("P1 host", ex); return true; } }
+            if (CoopWorld.IsHost) { try { return HostReady.Gate(returning_from_secret); } catch (Exception ex) { CoopLog.Error("P1 host", ex); return true; } }
             if (!CoopConfig.IsJoiner) return true;
             try { return PostLevel.Gate(); } catch (Exception ex) { CoopLog.Error("P1", ex); return true; }
         }
+    }
+
+    public class UpgradeOfferMsg : MessageBase
+    {
+        public string scene = ""; public int points1, points2;
+        public override void Serialize(NetworkWriter w) { w.Write(scene ?? ""); w.Write(points1); w.Write(points2); }
+        public override void Deserialize(NetworkReader r) { scene = r.ReadString(); points1 = r.ReadInt32(); points2 = r.ReadInt32(); }
     }
 }

@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.6.10-alpha (2026-10-06) - fabricators, Shredder blades and cryotubes for joiners, READY UP before every level, upgrade points for late joiners, spectating like normal play, UNTESTED build (all players must run 0.6.10-alpha; protocol 25)
+From the 04:43-05:05 runs on 0.6.9 (PeetzaGuest hosting, BlownToBits joining; joiner log). Confirmed in the log: READY UP from the
+menus (04:54:55), exit flights starting on the exit path.
+- Fix: auto-op fabricators (robot makers) showed nothing on joiners - no glow when switched on, no spawn countdown sparks, sound or
+  spawn flash. Joiners now see and hear them like the host (robots still come from the host).
+- Fix: Shredders' blades didn't spin on joiners (no blades, sparks or blade sound). They spin when the robot attacks, as on the host.
+- Fix: a cryotube picked up by someone else could show nothing on a joiner (no pod effect, no "PICKED UP CRYOTUBE: RESCUED ..."). The
+  host now tells everyone.
+- New: READY UP before the first level too. When the host starts a campaign or loads a game with players connected, the level waits
+  until every joiner has pressed READY UP (main menu CO-OP button or the CO-OP screen); after pressing, it reads WAITING FOR HOST.
+- New: a player who joins while the host is on the upgrade screen gets the same upgrade points the host had to spend: READY UP opens
+  the upgrade screen for the host's next level, then the level briefing (READY UP).
+- Fix: spectating showed the death view (black cinematic bars, dark backdrop, faded HUD) and always the watched ship's cockpit. It now
+  looks like normal play: your usual HUD layout (missiles left, weapons right, armor/energy/ammo in the middle) with the watched
+  player's values, and their cockpit only if you play with the cockpit shown.
+- The version on the main menu moved 40% to the right.
+
 ## 0.6.9-alpha (2026-10-05) - lockdowns and boss bar for joiners, exit tunnel, READY UP from the menus, spectating, UNTESTED build (all players must run 0.6.9-alpha; protocol 24)
 From the 19:29-20:45 runs on 0.6.8 (DescMax7930 hosting, BlownToBits, JosheM and PeetzaGuest joining; host log + BlownToBits and
 PeetzaGuest logs).

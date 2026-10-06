@@ -263,7 +263,7 @@ namespace OlCoop.UI
         }
     }
 
-    /// Always-visible version on the main menu (top-left; 0.6.9: 20% of the screen height lower, it was cut off at the top edge).
+    /// Always-visible version on the main menu (0.6.9: 20% of the screen height lower; 0.6.10: 40% of the width to the right - it was cut off at the edges).
     [HarmonyPatch(typeof(UIElement), "Draw")]
     static class M5_MainMenuVersion
     {
@@ -273,7 +273,7 @@ namespace OlCoop.UI
             try
             {
                 __instance.DrawStringSmall(CoopVersion.Full.ToUpperInvariant() + (CoopConfig.IsHost ? " - HOST" : CoopConfig.IsJoiner ? " - JOINER" : ""),
-                    new Vector2(UIManager.UI_LEFT + 12f, UIManager.UI_TOP + 14f + (UIManager.UI_BOTTOM - UIManager.UI_TOP) * 0.2f), 0.4f, StringOffset.LEFT, UIManager.m_col_ui2, __instance.m_alpha, -1f);
+                    new Vector2(UIManager.UI_LEFT + 12f + (UIManager.UI_RIGHT - UIManager.UI_LEFT) * 0.4f, UIManager.UI_TOP + 14f + (UIManager.UI_BOTTOM - UIManager.UI_TOP) * 0.2f), 0.4f, StringOffset.LEFT, UIManager.m_col_ui2, __instance.m_alpha, -1f);
             }
             catch (Exception ex) { CoopLog.Error("M5", ex); }
         }

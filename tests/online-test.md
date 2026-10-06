@@ -1,6 +1,21 @@
-# Online test (build 0.6.9-alpha)
-All windows / PCs must show OLCOOP 0.6.9-ALPHA at the top-left of the main menu, now a bit lower (older versions can't join: protocol 24).
+# Online test (build 0.6.10-alpha)
+All windows / PCs must show OLCOOP 0.6.10-ALPHA on the main menu (now further right; older versions can't join: protocol 25).
 Steam must be running. Send BOTH PCs' `Overload\olcoop_logs` folders after the run, and say which PC hosted.
+
+## New in 0.6.10
+25. Fabricators (robot makers): when one switches on, joiners see its glow; before each robot appears joiners see the sparks and hear
+    the build-up, then the spawn flash. Logs: host [FX] "fabricator N activated" / "spawned a robot"; joiner "fabricator N activated (host)".
+26. Shredders: their blades spin (sparks, sound) for joiners when they attack.
+27. Cryotubes: anyone picks one up: every player gets "PICKED UP CRYOTUBE: RESCUED ..." and the pod vanishes. Logs: host [FX]
+    "cryotube N collected"; joiner "cryotube N collected (host)" (or "already collected here").
+28. READY UP before the first level: joiners connect while the host is in the menus; host starts/loads the campaign: the host waits;
+    each joiner's main menu CO-OP button reads CO-OP: READY UP, then CO-OP: WAITING FOR HOST after pressing; the level starts when all
+    are ready. Host log: [FLOW] "starting a level with N joiner(s) connected; waiting until they're ready".
+29. Late join during upgrades: host finishes a level and has upgrade points; a player joins while the host is on the upgrade screen;
+    that player's READY UP opens the upgrade screen with the host's points, then the level briefing (READY UP). In the next level the
+    bought upgrades are there. Joiner log: [FLOW] "READY UP -> upgrade screen for '..' with the host's a/b upgrade points".
+30. Spectating: no black bars, normal HUD layout with the watched player's armor/energy/ammo, weapons and missiles; their cockpit only
+    if you play with the cockpit on.
 
 ## New in 0.6.9
 20. Lockdowns (e.g. Ymir / outer_03-05): joiners see LOCKDOWN / TARGETS REMAINING with the same count as the host, hear the alarm and

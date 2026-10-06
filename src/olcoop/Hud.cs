@@ -445,6 +445,7 @@ namespace OlCoop.Hud
             try
             {
                 __state = SpectateHud.SwapIn();
+                if (__state != null) OlCoop.Death.Spectate.NormalView();
                 if (__state != null && !s_logged) { s_logged = true; CoopLog.Write("SPECT", "drawing the HUD for netId=" + __state.target.netId.Value); }
             }
             catch (Exception ex) { CoopLog.Error("HUD9 pre", ex); }

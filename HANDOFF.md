@@ -1,4 +1,4 @@
-# olcoop handoff (state as of 2026-10-05 21:45 PT)
+# olcoop handoff (state as of 2026-10-06 05:45 PT)
 
 Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
@@ -13,7 +13,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.6.9 alpha"). Protocol = 24 (in build.sh). Message ids used so far: 160-205. Current build folder: build-alpha (since 0.6.0-alpha; build-online held 0.5.x).
+  `VERSION` ("0.6.10 alpha"). Protocol = 25 (in build.sh). Message ids used so far: 160-208. Current build folder: build-alpha (since 0.6.0-alpha; build-online held 0.5.x).
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 192 patches, 0 problems;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-alpha (current).
@@ -658,3 +658,35 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   a late CreatePlayerPathToEnd (PathPoints keeps idx/cam during EXIT), READY UP state not cleared on leave.
 - Still open: buttons a joiner couldn't break (W9/W9b: no hit lines in these logs either), robot lag at long distance, reactor sound
   maybe doubled, README pickups issue (P16), per-player pickups, 4 players (this run had 4: lobby/joins/levels worked per the logs).
+
+## 0.6.10-alpha status (2026-10-06 05:45) - installed, UNTESTED. Protocol 25 (new msgs 206 upgrade offer H->J, 207 fabricator FX H->J, 208 cryotube H->J)
+- Installed SHA1 8f203b318b9b6c460a5d95a45eab02089b7267f4 (289792 bytes), verified in game folder + build-alpha. Tag v0.6.10-alpha.
+  260 patches, 0 problems, 0 warnings. Zip dist/olcoop-0.6.10-alpha.zip (SHA1 49434cf52ae391ad0c6e0c8c6bc36e4bf383100e).
+- 0.6.9 run 04:43-05:05 PT: PeetzaGuest host (no host log), BlownToBits joiner pid23092 (0.6.9, protocol 24), levels titan_06,
+  outer_05 (Goliath). Log: READY UP from the menus worked (04:54:55 pressed, ready sent); exit flights "start at path point 0/59" and
+  "1/59"; spectate followed netId 443 with live HUD values and level lights following it. No exceptions in unity.log during spectate.
+- Fabricators (RobotMatcen, "AUTO-OP FABRICATOR"): ScriptActivateMatcen is host-only, so joiners never ran ActivateMatcen (m_effects,
+  m_active_light) and MatcenFrame (countdown spawn_mini_flash1 + matcen_trail1 + cues 356/355; SpawnRobot spawn_flash1) - MatcenFrame also
+  spawns, so it stays host-only. WorldFx.cs: matcens indexed by position on every machine; host FX1 (MatcenFrame prefix/postfix) sends
+  a countdown effect when m_next_mini_effect drops (num = m_spawn_timer * 4, sound if m_sound_ready was set) and a spawn when
+  m_total_spawns grows; FX2 (ActivateMatcen postfix) + every 5 s resend of active ones; joiner skips MatcenFrame (FX1 prefix) and plays
+  the effects. UpdateStatic (self-destruct, flare tint, DestroyMatcen when its destroyable dies) still runs on joiners. Note: stock
+  MatcenFrame only counts down/spawns while m_player_ship (the HOST's ship) is within 50 u of the spawn point - unchanged.
+- Shredder (EnemyType.BLADESA, m_is_melee): blades spin in the AI tick (Robot.cs: MaybeSpinBlades(AI_mode == CHARGE && AI_submode ==
+  ATTACK)); puppets skip FixedUpdate (P5), so P5 now calls MaybeSpinBlades from the host-sent mode/submode. LateUpdate rotates the blades.
+- Cryotubes: PropCryotube.OnTriggerEnter collects on each machine for its own copy of a ship (layer != 12). FX3 (Collect postfix, host)
+  sends msg 208 index; joiner calls Collect() unless m_has_been_collected. [FX] log lines.
+- READY UP before every level: HostReady.Gate (PlayGameUpdate prefix) now also arms a ready check when joiners are connected and no
+  check was just released, ONLY in MenuSubState.INIT and not when returning from a secret level (PlayGameUpdate runs every frame of
+  INIT/ACTIVE/START and INIT calls LoadLevel -> F16 HostReady.End; arming in ACTIVE would hang every level start - caught in review).
+  Remind sends status 3 to all verified joiners every 3 s while waiting (ready ones too, so their button reads CO-OP: WAITING FOR HOST).
+- Late joiner upgrades: HostReady.Begin (level done) snapshots the host's m_upgrade_points1/2; Remind also sends msg 206 {next scene
+  (LevelIsLoaded ? GetNextLevel() : Level - AdvanceLevel runs when the results screen continues), points} to non-ready joiners.
+  Joiner READY UP with a fresh offer (< 10 s, points > 0): CreateNewGame(story, idx), set the points, PostLevel.Begin(), UPGRADE_MENU
+  -> stock CONTINUE (UpdateUpgrades, GoToNextBriefing) -> LEVEL_BRIEFING (READY UP) -> PLAY_GAME gate (loadout captured, ready sent).
+  Offer cleared on status 2.
+- Spectating like normal play: Spectate.NormalView (on follow, every tick, in HUD9): ShowCinematicBars(false) (StartDyingCamera turns
+  them on; UpdateDyingCamera re-runs it because we keep DeathPaused false), ui_bg_dark = false, UIElement.HUD_ALPHA = 1 (only our own
+  living ship's Update raises it). Followed cockpit shown only if IsCockpitVisible (our opt_cockpit / opt_cockpit_VR).
+- Main menu version label: x + 40% of the UI width.
+- Reviewed by a separate agent: fixed the INIT-only gate (above), stale offer after release.

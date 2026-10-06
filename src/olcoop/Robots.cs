@@ -827,7 +827,17 @@ namespace OlCoop.Robots
         {
             if (!CoopRobots.Active) return true;
             if (CoopRobots.IsJoiner)
-                return !CoopRobots.IsPuppet(__instance) || CoopRobots.LocallyDying.Contains(__instance.GetInstanceID());
+            {
+                if (!CoopRobots.IsPuppet(__instance) || CoopRobots.LocallyDying.Contains(__instance.GetInstanceID())) return true;
+                // 0.6.10: melee robots (Shredder = BLADESA) spin their blades in their AI tick (Robot.cs: MaybeSpinBlades(CHARGE &&
+                // ATTACK)), which never runs on a puppet; the host's AI mode/submode arrive with every state, so spin from those.
+                if (__instance.m_is_melee && !__instance.m_dying)
+                {
+                    try { __instance.MaybeSpinBlades(__instance.AI_mode == AIModeType.CHARGE && __instance.AI_submode == AISubmodeType.ATTACK); }
+                    catch (Exception ex) { CoopLog.Error("P5 blades", ex); }
+                }
+                return false;
+            }
             if (CoopRobots.IsHost && !__instance.m_is_guide_bot) CoopTargets.Push(__instance);
             return true;
         }

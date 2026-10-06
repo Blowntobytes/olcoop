@@ -64,7 +64,7 @@ namespace OlCoop.UI
             var p = discordPos; p.x = 500f;
             string label = CoopConfig.IsHost ? "CO-OP: HOSTING" : CoopConfig.IsJoiner ? "CO-OP: JOINED" : "CO-OP: HOST / JOIN";
             if (OlCoop.World.PostLevel.ReadyButton) label = "CO-OP: READY UP";
-            else if (CoopConfig.IsJoiner && OlCoop.World.PostLevel.ManualReady && OlCoop.World.PostLevel.HostWaiting) label = "CO-OP: READY - WAITING";
+            else if (CoopConfig.IsJoiner && OlCoop.World.PostLevel.ManualReady && OlCoop.World.PostLevel.HostWaiting) label = "CO-OP: WAITING FOR HOST";
             uie.SelectAndDrawHalfItem(label, p, MainMenuItemId, false);
         }
 
@@ -100,7 +100,7 @@ namespace OlCoop.UI
             }
             else if (CoopConfig.IsJoiner && OlCoop.World.PostLevel.ManualReady && OlCoop.World.PostLevel.HostWaiting)
             {
-                uie.DrawStringSmall("READY - WAITING FOR THE HOST TO START THE LEVEL", pos, 0.45f, StringOffset.CENTER, UIManager.m_col_hi4, 1f, -1f);
+                uie.DrawStringSmall("WAITING FOR HOST", pos, 0.45f, StringOffset.CENTER, UIManager.m_col_hi4, 1f, -1f);
                 pos.y += 40f;
             }
             if (CoopConfig.IsJoiner)

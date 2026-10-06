@@ -595,12 +595,26 @@ namespace OlCoop.Death
             var t = living[((i + dir) % living.Count + living.Count) % living.Count];
             if (s_target != null && s_target != t) { CoopDeath.HideShip(s_target, false); ShowCockpit(s_target, false); }
             s_target = t;
-            CoopDeath.HideShip(s_target, true, true); // first-person view from inside their ship: hull hidden, cockpit shown
-            ShowCockpit(s_target, true);
+            // first-person view from inside their ship: hull hidden; their cockpit shown only if OUR cockpit setting shows one (0.6.10:
+            // the view must look like our own normal play)
+            bool cockpit = s_target.IsCockpitVisible;
+            CoopDeath.HideShip(s_target, true, cockpit);
+            if (cockpit) ShowCockpit(s_target, true); else s_cockpit_was_active = true; // nothing to restore
+            NormalView();
             BoostLights(s_target);
             try { SpectateView.Refresh(s_target, true); } catch (Exception ex) { CoopLog.Error("SpectateView", ex); }
             GameplayManager.AddHUDMessage("SPECTATING " + Hud.CoopHud.NameOf(s_target.c_player), -1, true);
             CoopLog.Write("SPECT", "following netId=" + s_target.c_player.netId.Value);
+        }
+
+        /// 0.6.10: the death camera (PlayerShip.StartDyingCamera, re-run by UpdateDyingCamera) turns on the cinematic bars and the dark UI
+        /// backdrop, and the HUD alpha (UIElement.HUD_ALPHA, raised only by our own living ship's Update) stays faded. Spectating looks
+        /// like normal play: no bars, normal UI background, full HUD.
+        public static void NormalView()
+        {
+            UIManager.ShowCinematicBars(false);
+            UIManager.ui_bg_dark = false;
+            UIElement.HUD_ALPHA = 1f;
         }
 
         public static void Tick(PlayerShip owner)
@@ -622,6 +636,7 @@ namespace OlCoop.Death
             if (Controls.JustPressed(CCInput.FIRE_WEAPON)) Next(+1);
             if (s_target == null) return;
             KeepLights(s_target);
+            NormalView();
             try { SpectateView.Refresh(s_target, false); } catch (Exception ex) { CoopLog.Error("SpectateView", ex); }
             if (Time.time >= s_next_light_log) { s_next_light_log = Time.time + 15f; LogLights("tick", s_target); }
             var eye = Eye(s_target);

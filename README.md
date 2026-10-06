@@ -67,6 +67,7 @@ change how joiners display robots. Logs: `Overload\olcoop_logs\`.
 | `WorldSync.cs` | Level scripts, doors, switches, destroyables, security keys |
 | `LevelFlow.cs` | Audio logs, exiting together (everyone lined up in the exit tunnel), lockdown regroups, teammates on the automap, closing the map safely, no flying in the map |
 | `Lockdown.cs` | Lockdowns on joiners (doors, counter, alarm) and the boss/reactor health bar |
+| `WorldFx.cs` | Auto-op fabricator (robot maker) effects and cryotube pickups on joiners |
 | `Ping.cs` | Map pings shown to every player, hologuide to a ping |
 | `FlareColors.cs` | Per-player flare colors |
 | `Items.cs` | Saved-game items, late-activated items, joiner pickups, pickup sounds/ammo/energy, shared upgrade points and weapons, armor/energy cap, hologuide item list |

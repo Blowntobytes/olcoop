@@ -24,6 +24,7 @@ namespace OlCoop.World
         public const short Exit = 186;        // H->J PoseMsg: kind + where to put your ship before the exit sequence
         public const short Teleport = 187;    // H->J PoseMsg: regroup (lockdown) - move your ship here
         public const short Ready = 189;       // J->H IntegerMessage 1: end-of-level screens done, ready for the next level
+        public const short Offer = 206;       // H->J UpgradeOfferMsg: host's next level + its upgrade points (with status 3 after a level end)
         public const short Status = 188;      // H->J IntegerMessage: 1 = host on the level summary, 2 = host loading the next level, 3 = host waiting for you to ready up
         public const byte KindDoor = 0, KindWarp = 1, KindTeleport = 2;
     }
@@ -439,7 +440,7 @@ namespace OlCoop.World
                 if (code == 1) CoopStatus.Set(1, "LEVEL COMPLETE - THE HOST IS ON THE LEVEL SUMMARY");
                 else if (code == 2)
                 {
-                    PostLevel.HostWaiting = false;
+                    PostLevel.HostWaiting = false; PostLevel.ClearOffer();
                     CoopStatus.Set(2, "THE HOST IS STARTING THE NEXT LEVEL...");
                     GameplayManager.AddHUDMessage("CO-OP: THE HOST IS STARTING THE NEXT LEVEL", -1, true);
                     if (!Session.CoopClient.Awaiting) Session.CoopClient.AwaitLevel();
@@ -836,6 +837,7 @@ namespace OlCoop.World
             c.RegisterHandler(FNet.Exit, CoopFlow.OnExit);
             c.RegisterHandler(FNet.Teleport, CoopFlow.OnTeleport);
             c.RegisterHandler(FNet.Status, CoopFlow.OnStatus);
+            c.RegisterHandler(FNet.Offer, PostLevel.OnOffer);
         }
     }
 
