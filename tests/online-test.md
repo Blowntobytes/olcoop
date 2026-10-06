@@ -1,6 +1,23 @@
-# Online test (build 0.6.4-alpha)
-All windows / PCs must show OLCOOP 0.6.4-ALPHA at the top-left of the main menu (older versions can't join: protocol 21).
+# Online test (build 0.6.5-alpha)
+All windows / PCs must show OLCOOP 0.6.5-ALPHA at the top-left of the main menu (older versions can't join: protocol 22).
 Steam must be running. Send BOTH PCs' `Overload\olcoop_logs` folders after the run, and say which PC hosted.
+
+## New in 0.6.5 (check these first)
+8. Spectating: the screen looks like playing from the followed player's seat - their cockpit and the normal HUD with THEIR armor,
+   energy, ammo, weapons, reticle - plus "SPECTATING <name>" at the top. Log: [SPECT] "HUD moved to the spectate camera",
+   "drawing the HUD for netId=..".
+9. Map ping: open the map; a small white sphere sits at the centre of the view. Press FIRE FLARE (the map-marker key): every player
+   gets "<NAME> PINGED" and a sound, and sees a white marker at that spot through walls (in the level and on their map) for 15 s.
+   Log: [PING] "sent at ..." / "from NBOOB at ...".
+10. Hologuide to a ping: within 60 s of a ping, the guide wheel's CRYOTUBE slot reads PING; choose it: "FOLLOW ME TO THE PING",
+    the guide leads there and stops when you are within 8 units. Log: [PING] "hologuide: lead to ..'s ping" / "reached the ping".
+11. Claws and other sleeping robots: a joiner flies (and shoots) near lurking claws while the host is elsewhere / sitting still:
+    they wake up and attack the joiner. Host log: [RSYNC] "host: joiner netId=.. fired; waking sleeping robots near it",
+    "host: a joiner changed segment; re-checking which robots/items/doors/props are active".
+12. Items and buttons far from the host: the joiner explores alone while the host waits: items appear for the joiner and buttons
+    break when the joiner shoots them.
+13. VR launchers: install.bat makes "olcoop SteamVR" and "olcoop Oculus" shortcuts (the old "olcoop VR" one is removed); each starts
+    the game in that VR runtime.
 
 ## New in 0.6.4
 6. Spectating (Spectate mode, and while waiting to respawn in Respawn mode): you see the followed player's cockpit from their seat,

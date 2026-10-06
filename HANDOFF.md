@@ -1,4 +1,4 @@
-# olcoop handoff (state as of 2026-10-05 17:45 PT)
+# olcoop handoff (state as of 2026-10-05 19:00 PT)
 
 Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
@@ -13,7 +13,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.6.4 alpha"). Protocol = 21 (in build.sh). Current build folder: build-alpha (since 0.6.0-alpha; build-online held 0.5.x).
+  `VERSION` ("0.6.5 alpha"). Protocol = 22 (in build.sh). Current build folder: build-alpha (since 0.6.0-alpha; build-online held 0.5.x).
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 192 patches, 0 problems;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-alpha (current).
@@ -538,3 +538,35 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   weapon + missile xN. Host sends msg 200 StatsMsg {netId, hp, energy, ammo, weapon, missile, missile ammo} 4/s on channel 2 to
   verified joiners while a level runs (>= 2 players); joiner uses entries < 2 s old, else its own copy. Joiner copies of the host's
   energy/ammo are stale otherwise (olmod MPSniperPacketsDisableRpcSetEnergy/Ammo: client side always skipped).
+
+## 0.6.5-alpha status (2026-10-05 19:00) - installed, UNTESTED. Protocol 22 (new msg 201 ping)
+- Installed SHA1 b708bb60b2020c03a6b37d8bb86a2662f584f134 (257024 bytes), verified in game folder + build-alpha (+ olcoop-steamvr.bat,
+  olcoop-oculus.bat in both). Tag v0.6.5-alpha. 232 patches, 0 problems, 0 warnings. Zip dist/olcoop-0.6.5-alpha.zip (SHA1
+  5bff19728044bc8474e83651668c550a217e91eb). The old olcoop-vr.bat is still in the user's game folder until install.bat runs.
+- 0.6.4 run 16:42-16:52 (host PeetzaGuest pid22284, joiner BlownToBits pid8312, LAN, saved sp_titan_06): 16 joiner touches, all
+  picked up on the host at ~2.2 u (host log printed type NONE: read after the pickup; fixed). F19 logged. Spectate start/readout
+  logged. No W9/W9b lines (no shot hit a destroyable/shield in either game).
+- Spectate HUD: Viewer.c_ui_mesh_transform (child "_ui_mesh" of the ship's c_cam_controller) moved under the spectate rig on Start and
+  back on Stop; HUD element re-created (the death sequence DestroyType(HUD) at m_dead_timer <= 0). HUD9: UIElement.DrawHUD
+  prefix/finalizer swaps GameManager.m_player_ship / m_local_player to the followed ship for that call only. Joiner applies msg 200
+  stats to its copies of OTHER players (hp, energy, ammo, weapon, missile + ammo). Overlay now only "SPECTATING <name>" (y -250).
+- Claws: RobotManager.Update wakes sleeping/lurking robots within 15 u of GameManager.m_player_ship 0.25 s after
+  m_local_player.m_player_projectile_fired, which ProjectileManager.FireProjectile sets for EVERY PLAYER projectile (host copies of
+  joiner shots too). P19 (FireProjectile prefix/postfix, host): joiner-owned shot -> restore the host's flag/timestamp, queue
+  CoopAwaken for that joiner's position; P20 (RobotManager.Update postfix) calls MaybeAwakenRobots(joiner pos) after 0.25 s.
+  CoopTargets.Choose visibility now = Robot.VisibilityRaycast (mask 67256832, first hit = ship root on layer 9) instead of the
+  LOS_MASK linecast. Not changed: many robot decisions read the host's m_local_player.m_cloaked / m_player_ship.m_headlights_on.
+  Robot activation itself was fine (UpdateActiveStatusRobotsOnly(force) runs every frame, P11 counts joiners).
+- Relevance: RobotManager.UpdateActiveStatusAll (items, doors, triggers, props) only runs when UpdateChunkActivationDueToPlayerMovement
+  (host segment change); Item/Door/PropInRelevantSegment use the host segment only. P15 makes the movement check true when any
+  joiner changed segment (CoopRelevance, once per change); P16-P18 postfixes count segments visible from any living joiner.
+  Expected to fix README "pickups don't always show up" and joiner-only buttons far from the host (props off on the host). Untested.
+- Ping.cs: MapCamera.SetMarker postfix (stock FIRE_FLARE in the map; AutomapMarker.MarkerPosition after its wall snap) -> msg 201
+  {pos, name}; joiner -> host -> other joiners; host -> joiners. Markers: primitive spheres, material Hidden/Internal-Colored with
+  _ZTest Always (through walls), queue 4000; world copy layer 0 scaled by camera distance, map copy on MapCamera.m_map_focus's
+  layer; 15 s; one per player name. Map centre sphere = child of MapCamera.m_map_focus while GameplayState.AUTOMAP.
+  Hologuide: PlayerShip.GuidebotCommandStrings[3] (CRYOTUBE) shows PING for 60 s after a ping; IssueGuidebotCommandFromWheel prefix
+  with m_guidebot_command 3 sets the lead flag; Robot.FindSegmentContainingCryotube prefix returns the ping segment
+  (CreatePathToSegment) and sets Robot.m_guidebot_special_goal_segment; within 8 u -> Robot.m_player_reached_cryotube = true.
+- Installer: olcoop-vr.bat renamed olcoop-steamvr.bat; new olcoop-oculus.bat (-vrmode oculus); shortcuts "olcoop SteamVR" /
+  "olcoop Oculus" (install removes "olcoop VR.lnk" and the old bat).

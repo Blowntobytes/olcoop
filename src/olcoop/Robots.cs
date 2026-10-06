@@ -301,7 +301,7 @@ namespace OlCoop.Robots
                 var ship = p.c_player_ship;
                 float d = Vector3.Distance(ship.c_transform.position, rp);
                 if (d < nearestD) { nearestD = d; nearest = ship; }
-                bool visible = !Physics.Linecast(rp, ship.c_transform.position, LOS_MASK, QueryTriggerInteraction.Ignore);
+                bool visible = SeesShip(rp, ship, d);
                 bool hitMe = c.lastHitBy == ship && now - c.lastHitTime < HIT_MEMORY;
                 if (!visible && !hitMe) continue;
                 float score = d;
@@ -323,6 +323,18 @@ namespace OlCoop.Robots
                 }
             }
             return chosen;
+        }
+
+        /// Same test as the robot's own Robot.VisibilityRaycast (mask 67256832: Player_Level, Level, Door, Lava; the first hit must be
+        /// the ship's root object). The old LOS_MASK linecast counted layer 0 objects as blocking and differed from what the robot
+        /// itself checks, so a robot could be handed a target it can't see while a visible joiner was passed over.
+        const int VIS_MASK = 67256832;
+        static bool SeesShip(Vector3 rp, PlayerShip ship, float d)
+        {
+            if (d < 0.01f) return true;
+            RaycastHit hit;
+            Vector3 dir = (ship.c_transform.position - rp) / d;
+            return Physics.Raycast(rp, dir, out hit, d + 1f, VIS_MASK) && hit.collider != null && hit.collider.gameObject == ship.gameObject;
         }
 
         static bool Usable(PlayerShip s) { return s != null && !(bool)s.m_dying && !(bool)s.m_dead && s.gameObject.activeInHierarchy; }
@@ -927,6 +939,151 @@ namespace OlCoop.Robots
                 if (s >= 0 && vis[s, seg] > 0) { __result = true; return; }
             }
         }
+    }
+
+    /// P15-P18 (0.6.5): the host switches robots, items, doors and props on and off by what is visible from *its* ship
+    /// (RobotManager.*InRelevantSegment use GameManager.m_player_ship.SegmentIndex), and only re-checks when *its* ship changes
+    /// segment (UpdateChunkActivationDueToPlayerMovement). P11 already counted robots near joiners, but the check never re-ran while
+    /// the host stayed in one segment (map open, dead, waiting): robots around a flying joiner stayed switched off on the host, so
+    /// lurking claws never woke ("claws sometimes ignore players"). Items and props (destructible buttons) near a joiner but far from
+    /// the host were off on the host too - items then never reached the joiner (README known issue "pickups don't always show up"),
+    /// and a switched-off button can't be hit there. Count every player's view, and re-check when any player changes segment.
+    public static class CoopRelevance
+    {
+        static readonly Dictionary<uint, int> s_last_seg = new Dictionary<uint, int>();
+        static int s_logged;
+
+        public static bool VisibleToAnotherPlayer(int seg)
+        {
+            if (seg < 0) return false;
+            var vis = GameManager.m_level_data.m_segment_visibility;
+            if (vis == null) return false;
+            foreach (var p in Overload.NetworkManager.m_Players)
+            {
+                if (p == null || p.isLocalPlayer || p.c_player_ship == null || p.c_player_ship.c_moving_object == null || (bool)p.c_player_ship.m_dead) continue;
+                int s = p.c_player_ship.c_moving_object.CurrentSegmentIndex;
+                if (s >= 0 && vis[s, seg] > 0) return true;
+            }
+            return false;
+        }
+
+        /// True once when any other player's ship entered a new segment since the last check.
+        public static bool AnotherPlayerMoved()
+        {
+            bool moved = false;
+            foreach (var p in Overload.NetworkManager.m_Players)
+            {
+                if (p == null || p.isLocalPlayer || p.c_player_ship == null || p.c_player_ship.c_moving_object == null) continue;
+                int s = p.c_player_ship.c_moving_object.CurrentSegmentIndex;
+                int last; uint id = p.netId.Value;
+                if (!s_last_seg.TryGetValue(id, out last) || last != s) { s_last_seg[id] = s; if (s >= 0) moved = true; }
+            }
+            if (moved && s_logged++ < 3) CoopLog.Write("RSYNC", "host: a joiner changed segment; re-checking which robots/items/doors/props are active");
+            return moved;
+        }
+        public static void Reset() { s_last_seg.Clear(); }
+    }
+
+    [HarmonyPatch(typeof(RobotManager), "UpdateChunkActivationDueToPlayerMovement")]
+    static class P15_RecheckWhenJoinerMoves
+    {
+        static void Postfix(ref bool __result)
+        {
+            if (!CoopRobots.IsHost) return;
+            try { if (CoopRelevance.AnotherPlayerMoved()) __result = true; } catch (Exception ex) { CoopLog.Error("P15", ex); }
+        }
+    }
+
+    [HarmonyPatch(typeof(RobotManager), "ItemInRelevantSegment")]
+    static class P16_ItemsForAnyPlayer
+    {
+        static void Postfix(Item item, ref bool __result)
+        {
+            if (__result || !CoopRobots.IsHost || item == null) return;
+            try { if (CoopRelevance.VisibleToAnotherPlayer(item.m_current_segment)) __result = true; } catch (Exception ex) { CoopLog.Error("P16", ex); }
+        }
+    }
+
+    [HarmonyPatch(typeof(RobotManager), "DoorInRelevantSegment")]
+    static class P17_DoorsForAnyPlayer
+    {
+        static void Postfix(DoorBase door, ref bool __result)
+        {
+            if (__result || !CoopRobots.IsHost || door == null) return;
+            try { if (CoopRelevance.VisibleToAnotherPlayer(door.SegmentIndex)) __result = true; } catch (Exception ex) { CoopLog.Error("P17", ex); }
+        }
+    }
+
+    [HarmonyPatch(typeof(RobotManager), "PropInRelevantSegment")]
+    static class P18_PropsForAnyPlayer
+    {
+        static void Postfix(PropBase prop, ref bool __result)
+        {
+            if (__result || !CoopRobots.IsHost || prop == null) return;
+            try { if (CoopRelevance.VisibleToAnotherPlayer(prop.SegmentIndex)) __result = true; } catch (Exception ex) { CoopLog.Error("P18", ex); }
+        }
+    }
+
+    /// P19/P20 (0.6.5): waking sleeping robots with gunfire. ProjectileManager.FireProjectile sets the host's own
+    /// m_player_projectile_fired for EVERY player projectile (also the host's copy of a joiner's shot); 0.25 s later RobotManager.Update
+    /// wakes sleeping/lurking robots within 15 u of the HOST's ship (MaybeAwakenRobots). So a joiner firing next to sleeping claws woke
+    /// nothing there (and could wake robots next to the host). A joiner's shot now wakes robots around that joiner's ship instead.
+    public static class CoopAwaken
+    {
+        struct Pending { public Vector3 pos; public float at; }
+        static readonly Dictionary<uint, Pending> s_pending = new Dictionary<uint, Pending>();
+        static int s_logged;
+        public static void Queue(PlayerShip ship)
+        {
+            Pending p;
+            if (s_pending.TryGetValue(ship.c_player.netId.Value, out p)) { p.pos = ship.c_transform.position; s_pending[ship.c_player.netId.Value] = p; return; }
+            s_pending[ship.c_player.netId.Value] = new Pending { pos = ship.c_transform.position, at = (float)GameplayManager.m_game_time + 0.25f };
+        }
+        public static void Tick()
+        {
+            if (s_pending.Count == 0) return;
+            float now = GameplayManager.m_game_time;
+            List<uint> done = null;
+            foreach (var kv in s_pending)
+                if (now >= kv.Value.at)
+                {
+                    RobotManager.MaybeAwakenRobots(kv.Value.pos);
+                    if (s_logged++ < 5) CoopLog.Write("RSYNC", "host: joiner netId=" + kv.Key + " fired; waking sleeping robots near it (" + kv.Value.pos.ToString("F0") + ")");
+                    (done ?? (done = new List<uint>())).Add(kv.Key);
+                }
+            if (done != null) foreach (var k in done) s_pending.Remove(k);
+        }
+    }
+
+    [HarmonyPatch(typeof(ProjectileManager), "FireProjectile")]
+    static class P19_JoinerShotsWakeTheirArea
+    {
+        struct St { public bool fired; public float ts; public bool valid; }
+        static void Prefix(out St __state)
+        {
+            __state = default(St);
+            if (!CoopRobots.IsHost || GameManager.m_local_player == null) return;
+            __state.fired = GameManager.m_local_player.m_player_projectile_fired; __state.ts = GameManager.m_local_player.m_awaken_timestamp; __state.valid = true;
+        }
+        static void Postfix(GameObject owner, ProjTeam proj_team, ProjPrefab type, St __state)
+        {
+            if (!__state.valid || proj_team != ProjTeam.PLAYER || owner == null || type == ProjPrefab.proj_flare || type == ProjPrefab.proj_flare_sticky) return;
+            try
+            {
+                var ship = owner.GetComponent<PlayerShip>() ?? owner.GetComponentInParent<PlayerShip>();
+                if (ship == null || ship.isLocalPlayer) return;
+                GameManager.m_local_player.m_player_projectile_fired = __state.fired;   // not the host's shot
+                GameManager.m_local_player.m_awaken_timestamp = __state.ts;
+                CoopAwaken.Queue(ship);
+            }
+            catch (Exception ex) { CoopLog.Error("P19", ex); }
+        }
+    }
+
+    [HarmonyPatch(typeof(RobotManager), "Update")]
+    static class P20_AwakenTick
+    {
+        static void Postfix() { if (!CoopRobots.IsHost) return; try { CoopAwaken.Tick(); } catch (Exception ex) { CoopLog.Error("P20", ex); } }
     }
 
     /// P14: per-frame network work. Host: send. Joiner: interpolate puppets.

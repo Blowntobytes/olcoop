@@ -524,7 +524,34 @@ namespace OlCoop.Death
             CoopLog.Write("SPECT", "start owner=" + owner.c_player.netId.Value + " cam=" + (cam != null ? cam.name : "null") +
                 " camIsShipCam=" + (cam == owner.c_camera_transform) + " ships=" + CoopDeath.Ships().Count);
             Attach();
+            MoveHud(owner, true);
             Next(+1);
+        }
+
+        // 0.6.5: the HUD is drawn on the viewer's UI mesh, which sits under the ship's camera controller (MenuManager.RecoverFromDeathMenu
+        // puts it back there); the death sequence also destroys the HUD element. Carry the mesh with the spectate camera and make sure
+        // the HUD exists, so the spectator sees the normal HUD (drawn with the followed ship's values, see HUD9).
+        static Transform s_ui_parent;
+        static void MoveHud(PlayerShip owner, bool toRig)
+        {
+            try
+            {
+                var ui = owner != null && owner.c_viewer != null ? owner.c_viewer.c_ui_mesh_transform : null;
+                if (ui == null) return;
+                if (toRig)
+                {
+                    s_ui_parent = ui.parent;
+                    ui.parent = s_rig.transform; ui.localPosition = Vector3.zero; ui.localRotation = Quaternion.identity;
+                    if (!UIManager.TypeExists(UIElementType.HUD)) UIManager.CreateUIElement(UIManager.SCREEN_CENTER, 7000, UIElementType.HUD);
+                    CoopLog.Write("SPECT", "HUD moved to the spectate camera");
+                }
+                else
+                {
+                    ui.parent = owner.c_cam_controller != null ? owner.c_cam_controller : s_ui_parent;
+                    ui.localPosition = Vector3.zero; ui.localRotation = Quaternion.identity;
+                }
+            }
+            catch (Exception ex) { CoopLog.Error("MoveHud", ex); }
         }
 
         public static void Stop(PlayerShip owner)
@@ -540,6 +567,7 @@ namespace OlCoop.Death
                 o.ResetCameraPosition();
             }
             CoopLog.Write("SPECT", "stop");
+            if (o != null) MoveHud(o, false);
             if (s_target != null) { CoopDeath.HideShip(s_target, false); ShowCockpit(s_target, false); }
             RestoreLights();
             // Never destroy the game's camera with the rig: move anything still parented to it back to the ship first.

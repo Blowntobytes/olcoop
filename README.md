@@ -33,7 +33,8 @@ Requirements: Overload on Steam, Steam running, and olmod 0.5.14 in the Overload
    and puts an **olcoop** shortcut (orange and black icon) on your Desktop.
 3. Start the game with the **olcoop** shortcut, or `olcoop.bat` IN THE GAME FOLDER, not the zip folder (not Steam's Play button,
    which starts the vanilla game).
-   VR (SteamVR headsets): start SteamVR, then the **olcoop VR** shortcut or `olcoop-vr.bat` (same, with `-vrmode openvr`).
+   VR: SteamVR headsets - start SteamVR, then **olcoop SteamVR** (`olcoop-steamvr.bat`, `-vrmode openvr`); Oculus/Meta
+   headsets - start the Oculus app, then **olcoop Oculus** (`olcoop-oculus.bat`, `-vrmode oculus`).
 4. Main menu, bottom right: **CO-OP: HOST / JOIN**.
    - Host: HOST A CO-OP GAME, invite friends from the list, then BACK and start or continue the campaign.
    - Friend: accept the host's Steam invite while the game is running, or open CO-OP and pick the friend who is hosting.
@@ -64,10 +65,11 @@ change how joiners display robots. Logs: `Overload\olcoop_logs\`.
 | `OptionsScreen.cs`, `OptionsWindow.cs` | CO-OP OPTIONS (death mode, friendly fire etc.), in-menu and F8 window |
 | `Robots.cs` | Host-authoritative robots streamed to joiners, predicted on joiners |
 | `WorldSync.cs` | Level scripts, doors, switches, destroyables, security keys |
-| `LevelFlow.cs` | Audio logs, exiting together, lockdowns, teammates on the automap, closing the map safely |
+| `LevelFlow.cs` | Audio logs, exiting together, lockdowns, teammates on the automap, closing the map safely, no flying in the map |
+| `Ping.cs` | Map pings shown to every player, hologuide to a ping |
 | `Items.cs` | Saved-game items, late-activated items, joiner pickups, pickup sounds/ammo/energy, shared upgrade points and weapons, armor/energy cap, hologuide item list |
 | `Combat.cs` | Melee damage routing, joiner loadouts and carry-over between levels, shot rate checks |
-| `Death.cs`, `Hud.cs` | Death modes (respawn / spectate / hardcore), friendly fire, respawn countdown, names and health bars |
+| `Death.cs`, `Hud.cs` | Death modes (respawn / spectate / hardcore), friendly fire, spectating with the full HUD, respawn countdown, names and health bars |
 | `ShipState.cs` | Headlights and boost on other players' ships |
 | `Objectives.cs` | Objective counters (operators, cores) and the single-player score block |
 | `PostLevel.cs` | End-of-level screens on joiners, waiting for everyone to be ready |

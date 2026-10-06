@@ -477,9 +477,10 @@ namespace OlCoop.World
                         if (col == null || col.attachedRigidbody == null) why = "no ship collider";
                         else
                         {
+                            var type = it.m_type; // read before the pickup (it clears the item)
                             m_trigger.Invoke(it, new object[] { col });
                             bool got = CoopPickups.LastPickedUp(it);
-                            CoopLog.Write("ITEM", "host: conn " + msg.conn.connectionId + " touched " + it.m_type + " netId=" + nid + " (" + d.ToString("F1") + " u): " + (got ? "picked up" : "not picked up (full / can't use)"));
+                            CoopLog.Write("ITEM", "host: conn " + msg.conn.connectionId + " touched " + type + " netId=" + nid + " (" + d.ToString("F1") + " u): " + (got ? "picked up" : "not picked up (full / can't use)"));
                             if (!got) msg.conn.Send(Reject, new IntegerMessage((int)nid));
                             return;
                         }

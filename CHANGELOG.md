@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.6.5-alpha (2026-10-05) - spectating with the full HUD, map pings + hologuide to a ping, sleeping robots wake for joiners, VR launchers, UNTESTED build (all players must run 0.6.5-alpha; protocol 22)
+From the 16:42-16:52 run on 0.6.4 (PeetzaGuest hosting a saved Titan level, BlownToBits joining; both logs): joiner pickups by
+touch worked (16 of 16 counted), spectating started and showed the readout; no button was shot in this run.
+- Spectating looks like playing: the followed player's cockpit and the normal HUD with their armor, energy, ammo, weapons and
+  reticle, plus "SPECTATING <name>". (The HUD was left behind with your wrecked ship and destroyed by the death sequence.)
+- New: map pings. In the map a small white sphere marks the centre of the view; the map-marker key (FIRE FLARE) pings that spot
+  for everyone: "<NAME> PINGED", a sound and a white marker visible through walls for 15 s, in the level and on the map.
+- New: hologuide to a ping. For a minute after a ping the guide wheel's CRYOTUBE slot reads PING and leads you there.
+- Fix: claws and other sleeping robots ignored joiners. Gunfire wakes sleeping robots near the shooter - but the game always used
+  the host's position, also for joiners' shots. A joiner's shots now wake robots near the joiner.
+- Fix: items, doors and props (destructible buttons) were switched on only around the host and only re-checked when the host moved;
+  now around every player and re-checked when anyone moves. This is likely the cause of the README known issue "pickups don't
+  always show up for everyone", and of buttons that a joiner far from the host couldn't break.
+- Robots pick their target with the same line-of-sight test they use to see a player.
+- VR: two launchers, "olcoop SteamVR" (-vrmode openvr) and "olcoop Oculus" (-vrmode oculus), replace "olcoop VR".
+
 ## 0.6.4-alpha (2026-10-05) - spectator cockpit + readout, shot diagnostics, UNTESTED build (all players must run 0.6.4-alpha; protocol 21)
 Includes the untested 0.6.3 changes.
 - New: when spectating (Spectate mode or waiting to respawn) you see the followed player's cockpit from their seat (it used to

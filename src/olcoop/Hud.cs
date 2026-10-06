@@ -288,18 +288,24 @@ namespace OlCoop.Hud
             {
                 var m = msg.ReadMessage<StatsMsg>();
                 float now = Time.realtimeSinceStartup;
-                foreach (var kv in m.e) { var s = kv.Value; s.time = now; s_stats[kv.Key] = s; }
+                foreach (var kv in m.e) { var s = kv.Value; s.time = now; s_stats[kv.Key] = s; ApplyToCopy(kv.Key, s); }
             }
             catch (Exception ex) { CoopLog.Error("OnStats", ex); }
         }
 
-        /// The followed ship's values: the host reads its own copies; a joiner uses the host's (< 2 s old), else its own copy.
-        static Stats For(Player p)
+        /// Joiner: write the host's values into our copies of the OTHER players (never our own ship: we own our energy/ammo), so the
+        /// stock HUD drawn for a spectated ship (HUD9) and the name-tag health bars show real numbers.
+        static void ApplyToCopy(uint netId, Stats s)
         {
-            Stats s;
-            if (!CoopConfig.IsHost && s_stats.TryGetValue(p.netId.Value, out s) && Time.realtimeSinceStartup - s.time < 2f) return s;
-            return Read(p);
+            foreach (var p in Overload.NetworkManager.m_Players)
+            {
+                if (p == null || p.isLocalPlayer || p.netId.Value != netId) continue;
+                p.m_hitpoints = s.hp; p.m_energy = s.energy; p.m_ammo = s.ammo;
+                if (s.weapon >= 0 && s.weapon < p.m_weapon_level.Length) p.m_weapon_type = (WeaponType)s.weapon;
+                if (s.missile >= 0 && s.missile < p.m_missile_ammo.Length) { p.m_missile_type = (MissileType)s.missile; p.m_missile_ammo[s.missile] = s.missileAmmo; }
+            }
         }
+
 
         static PlayerShip Target { get { return OlCoop.Death.Spectate.Target; } }
 
@@ -310,23 +316,39 @@ namespace OlCoop.Hud
             else if (!want && s_on) { UIManager.ClearOverlayElement(Slot); s_on = false; }
         }
 
-        static string WeaponName(int w) { return ((WeaponType)w).ToString().Replace('_', ' '); }
-        static string MissileName(int m) { var t = (MissileType)m; return t == MissileType.MISSILE_POD ? "MISSILE POD" : t == MissileType.NOVA ? "NOVA" : t.ToString().Replace('_', ' '); }
 
         public static void Draw(UIElement uie)
         {
             var t = Target;
             if (t == null || t.c_player == null) return;
-            var s = For(t.c_player);
             string name = CoopHud.NameOf(t.c_player);
-            var pos = new Vector2(0f, 205f);
-            uie.DrawStringSmall("SPECTATING " + name + "   (FIRE: NEXT PLAYER)", pos, 0.5f, StringOffset.CENTER, UIManager.m_col_ui2, 1f, -1f);
-            pos.y += 30f;
-            uie.DrawStringSmall("ARMOR " + Mathf.Max(0, Mathf.RoundToInt(s.hp)) + "     ENERGY " + Mathf.Max(0, Mathf.RoundToInt(s.energy)) + "     AMMO " + Mathf.Max(0, s.ammo),
-                pos, 0.6f, StringOffset.CENTER, UIManager.m_col_hi4, 1f, -1f);
-            pos.y += 30f;
-            uie.DrawStringSmall(WeaponName(s.weapon) + "     " + MissileName(s.missile) + " x" + Mathf.Max(0, s.missileAmmo), pos, 0.5f, StringOffset.CENTER, UIManager.m_col_ui1, 1f, -1f);
-            if (!s_logged) { s_logged = true; CoopLog.Write("SPECT", "drawing spectator readout for netId=" + t.c_player.netId.Value + " (" + (CoopConfig.IsHost ? "host values" : "host-sent values") + ")"); }
+            var pos = new Vector2(0f, -250f);
+            uie.DrawStringSmall("SPECTATING " + name, pos, 0.6f, StringOffset.CENTER, UIManager.m_col_hi4, 1f, -1f);
+            if (!s_logged) { s_logged = true; CoopLog.Write("SPECT", "drawing spectator readout for netId=" + t.c_player.netId.Value + " (stock HUD shows its values)"); }
+        }
+    }
+
+    /// HUD9 (0.6.5): while spectating, the stock HUD is drawn as if the followed ship were ours (GameManager.m_player_ship /
+    /// m_local_player swapped for the duration of UIElement.DrawHUD only): its armor, energy, ammo, weapons, reticle, indicators.
+    [HarmonyPatch(typeof(UIElement), "DrawHUD")]
+    static class HUD9_SpectatedHud
+    {
+        struct Saved { public PlayerShip ship; public Player player; public bool valid; }
+        static bool s_logged;
+        static void Prefix(out Saved __state)
+        {
+            __state = default(Saved);
+            var t = OlCoop.Death.Spectate.Target;
+            if (t == null || t.c_player == null || !CoopConfig.Active) return;
+            __state.ship = GameManager.m_player_ship; __state.player = GameManager.m_local_player; __state.valid = true;
+            GameManager.m_player_ship = t; GameManager.m_local_player = t.c_player;
+            if (!s_logged) { s_logged = true; CoopLog.Write("SPECT", "drawing the HUD for netId=" + t.c_player.netId.Value); }
+        }
+        static Exception Finalizer(Saved __state, Exception __exception)
+        {
+            if (__state.valid) { GameManager.m_player_ship = __state.ship; GameManager.m_local_player = __state.player; }
+            if (__exception != null) CoopLog.Error("HUD9", __exception);
+            return null;
         }
     }
 

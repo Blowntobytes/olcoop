@@ -9,7 +9,7 @@ NAME="olcoop-$VER-$PHASE"
 STAGE=$(mktemp -d)
 mkdir -p "$STAGE/$NAME" dist
 cp build/Mod-olcoop.dll "$STAGE/$NAME/"
-cp installer/install.bat installer/uninstall.bat installer/olcoop.bat installer/olcoop-vr.bat installer/find-overload.ps1 \
+cp installer/install.bat installer/uninstall.bat installer/olcoop.bat installer/olcoop-steamvr.bat installer/olcoop-oculus.bat installer/find-overload.ps1 \
    installer/olcoop.ico installer/README.txt "$STAGE/$NAME/"
 rm -f "dist/$NAME.zip"
 (cd "$STAGE" && zip -qr "$OLDPWD/dist/$NAME.zip" "$NAME")

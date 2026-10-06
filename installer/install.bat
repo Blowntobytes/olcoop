@@ -49,8 +49,9 @@ if not exist "%OLPATH%\olcoop_logs" mkdir "%OLPATH%\olcoop_logs"
 rem Shortcut with the olcoop icon (a .bat file itself cannot have an icon): Desktop + game folder, both start olcoop.bat.
 copy /Y "%~dp0olcoop.ico" "%OLPATH%\" >nul 2>nul
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$w=New-Object -ComObject WScript.Shell; foreach($d in @([Environment]::GetFolderPath('Desktop'), $env:OLPATH)){ $l=$w.CreateShortcut((Join-Path $d 'olcoop.lnk')); $l.TargetPath=(Join-Path $env:OLPATH 'olcoop.bat'); $l.WorkingDirectory=$env:OLPATH; $l.IconLocation=(Join-Path $env:OLPATH 'olcoop.ico'); $l.Description='Overload co-op (olcoop)'; $l.Save() }" >nul 2>nul
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$w=New-Object -ComObject WScript.Shell; foreach($d in @([Environment]::GetFolderPath('Desktop'), $env:OLPATH)){ $l=$w.CreateShortcut((Join-Path $d 'olcoop VR.lnk')); $l.TargetPath=(Join-Path $env:OLPATH 'olcoop-vr.bat'); $l.WorkingDirectory=$env:OLPATH; $l.IconLocation=(Join-Path $env:OLPATH 'olcoop.ico'); $l.Description='Overload co-op (olcoop) in VR'; $l.Save() }" >nul 2>nul
-if exist "%OLPATH%\olcoop.lnk" (echo   Shortcuts "olcoop" and "olcoop VR" created on your Desktop and in the Overload folder.) else (echo   Note: could not create the olcoop shortcuts; start olcoop.bat or olcoop-vr.bat directly.)
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$w=New-Object -ComObject WScript.Shell; foreach($d in @([Environment]::GetFolderPath('Desktop'), $env:OLPATH)){ Remove-Item -LiteralPath (Join-Path $d 'olcoop VR.lnk') -ErrorAction SilentlyContinue; foreach($v in @(@('olcoop SteamVR','olcoop-steamvr.bat','SteamVR'),@('olcoop Oculus','olcoop-oculus.bat','Oculus'))){ $l=$w.CreateShortcut((Join-Path $d ($v[0]+'.lnk'))); $l.TargetPath=(Join-Path $env:OLPATH $v[1]); $l.WorkingDirectory=$env:OLPATH; $l.IconLocation=(Join-Path $env:OLPATH 'olcoop.ico'); $l.Description=('Overload co-op (olcoop) in VR - '+$v[2]); $l.Save() } }" >nul 2>nul
+del /Q "%OLPATH%\olcoop-vr.bat" 2>nul
+if exist "%OLPATH%\olcoop.lnk" (echo   Shortcuts "olcoop", "olcoop SteamVR" and "olcoop Oculus" created on your Desktop and in the Overload folder.) else (echo   Note: could not create the olcoop shortcuts; start olcoop.bat, olcoop-steamvr.bat or olcoop-oculus.bat directly.)
 fc /b "%SRC%" "%DST%" >nul
 if errorlevel 1 (
   echo [X] VERIFY FAILED: the installed DLL differs from this one. Is the game still running? Close it and retry.
@@ -62,7 +63,8 @@ echo     OK - olcoop %GOTVER% is installed and verified.
 echo   =====================================================
 echo.
 echo   Play: with Steam running, start the olcoop shortcut (Desktop) or olcoop.bat in "%OLPATH%".
-echo   VR:   start SteamVR, then the "olcoop VR" shortcut or olcoop-vr.bat.
+echo   VR:   SteamVR headsets: start SteamVR, then "olcoop SteamVR" (olcoop-steamvr.bat).
+echo         Oculus/Meta headsets: start the Oculus app, then "olcoop Oculus" (olcoop-oculus.bat).
 echo   Main menu: CO-OP: HOST / JOIN  (bottom right).
 echo.
 pause
