@@ -165,7 +165,7 @@ namespace OlCoop.World
         static bool s_requested, s_exit_sent, s_wait_shown;
         public static bool Waiting { get { return s_wait_shown; } }
 
-        public static void ResetForLevel() { PostLevel.Reset(); if (s_wait_shown) { try { UIManager.SetScreenFade(0f); } catch { } } CoopStatus.Clear(); s_lockdowns_done.Clear(); s_last_trigger_ship = null; s_exit_anchor = null; s_pending_pose = null; s_pending_exit = -1; s_dead_wait_until = -1f; s_revive.Clear(); s_revive_anchor = null; s_revive_until = -1f; s_requested = false; s_exit_sent = false; s_wait_shown = false; ApplyingExit = false; ApplyingLog = false; ExitTunnel.Reset(); }
+        public static void ResetForLevel() { PostLevel.Reset(); if (s_wait_shown) { try { UIManager.SetScreenFade(0f); } catch { } } CoopStatus.Clear(); s_lockdowns_done.Clear(); s_last_trigger_ship = null; s_exit_anchor = null; s_pending_pose = null; s_pending_exit = -1; s_dead_wait_until = -1f; s_revive.Clear(); s_revive_anchor = null; s_revive_until = -1f; s_requested = false; s_exit_sent = false; s_wait_shown = false; ApplyingExit = false; ApplyingLog = false; ExitTunnel.Reset(); CoopWorldTick.MenuOpen = false; }
 
         static bool LocalAlive()
         {
@@ -598,6 +598,122 @@ namespace OlCoop.World
             if (s_logged++ < 5) CoopLog.Write("FLOW", "exit flight " + (stuck ? "stuck (no progress for 5 s, " + d.ToString("F1") + " u from the end)" : "took over 25 s") + "; finishing it");
             f_completing.SetValue(null, true);
             if (f_complete_timer != null) f_complete_timer.SetValue(null, 1.1f);
+        }
+    }
+
+    /// X4 (0.6.12): the Esc menu (and the map) must not freeze the level for everyone. GameplayManager.ChangeGameplayState pauses
+    /// (PauseGameplay: Time.timeScale 0, robot AI off, sounds paused) whenever gameplay leaves PLAYING outside a multiplayer scene - our
+    /// co-op campaign levels. With other players in the session the level keeps running, as in multiplayer.
+    [HarmonyPatch(typeof(GameplayManager), "PauseGameplay")]
+    static class X4_NoPauseInCoop
+    {
+        static int s_logged;
+        public static bool OthersPresent()
+        {
+            if (!CoopWorld.Active || GameManager.m_game_state != GameManager.GameState.GAMEPLAY) return false;
+            if (CoopWorld.IsJoiner) return Client.IsConnected();
+            if (!CoopWorld.IsHost) return false;
+            foreach (var c in NetworkServer.connections)
+                if (c != null && c.connectionId != 0 && c.isConnected && Session.CoopHost.Verified.Contains(c.connectionId)) return true;
+            return false;
+        }
+        static bool Prefix()
+        {
+            if (!OthersPresent()) return true;
+            CoopWorldTick.MenuOpen = true;
+            if (s_logged++ < 5) CoopLog.Write("FLOW", "menu opened in co-op: the level keeps running (no pause)");
+            return false;
+        }
+    }
+
+    /// X5 (0.6.12): with the game not paused, the level still only advances in GameplayManager.Update's PLAYING case (game time,
+    /// RobotManager.Update - which also drives our robot sync -, statics, explosions, lockdown, escape timer) and with the Esc menu open
+    /// GameManager doesn't call GameplayManager.Update at all (state MENU). While a co-op level runs behind a menu or the map, run that
+    /// world tick ourselves; from the menu also GameplayManager.Update (MENUS has no case there: lights + our own per-frame postfixes).
+    public static class CoopWorldTick
+    {
+        public static bool MenuOpen;
+        static readonly System.Reflection.MethodInfo m_lock = AccessTools.Method(typeof(GameplayManager), "LockdownUpdate");
+        static readonly System.Reflection.MethodInfo m_esc = AccessTools.Method(typeof(GameplayManager), "EscapeUpdate");
+        static readonly System.Reflection.MethodInfo m_cryo = AccessTools.Method(typeof(GameplayManager), "CryotubePickupUpdate");
+        static readonly System.Reflection.MethodInfo m_comm = AccessTools.Method(typeof(GameplayManager), "LogCommMessageUpdate");
+        static int s_logged;
+
+        public static void Run(bool fromMenu)
+        {
+            if (s_logged++ == 0) CoopLog.Write("FLOW", "level running behind the " + (fromMenu ? "menu" : "map") + " (world tick)");
+            GameplayManager.m_game_time = (float)GameplayManager.m_game_time + RUtility.FRAMETIME_GAME;
+            SFXCueManager.Update();
+            ParticleManager.ExpireOldParticles();
+            if (GameplayManager.LockdownActive && m_lock != null) m_lock.Invoke(null, null);
+            GameplayManager.HUDMessageUpdateTimer();
+            if (m_comm != null) m_comm.Invoke(null, null);
+            if (m_cryo != null) m_cryo.Invoke(null, null);
+            RobotManager.Update();
+            UpdateStaticManager.UpdateStaticObjects();
+            if (!fromMenu) UpdateDynamicManager.UpdateDynamicObjects(); // the MENU state already runs it in multiplayer-active games
+            ExplosionManager.UpdateQueuedExplosions();
+            if (GameplayManager.MustEscape && m_esc != null) m_esc.Invoke(null, null);
+            if (fromMenu) OurUpdatePostfixes();
+        }
+
+        // Stock GameplayManager.Update must not run from the menu: its first line resumes the game (MENUS -> ChangeGameplayState(PLAYING)
+        // -> UnPauseGameplay, RestoreElements, PLAYING tick) - found in review. Run only this mod's own postfixes on it (robot/lockdown/
+        // fabricator/stats/objective/key/item ticks), each parameterless static Postfix declared in this assembly.
+        static List<System.Reflection.MethodInfo> s_postfixes;
+        static void OurUpdatePostfixes()
+        {
+            if (s_postfixes == null)
+            {
+                s_postfixes = new List<System.Reflection.MethodInfo>();
+                var orig = AccessTools.Method(typeof(GameplayManager), "Update");
+                var info = Harmony.GetPatchInfo(orig);
+                var asm = typeof(CoopWorldTick).Assembly;
+                if (info != null)
+                    foreach (var p in info.Postfixes)
+                        if (p.PatchMethod != null && p.PatchMethod.DeclaringType != null && p.PatchMethod.DeclaringType.Assembly == asm && p.PatchMethod.GetParameters().Length == 0 &&
+                            p.PatchMethod.DeclaringType != typeof(X9_MapWorldTick))
+                            s_postfixes.Add(p.PatchMethod);
+                CoopLog.Write("FLOW", "menu world tick: " + s_postfixes.Count + " of our per-frame ticks run behind the menu");
+            }
+            foreach (var m in s_postfixes)
+            {
+                try { m.Invoke(null, null); } catch (Exception ex) { CoopLog.Error("menu tick " + m.DeclaringType.Name, ex.InnerException ?? ex); }
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(GameplayManager), "UnPauseGameplay")]
+    static class X6_MenuClosed
+    {
+        static void Postfix() { CoopWorldTick.MenuOpen = false; }
+    }
+
+    [HarmonyPatch(typeof(GameplayManager), "DoneLevel")]
+    static class X7_LevelDone
+    {
+        static void Prefix() { CoopWorldTick.MenuOpen = false; }
+    }
+
+    [HarmonyPatch(typeof(MenuManager), "Update")]
+    static class X8_MenuWorldTick
+    {
+        static void Postfix()
+        {
+            if (!CoopWorldTick.MenuOpen) return;
+            if (!CoopWorld.Active || GameManager.m_game_state != GameManager.GameState.MENU || !GameplayManager.LevelIsLoaded ||
+                GameplayManager.m_gameplay_state != GameplayState.MENUS) return;
+            try { CoopWorldTick.Run(true); } catch (Exception ex) { CoopLog.Error("X8", ex); CoopWorldTick.MenuOpen = false; }
+        }
+    }
+
+    [HarmonyPatch(typeof(GameplayManager), "Update")]
+    static class X9_MapWorldTick
+    {
+        static void Postfix()
+        {
+            if (GameplayManager.m_gameplay_state != GameplayState.AUTOMAP || !X4_NoPauseInCoop.OthersPresent()) return;
+            try { CoopWorldTick.Run(false); } catch (Exception ex) { CoopLog.Error("X9", ex); }
         }
     }
 

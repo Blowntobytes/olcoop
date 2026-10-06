@@ -1,6 +1,13 @@
-# Online test (build 0.6.10-alpha)
-All windows / PCs must show OLCOOP 0.6.10-ALPHA on the main menu (now further right; older versions can't join: protocol 25).
+# Online test (build 0.6.12-alpha)
+All windows / PCs must show OLCOOP 0.6.12-ALPHA on the main menu (now further right; older versions can't join: protocol 25).
 Steam must be running. Send BOTH PCs' `Overload\olcoop_logs` folders after the run, and say which PC hosted.
+
+## New in 0.6.12
+31. Spectating: die and watch a teammate: your normal HUD (missiles left, weapons right, armor/energy/ammo middle) with their values.
+    Send the log either way; [SPECT] "ui:" lines every 5 s and any "UI surface was on ..." line.
+32. Esc menu / map in co-op: host opens Esc: robots keep moving and attacking (joiners see them move), timers run. Joiner too.
+    Log: [FLOW] "menu opened in co-op: the level keeps running", "level running behind the menu (world tick)".
+33. Host CO-OP screen: PLAY CAMPAIGN opens the campaign select. Friend list: < PREV / NEXT > pages through all online friends.
 
 ## New in 0.6.10
 25. Fabricators (robot makers): when one switches on, joiners see its glow; before each robot appears joiners see the sparks and hear

@@ -429,13 +429,19 @@ namespace OlCoop.Hud
                 var e = UIManager.m_ui_element[i];
                 if (e != null && e.m_type == UIElementType.HUD) { hudAlpha = e.m_alpha; break; }
             }
-            var me = GameManager.m_player_ship; var cam = Camera.main;
-            var ui = me != null && me.c_viewer != null ? me.c_viewer.c_ui_mesh_transform : null;
+            var cam = Camera.main; var v = GameManager.m_viewer;
+            var ui = v != null ? v.c_ui_mesh_transform : null;
+            var mr = ui != null ? ui.GetComponent<MeshRenderer>() : null;
+            string extra = " viewerOnMainCam=" + (v != null && cam != null && v.gameObject == cam.gameObject) +
+                " uiLayerSeen=" + (ui != null && cam != null && (cam.cullingMask & (1 << ui.gameObject.layer)) != 0) +
+                " uiRenderer=" + (mr != null ? mr.enabled.ToString() : "none") +
+                " camToUi=" + (ui != null && cam != null ? (ui.position - cam.transform.position).magnitude.ToString("F2") : "?") +
+                " camNear=" + (cam != null ? cam.nearClipPlane.ToString("F2") : "?");
             CoopLog.Write("SPECT", "ui: hudElement=" + UIManager.TypeExists(UIElementType.HUD) + " hudAlpha=" + hudAlpha.ToString("F2") + " HUD_ALPHA=" + UIElement.HUD_ALPHA.ToString("F2") +
                 " bars=" + (f_bars != null ? f_bars.GetValue(null) : "?") + " bgDark=" + UIManager.ui_bg_dark + " bgFade=" + UIManager.ui_bg_fade.ToString("F2") +
                 " blackOut=" + UIManager.ui_dying_black_out.ToString("F2") + " vr=" + GameplayManager.VRActive + " elements=" + UIManager.m_num_elements +
                 " uiMesh=" + (ui != null ? (ui.parent != null ? ui.parent.name : "null") + " " + ui.localPosition.ToString("F2") + " active=" + ui.gameObject.activeInHierarchy : "null") +
-                " cam=" + (cam != null ? (cam.transform.parent != null ? cam.transform.parent.name : "null") + " " + cam.transform.localPosition.ToString("F2") : "null"));
+                " cam=" + (cam != null ? (cam.transform.parent != null ? cam.transform.parent.name : "null") + " " + cam.transform.localPosition.ToString("F2") : "null") + extra);
         }
 
         public static void Ensure()
@@ -472,9 +478,9 @@ namespace OlCoop.Hud
                 if (OlCoop.Death.Spectate.Target == null) return;
                 OlCoop.Death.Spectate.NormalView();
                 if (!UIManager.TypeExists(UIElementType.HUD)) { UIManager.CreateUIElement(UIManager.SCREEN_CENTER, 7000, UIElementType.HUD); CoopLog.Write("SPECT", "HUD element was gone; re-created"); }
+                SpectateHud.LogUi(); // before the swap: our own viewer / camera
                 __state = SpectateHud.SwapIn();
                 if (__state != null && !s_logged) { s_logged = true; CoopLog.Write("SPECT", "drawing the UI as netId=" + __state.target.netId.Value); }
-                SpectateHud.LogUi();
             }
             catch (Exception ex) { CoopLog.Error("HUD9 pre", ex); }
         }

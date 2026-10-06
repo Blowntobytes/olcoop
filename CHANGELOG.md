@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.12-alpha (2026-10-06) - spectating HUD, no pause in co-op, PLAY CAMPAIGN, friend list pages, UNTESTED build (all players must run 0.6.12-alpha; protocol 25)
+From the 14:48 run on 0.6.11 (both logs). User: no black bars any more, but no HUD at all while spectating.
+- Spectating: the HUD is drawn onto a curved surface that belongs to your ship's camera; it is now kept on the spectate camera every
+  frame (like the camera itself), and the log says if anything moved it. More [SPECT] "ui:" detail (camera vs UI surface).
+- Change: opening the Esc menu (or the map) no longer pauses the level when other players are in it - robots, timers and the other
+  players keep going, like multiplayer.
+- New: PLAY CAMPAIGN on the host's CO-OP screen (the campaign / level select).
+- New: the friend list on the CO-OP screen has pages (< PREV / NEXT >) so every online friend can be reached.
+- Not yet: co-op challenge mode (needs its own phase; see HANDOFF).
+
 ## 0.6.11-alpha (2026-10-06) - spectating, cryotubes far away, UNTESTED build (all players must run 0.6.11-alpha; protocol 25)
 From the 14:28 run on 0.6.10 (PeetzaGuest hosting, BlownToBits joining; joiner log). User: spectating unchanged; only the last
 cryotube showed for both.

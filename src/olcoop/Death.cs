@@ -610,8 +610,26 @@ namespace OlCoop.Death
         /// 0.6.10: the death camera (PlayerShip.StartDyingCamera, re-run by UpdateDyingCamera) turns on the cinematic bars and the dark UI
         /// backdrop, and the HUD alpha (UIElement.HUD_ALPHA, raised only by our own living ship's Update) stays faded. Spectating looks
         /// like normal play: no bars, normal UI background, full HUD.
+        static int s_hud_fixes;
+        /// 0.6.12: keep our viewer's UI surface (Viewer.c_ui_mesh_transform: the curved mesh showing the UI render texture) on the
+        /// spectate camera every frame, like the camera itself (Attach); log what moved it.
+        public static void KeepHud()
+        {
+            if (s_rig == null) return;
+            var v = GameManager.m_viewer;
+            var ui = v != null ? v.c_ui_mesh_transform : null;
+            if (ui == null) return;
+            if (ui.parent != s_rig.transform || ui.localPosition != Vector3.zero)
+            {
+                if (s_hud_fixes++ < 10) CoopLog.Write("SPECT", "UI surface was on '" + (ui.parent != null ? ui.parent.name : "null") + "' " + ui.localPosition.ToString("F2") + "; put back on the spectate camera");
+                ui.parent = s_rig.transform; ui.localPosition = Vector3.zero; ui.localRotation = Quaternion.identity;
+            }
+            if (!ui.gameObject.activeSelf) { ui.gameObject.SetActive(true); if (s_hud_fixes++ < 10) CoopLog.Write("SPECT", "UI surface was switched off; switched on"); }
+        }
+
         public static void NormalView()
         {
+            KeepHud();
             UIManager.ShowCinematicBars(false);
             UIManager.ui_bg_dark = false;
             UIElement.HUD_ALPHA = 1f;

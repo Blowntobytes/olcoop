@@ -21,7 +21,8 @@ namespace OlCoop.UI
         public static readonly MenuState msCoop = (MenuState)121;
         public static readonly UIElementType uiCoop = (UIElementType)123;
         public const int MainMenuItemId = 40;
-        const int ID_HOST = 0, ID_OVERLAY = 1, ID_LEAVE = 3, ID_READY = 4, ID_FRIEND0 = 10, MAX_FRIENDS = 7, ID_BACK = 100;
+        const int ID_HOST = 0, ID_OVERLAY = 1, ID_LEAVE = 3, ID_READY = 4, ID_CAMPAIGN = 5, ID_PREV = 8, ID_NEXT = 9, ID_FRIEND0 = 10, MAX_FRIENDS = 20, ID_BACK = 100;
+        static int s_page, s_per_page = 1;
         static readonly MethodInfo s_goBack = AccessTools.Method(typeof(MenuManager), "GoBack");
 
         static List<SteamLink.Friend> s_friends = new List<SteamLink.Friend>();
@@ -41,7 +42,6 @@ namespace OlCoop.UI
             foreach (var f in s_friends)
             {
                 if (CoopConfig.IsHost || f.Lobby != CSteamID.Nil) l.Add(f);
-                if (l.Count >= MAX_FRIENDS) break;
             }
             return l;
         }
@@ -86,6 +86,12 @@ namespace OlCoop.UI
             if (!CoopConfig.IsJoiner)
             {
                 uie.SelectAndDrawItem(CoopConfig.IsHost ? "STOP HOSTING" : "HOST A CO-OP GAME", pos, ID_HOST, false, 1f, 0.75f);
+                pos.y += 62f;
+            }
+            if (CoopConfig.IsHost)
+            {
+                // 0.6.12: start the campaign from here (the stock mission select: new game / level select)
+                uie.SelectAndDrawItem("PLAY CAMPAIGN", pos, ID_CAMPAIGN, false, 1f, 0.75f);
                 pos.y += 62f;
             }
             if (CoopConfig.IsHost && steam && SteamLink.Lobby != CSteamID.Nil)
@@ -140,12 +146,28 @@ namespace OlCoop.UI
                 if (rows.Count == 0)
                     uie.DrawStringSmall(CoopConfig.IsHost ? "NO FRIENDS ONLINE" : "NONE RIGHT NOW - ASK YOUR FRIEND TO HOST, OR ACCEPT THEIR STEAM INVITE",
                         pos, 0.4f, StringOffset.CENTER, UIManager.m_col_ui1, 1f, -1f);
-                for (int i = 0; i < rows.Count; i++)
+                // 0.6.12: pages - as many rows as fit above BACK (minus one row for the page buttons), PREV/NEXT to scroll
+                float room = (UIManager.UI_BOTTOM - 95f) - pos.y;
+                int fit = Mathf.Max(1, (int)(room / 50f) + 1);
+                s_per_page = rows.Count > fit ? Mathf.Max(1, fit - 1) : fit;
+                s_per_page = Mathf.Min(s_per_page, MAX_FRIENDS);
+                int pages = Mathf.Max(1, (rows.Count + s_per_page - 1) / s_per_page);
+                if (s_page >= pages) s_page = pages - 1;
+                if (s_page < 0) s_page = 0;
+                for (int k = 0; k < s_per_page; k++)
                 {
-                    if (pos.y > UIManager.UI_BOTTOM - 95f) break; // keep clear of BACK (the session list above takes room)
+                    int i = s_page * s_per_page + k;
+                    if (i >= rows.Count) break;
                     var f = rows[i];
                     string tag = CoopConfig.IsHost ? (f.InOverload ? "INVITE  (IN OVERLOAD)" : "INVITE") : "JOIN";
-                    uie.SelectAndDrawItem(Clip(f.Name) + "  -  " + tag, pos, ID_FRIEND0 + i, false, 1f, 0.6f);
+                    uie.SelectAndDrawItem(Clip(f.Name) + "  -  " + tag, pos, ID_FRIEND0 + k, false, 1f, 0.6f);
+                    pos.y += 50f;
+                }
+                if (pages > 1)
+                {
+                    uie.DrawStringSmall("PAGE " + (s_page + 1) + " / " + pages + "  (" + rows.Count + " ONLINE)", pos + Vector2.up * 2f, 0.4f, StringOffset.CENTER, UIManager.m_col_ui2, 1f, -1f);
+                    uie.SelectAndDrawHalfItem("< PREV", pos + Vector2.right * -330f, ID_PREV, false);
+                    uie.SelectAndDrawHalfItem("NEXT >", pos + Vector2.right * 330f, ID_NEXT, false);
                     pos.y += 50f;
                 }
             }
@@ -170,7 +192,7 @@ namespace OlCoop.UI
                     {
                         UIManager.CreateUIElement(UIManager.SCREEN_CENTER, 7000, uiCoop);
                         MenuManager.m_menu_sub_state = MenuSubState.ACTIVE;
-                        s_next_refresh = 0f;
+                        s_next_refresh = 0f; s_page = 0;
                         MenuManager.SetDefaultSelection(OlCoop.World.PostLevel.ReadyButton ? ID_READY : CoopConfig.IsJoiner ? ID_LEAVE : ID_HOST);
                     }
                     break;
@@ -200,10 +222,18 @@ namespace OlCoop.UI
                         SteamLink.LastStatus = "LEFT CO-OP";
                         MenuManager.PlaySelectSound();
                     }
+                    else if (sel == ID_CAMPAIGN)
+                    {
+                        UIManager.DestroyAll();
+                        MenuManager.ChangeMenuState(MenuState.MISSION_SELECT);
+                        MenuManager.PlaySelectSound();
+                    }
+                    else if (sel == ID_PREV) { s_page--; MenuManager.PlaySelectSound(); }
+                    else if (sel == ID_NEXT) { s_page++; MenuManager.PlaySelectSound(); }
                     else if (sel >= ID_FRIEND0 && sel < ID_FRIEND0 + MAX_FRIENDS)
                     {
                         var rows = Rows();
-                        int i = sel - ID_FRIEND0;
+                        int i = s_page * s_per_page + (sel - ID_FRIEND0);
                         if (i < rows.Count)
                         {
                             if (CoopConfig.IsHost) SteamLink.Invite(rows[i].Id);

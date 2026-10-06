@@ -1,4 +1,4 @@
-# olcoop handoff (state as of 2026-10-06 14:55 PT)
+# olcoop handoff (state as of 2026-10-06 15:30 PT)
 
 Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
@@ -13,7 +13,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.6.11 alpha"). Protocol = 25 (in build.sh). Message ids used so far: 160-208. Current build folder: build-alpha (since 0.6.0-alpha; build-online held 0.5.x).
+  `VERSION` ("0.6.12 alpha"). Protocol = 25 (in build.sh). Message ids used so far: 160-208. Current build folder: build-alpha (since 0.6.0-alpha; build-online held 0.5.x).
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 192 patches, 0 problems;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-alpha (current).
@@ -706,3 +706,26 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   now swaps ship/player + live values around the whole UIManager.Draw (not UIElement.DrawHUD), re-creates the HUD element if missing,
   and logs [SPECT] "ui: hudElement hudAlpha HUD_ALPHA bars bgDark bgFade blackOut vr elements uiMesh cam" every 5 s. NOT a confirmed
   diagnosis: if the next run is still wrong, read those lines (and ask the user for a screenshot / flat vs VR).
+
+## 0.6.12-alpha status (2026-10-06 15:30) - installed, UNTESTED. Protocol 25 (no wire change)
+- Installed SHA1 53e3eebf47243686781574926e26665217eabf67 (296448 bytes), verified in game folder + build-alpha. Tag v0.6.12-alpha.
+  265 patches, 0 problems, 0 warnings. Zip dist/olcoop-0.6.12-alpha.zip (SHA1 04f88a2103494547b2885d337e9935eeafcf872a).
+- 0.6.11 run 14:48 (host PeetzaGuest pid10244, joiner BlownToBits pid14608, both 0.6.11): [SPECT] ui: hudElement=True hudAlpha 1
+  HUD_ALPHA 1 bars False bgDark False blackOut 1 vr False elements=1 -> the HUD element exists and is drawn at full alpha, still not
+  seen. That line read the viewer AFTER the swap (followed ship's), so the UI surface location was not proven. The UI path: UIManager
+  draws url[] layers -> GameManager.m_ui_camera render texture -> Viewer.c_ui_mesh_transform (curved mesh, radius 5.2, child of the
+  camera controller) seen by Main Camera. Spectate.KeepHud (every tick, via NormalView) now keeps GameManager.m_viewer's UI surface on
+  the spectate rig at zero and active, logging "UI surface was on '..'" when it had to fix it; LogUi runs before the swap and adds
+  viewerOnMainCam, uiLayerSeen (camera culling mask), uiRenderer, camToUi distance, camNear. If still no HUD, those lines decide.
+- No pause in co-op (user): GameplayManager.ChangeGameplayState -> PauseGameplay (timeScale 0, AI off) for any non-PLAYING state outside MP
+  scenes. X4 skips PauseGameplay while others are in the session (MenuOpen flag). With the Esc menu open GameManager runs only
+  MenuManager.Update (state MENU) and GameplayManager.Update's PLAYING case (game time, RobotManager.Update -> our robot sync, statics,
+  explosions, lockdown, escape) stops: X8 (MenuManager.Update postfix) runs that world tick plus this assembly's parameterless
+  GameplayManager.Update postfixes (NOT stock Update: its first line MENUS -> ChangeGameplayState(PLAYING) resumes the game - caught in
+  review); X9 does the tick while the automap is open. MenuOpen cleared by UnPauseGameplay / DoneLevel / level load. Note (review): saving
+  from the pause menu now serializes a running level.
+- CO-OP screen: PLAY CAMPAIGN (host) -> MenuState.MISSION_SELECT (stock main menu item 0). Friend list paged (rows that fit above BACK,
+  < PREV / NEXT > half items ids 8/9, PAGE x/y), no 7-friend cap.
+- Challenge mode co-op requested by the user: NOT started. Needed: joiner C1 resolving challenge levels (GameManager.ChallengeMission
+  instead of StoryMission), ChallengeManager waves host-only (joiners would spawn their own), challenge score/timer HUD sync, results/
+  end flow (CHALLENGE_RESULTS) for joiners, CHALLENGE_SELECT button for the host. New phase -> new build folder when started.
