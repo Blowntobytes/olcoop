@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.15-alpha (2026-10-06) - team-wipe restart freeze, UNTESTED build (all players must run 0.6.15-alpha; protocol 25)
+From the 15:54 run on 0.6.14 (joiner log). User: one player spectating, the other died, both screens froze instead of restarting.
+- Fix: on a team wipe the host reloads the level, but since 0.6.10 its level start waited for every joiner to press READY UP - and
+  the joiners were still in the level, dead, with no button to press. Joiner log: "TEAM WIPED" at 15:57:09, then "the host is waiting
+  for players to ready up" at 15:57:13, nothing more until the host quit. Restarts (team wipe, hardcore) now skip the ready check.
+
 ## 0.6.14-alpha (2026-10-06) - spectating HUD, respawn timer, Esc while spectating, READY UP on join, UNTESTED build (all players must run 0.6.14-alpha; protocol 25)
 From the 15:18/15:25 run on 0.6.13 (both logs). User: READY UP only appears when the campaign is about to start; Esc does nothing while
 spectating; still no HUD while spectating; the respawn timer is gone.

@@ -201,6 +201,9 @@ namespace OlCoop.World
             s_points1 = lp != null ? lp.m_upgrade_points1 : 0; s_points2 = lp != null ? lp.m_upgrade_points2 : 0;
             CoopLog.Write("FLOW", "host: level done; the next level waits until every joiner is ready (upgrade points " + s_points1 + "/" + s_points2 + ")");
         }
+        /// 0.6.14: team-wipe / hardcore restart. The joiners are still in the level (dead) and come along with the host's scene send;
+        /// they can't press READY UP, so the INIT gate must not hold the reload (0.6.10-0.6.14 froze both screens here).
+        public static void SkipGateForRestart() { End(); s_released = true; CoopLog.Write("FLOW", "host: level restart; no ready check"); }
         public static void End() { s_released = false; if (s_on || DeadFinish) { s_on = false; DeadFinish = false; s_ready.Clear(); CoopStatus.Clear(); } }
 
         static int Joiners()

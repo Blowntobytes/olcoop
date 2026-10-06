@@ -279,6 +279,7 @@ namespace OlCoop.Death
             CoopLog.Write("DEATH", "restarting level for everyone");
             Spectate.Stop(GameManager.m_player_ship);
             GameplayManager.DoneLevel(GameplayManager.DoneReason.Quit);
+            try { OlCoop.World.HostReady.SkipGateForRestart(); } catch (Exception ex) { CoopLog.Error("reset gate", ex); }
             GameplayManager.CreateRestartGame();
             GameplayManager.m_between_level_start = Time.realtimeSinceStartup;
             GameplayManager.SwitchToMenu(MenuState.PLAY_GAME);

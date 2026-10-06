@@ -141,3 +141,4 @@ E. Reactor: does the reactor explosion sound play twice on the host? (Reported o
 34. (0.6.14) Joiner connects while the host is at the main menu / CO-OP screen: READY UP shows at once; after pressing it, WAITING FOR HOST.
 35. (0.6.14) Die while another player lives (respawn mode): respawn countdown shows, spectating shows the full HUD of the watched player.
 36. (0.6.14) Esc while spectating opens the pause menu; Esc/RESUME returns to spectating with the HUD.
+37. (0.6.15) Respawn mode, both players die (one spectating): CO-OP: TEAM WIPED, the level restarts for both within a few seconds.
