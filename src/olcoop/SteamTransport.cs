@@ -147,8 +147,13 @@ namespace OlCoop.SteamNet
         {
             if (ioFailure || r.m_eResult != EResult.k_EResultOK)
             {
-                LastStatus = "STEAM LOBBY FAILED (" + r.m_eResult + ")";
-                CoopLog.Write("STEAM", "lobby creation failed: " + r.m_eResult + " io=" + ioFailure);
+                // 0.6.13: 15:10 run - k_EResultNoConnection (this Steam client can't reach Steam's servers) left the player "hosting" with
+                // no lobby: friend rows were INVITE buttons that did nothing and nobody could join. Drop the host role and say why.
+                bool noConn = !ioFailure && r.m_eResult == EResult.k_EResultNoConnection;
+                LastStatus = noConn ? "STEAM CAN'T REACH ITS SERVERS - CHECK STEAM (RESTART IT IF NEEDED), THEN HOST AGAIN"
+                                    : "STEAM LOBBY FAILED (" + r.m_eResult + ") - TRY HOSTING AGAIN";
+                CoopLog.Write("STEAM", "lobby creation failed: " + r.m_eResult + " io=" + ioFailure + "; no longer hosting");
+                try { CoopConfig.ClearRole(); } catch (Exception ex) { CoopLog.Error("lobby fail ClearRole", ex); }
                 return;
             }
             Lobby = new CSteamID(r.m_ulSteamIDLobby);
@@ -162,7 +167,7 @@ namespace OlCoop.SteamNet
 
         public static void Invite(CSteamID friend)
         {
-            if (Lobby == CSteamID.Nil) { CoopLog.Write("STEAM", "invite: no lobby yet"); return; }
+            if (Lobby == CSteamID.Nil) { LastStatus = "NO STEAM LOBBY YET - WAIT A MOMENT OR HOST AGAIN"; CoopLog.Write("STEAM", "invite: no lobby yet"); return; }
             bool ok = SteamMatchmaking.InviteUserToLobby(Lobby, friend);
             LastStatus = ok ? "INVITE SENT TO " + Name(friend).ToUpperInvariant() : "INVITE FAILED";
             CoopLog.Write("STEAM", "invited " + Name(friend) + " (" + friend.m_SteamID + "): " + ok);

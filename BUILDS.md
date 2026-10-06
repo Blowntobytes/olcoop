@@ -62,4 +62,5 @@ Targets unless noted: Overload 1.1.1886, olmod 0.5.14.
 | 0.6.9-alpha | 24 | 10-05 21:45 | tested (04:43-05:05, PeetzaGuest host, joiner log) | READY UP from the menus, exit flights from the exit path (log) | fabricator FX, Shredder blades, cryotube message missing on joiner; no READY UP before the first level; spectating shows the death view | tag v0.6.9-alpha |
 | 0.6.10-alpha | 25 | 10-06 05:45 | tested (14:28, PeetzaGuest host, joiner log) | - | spectating unchanged (user); far cryotubes "not found" on the joiner | tag v0.6.10-alpha |
 | 0.6.11-alpha | 25 | 10-06 14:55 | tested (14:48, both logs) | no black bars while spectating (user) | no HUD while spectating; Esc menu pauses robots | tag v0.6.11-alpha |
-| 0.6.12-alpha | 25 | 10-06 15:30 | untested | - | - | tag v0.6.12-alpha, build-alpha, dist/olcoop-0.6.12-alpha.zip |
+| 0.6.12-alpha | 25 | 10-06 15:30 | partly run (15:10, both logs) | - | joining failed: PeetzaGuest's Steam had no server connection (lobby k_EResultNoConnection) and he was left hosting | tag v0.6.12-alpha |
+| 0.6.13-alpha | 25 | 10-06 15:40 | untested | - | - | tag v0.6.13-alpha, build-alpha, dist/olcoop-0.6.13-alpha.zip |

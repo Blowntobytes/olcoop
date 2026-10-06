@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.13-alpha (2026-10-06) - Steam lobby failure handling, UNTESTED build (all players must run 0.6.13-alpha; protocol 25)
+From the 15:10 run on 0.6.12 (both logs): PeetzaGuest pressed HOST at 15:10:18 and Steam refused the lobby ("no connection": his Steam
+client could not reach Steam's servers), so he stayed "hosting" with no lobby: the friend list showed INVITE buttons that did nothing,
+he got no invite from BlownToBits (sent 15:11:40), and friends' online status loaded slowly. Not caused by 0.6.12's changes.
+- Fix: when Steam can't create the lobby you are no longer left hosting: the CO-OP screen says so ("STEAM CAN'T REACH ITS SERVERS -
+  CHECK STEAM ...") and shows the JOIN list again. Inviting before the lobby exists says so too.
+
 ## 0.6.12-alpha (2026-10-06) - spectating HUD, no pause in co-op, PLAY CAMPAIGN, friend list pages, UNTESTED build (all players must run 0.6.12-alpha; protocol 25)
 From the 14:48 run on 0.6.11 (both logs). User: no black bars any more, but no HUD at all while spectating.
 - Spectating: the HUD is drawn onto a curved surface that belongs to your ship's camera; it is now kept on the spectate camera every

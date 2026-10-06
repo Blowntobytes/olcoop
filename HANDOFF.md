@@ -1,4 +1,4 @@
-# olcoop handoff (state as of 2026-10-06 15:30 PT)
+# olcoop handoff (state as of 2026-10-06 15:40 PT)
 
 Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
@@ -13,7 +13,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.6.12 alpha"). Protocol = 25 (in build.sh). Message ids used so far: 160-208. Current build folder: build-alpha (since 0.6.0-alpha; build-online held 0.5.x).
+  `VERSION` ("0.6.13 alpha"). Protocol = 25 (in build.sh). Message ids used so far: 160-208. Current build folder: build-alpha (since 0.6.0-alpha; build-online held 0.5.x).
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 192 patches, 0 problems;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-alpha (current).
@@ -729,3 +729,14 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 - Challenge mode co-op requested by the user: NOT started. Needed: joiner C1 resolving challenge levels (GameManager.ChallengeMission
   instead of StoryMission), ChallengeManager waves host-only (joiners would spawn their own), challenge score/timer HUD sync, results/
   end flow (CHALLENGE_RESULTS) for joiners, CHALLENGE_SELECT button for the host. New phase -> new build folder when started.
+
+
+## 0.6.13-alpha status (2026-10-06 15:40) - installed, UNTESTED. Protocol 25 (no wire change). 0.6.12 items still untested.
+- Installed SHA1 39a83551c0508a9a19a5e10255a098a4fe92ea91 (296960 bytes), verified in game folder + build-alpha. Tag v0.6.13-alpha. 265 patches, 0 problems, 0 warnings.
+  Zip dist/olcoop-0.6.13-alpha.zip (SHA1 cea776773a79bedd310180442b281441458fab5b).
+- 0.6.12 run 15:10 (PeetzaGuest pid12792, BlownToBits pid19232, both 0.6.12): user "joiner could not click a name to join or get an
+  invite; friend list very slow". Log: PeetzaGuest ROLE HOST 15:10:18, "lobby creation failed: k_EResultNoConnection" 15:10:28, then 11x
+  "invite: no lobby yet" (his rows were INVITE buttons); BlownToBits hosted 15:11:10, invited PeetzaGuest 15:11:40 (True), nothing
+  arrived. k_EResultNoConnection = that Steam client had no connection to Steam's servers (also explains slow persona/friend data). Not
+  the 0.6.12 paging/campaign changes. Fix: OnLobbyCreated failure -> CoopConfig.ClearRole + explicit LastStatus; Invite without lobby
+  sets LastStatus.
