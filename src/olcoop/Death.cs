@@ -377,8 +377,11 @@ namespace OlCoop.Death
             if (hide)
             {
                 if (!s_hidden.TryGetValue(key, out list)) { list = new List<MeshRenderer>(); s_hidden[key] = list; }
+                // 0.6.14: never touch the viewer's UI surface (_ui_mesh sits under the local ship's camera rig). Hiding it is
+                // what blanked the whole HUD - and the respawn timer - while spectating (log: uiRenderer=False).
+                var v = GameManager.m_viewer; Transform ui = v != null ? v.c_ui_mesh_transform : null;
                 foreach (var r in s.GetComponentsInChildren<MeshRenderer>(true))
-                    if (r.enabled && (cockpit == null || !r.transform.IsChildOf(cockpit))) { r.enabled = false; list.Add(r); }
+                    if (r.enabled && (cockpit == null || !r.transform.IsChildOf(cockpit)) && (ui == null || !r.transform.IsChildOf(ui))) { r.enabled = false; list.Add(r); }
             }
             else if (s_hidden.TryGetValue(key, out list))
             {
@@ -624,6 +627,8 @@ namespace OlCoop.Death
                 if (s_hud_fixes++ < 10) CoopLog.Write("SPECT", "UI surface was on '" + (ui.parent != null ? ui.parent.name : "null") + "' " + ui.localPosition.ToString("F2") + "; put back on the spectate camera");
                 ui.parent = s_rig.transform; ui.localPosition = Vector3.zero; ui.localRotation = Quaternion.identity;
             }
+            var mr = ui.GetComponent<MeshRenderer>();
+            if (mr != null && !mr.enabled) { mr.enabled = true; if (s_hud_fixes++ < 10) CoopLog.Write("SPECT", "UI surface renderer was off; switched on"); }
             if (!ui.gameObject.activeSelf) { ui.gameObject.SetActive(true); if (s_hud_fixes++ < 10) CoopLog.Write("SPECT", "UI surface was switched off; switched on"); }
         }
 
@@ -635,6 +640,7 @@ namespace OlCoop.Death
             UIElement.HUD_ALPHA = 1f;
         }
 
+        static bool s_was_playing;
         public static void Tick(PlayerShip owner)
         {
             if (s_rig == null) return;
@@ -651,10 +657,19 @@ namespace OlCoop.Death
                     " camEnabled=" + (Camera.main != null && Camera.main.enabled));
             }
             if (s_target == null || (bool)s_target.m_dying || (bool)s_target.m_dead) { if (s_target != null) { CoopDeath.HideShip(s_target, false); ShowCockpit(s_target, false); } s_target = null; Next(+1); }
-            if (Controls.JustPressed(CCInput.FIRE_WEAPON)) Next(+1);
+            bool playing = GameplayManager.m_gameplay_state == GameplayState.PLAYING;
+            // 0.6.14: Esc while spectating opens the pause menu. Stock GameManager.DoPauseGameplay refuses while our ship is m_dying.
+            bool wasPlaying = s_was_playing; s_was_playing = playing;
+            if (playing && wasPlaying && Controls.JustPressed(CCInput.PAUSE)) // wasPlaying: the Esc that closed the menu must not reopen it
+            {
+                CoopLog.Write("SPECT", "Esc while spectating: opening the pause menu");
+                GameplayManager.SwitchToMenu(MenuState.PAUSE_MENU);
+                return;
+            }
+            if (playing && Controls.JustPressed(CCInput.FIRE_WEAPON)) Next(+1);
             if (s_target == null) return;
             KeepLights(s_target);
-            NormalView();
+            if (playing) NormalView(); else KeepHud();
             try { SpectateView.Refresh(s_target, false); } catch (Exception ex) { CoopLog.Error("SpectateView", ex); }
             if (Time.time >= s_next_light_log) { s_next_light_log = Time.time + 15f; LogLights("tick", s_target); }
             var eye = Eye(s_target);

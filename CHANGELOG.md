@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.6.14-alpha (2026-10-06) - spectating HUD, respawn timer, Esc while spectating, READY UP on join, UNTESTED build (all players must run 0.6.14-alpha; protocol 25)
+From the 15:18/15:25 run on 0.6.13 (both logs). User: READY UP only appears when the campaign is about to start; Esc does nothing while
+spectating; still no HUD while spectating; the respawn timer is gone.
+- Fix (spectating HUD): both logs showed `uiRenderer=False` - the HUD surface itself was switched off. Cause was ours: hiding your
+  wrecked ship also switched off every renderer under it, and the HUD surface hangs off the ship's camera. It is now left alone (and
+  switched back on, with a log line, if anything else turns it off).
+- Fix (respawn timer): while spectating, the screen is drawn as the watched (alive) ship, so the timer thought you weren't dead and
+  hid itself. It now checks your own ship.
+- New: Esc while spectating opens the pause menu (the stock game refuses while your ship is wrecked). Menus draw normally while open.
+- Fix: a player who joins while the host is in the menus gets READY UP straight away again; pressing it carries into level start, so
+  ready players don't wait a second time. Leaving the host alone drops the check.
+
 ## 0.6.13-alpha (2026-10-06) - Steam lobby failure handling, UNTESTED build (all players must run 0.6.13-alpha; protocol 25)
 From the 15:10 run on 0.6.12 (both logs): PeetzaGuest pressed HOST at 15:10:18 and Steam refused the lobby ("no connection": his Steam
 client could not reach Steam's servers), so he stayed "hosting" with no lobby: the friend list showed INVITE buttons that did nothing,

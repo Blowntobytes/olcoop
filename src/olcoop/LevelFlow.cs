@@ -430,7 +430,7 @@ namespace OlCoop.World
             try
             {
                 int code = msg.ReadMessage<IntegerMessage>().value;
-                CoopLog.Write("FLOW", "joiner: host status " + code);
+                if (code != 3) CoopLog.Write("FLOW", "joiner: host status " + code);
                 if (code == 3)
                 {
                     if (!PostLevel.HostWaiting) CoopLog.Write("FLOW", "joiner: the host is waiting for players to ready up" + (PostLevel.ReadyButton ? " (READY UP button shown)" : ""));

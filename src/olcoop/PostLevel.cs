@@ -4,6 +4,7 @@
 // keeps the loadout (with any upgrades just bought) for the next level, and waits for the host's level (C1). If the host's level
 // arrives while the joiner is still in its menus, C1 defers it until the joiner reaches that gate.
 using System;
+using System.Reflection;
 using HarmonyLib;
 using Overload;
 using UnityEngine;
@@ -189,6 +190,7 @@ namespace OlCoop.World
         /// Host finished the level dead (fallback path): keep its menus unfrozen.
         public static bool DeadFinish;
         public static bool On { get { return s_on; } }
+        public static bool AfterLevel { get { return s_after_level; } }
 
         static bool s_after_level, s_released;
         static int s_points1, s_points2;
@@ -225,9 +227,29 @@ namespace OlCoop.World
         static float s_next_remind;
         /// Host, every menu frame: while holding for ready players, tell every verified joiner (status 3), so a
         /// player who joined from the main menu during the end-of-level screens gets a READY UP button.
+        static readonly FieldInfo f_back_stack = AccessTools.Field(typeof(MenuManager), "m_back_stack");
+        /// 0.6.14: host in its menus outside a level (main menu, co-op screen, level select - not the pause menu or a level start).
+        static bool HostInLobby()
+        {
+            if (GameManager.m_game_state != GameManager.GameState.MENU) return false;
+            var ms = MenuManager.m_menu_state;
+            if (ms == MenuState.PLAY_GAME || ms == MenuState.PAUSE_MENU) return false;
+            var st = f_back_stack != null ? f_back_stack.GetValue(null) as System.Collections.Generic.Stack<MenuState> : null;
+            return st == null || !st.Contains(MenuState.PAUSE_MENU);
+        }
+
         public static void Remind()
         {
-            if (!s_on || !CoopWorld.IsHost || Time.realtimeSinceStartup < s_next_remind) return;
+            if (!CoopWorld.IsHost) return;
+            // 0.6.14: a joiner who connects while the host is in its menus gets READY UP straight away (0.6.13 only offered it once the
+            // host pressed start). The marks carry into the PLAY_GAME gate, so ready players don't wait there again.
+            if (!s_on && !s_released && Joiners() > 0 && HostInLobby())
+            {
+                s_on = true; s_after_level = false; s_ready.Clear(); s_shown_ready = -1; s_shown_total = -1; s_next_remind = 0f;
+                CoopLog.Write("FLOW", "host: " + Joiners() + " joiner(s) connected in the menus; offering READY UP");
+            }
+            if (s_on && !s_after_level && Joiners() == 0) { CoopLog.Write("FLOW", "host: no joiners left; menu ready check dropped"); End(); return; }
+            if (!s_on || Time.realtimeSinceStartup < s_next_remind) return;
             s_next_remind = Time.realtimeSinceStartup + 3f;
             string next = s_after_level ? NextScene() : null;
             foreach (var c in NetworkServer.connections)
@@ -249,6 +271,7 @@ namespace OlCoop.World
         {
             // PlayGameUpdate runs every frame of INIT (LoadLevel), ACTIVE (loading) and START; only INIT, before the load, may hold it.
             if (MenuManager.m_menu_sub_state != MenuSubState.INIT) return true;
+            if (s_on && !s_after_level && returningFromSecret) { End(); return true; }
             if (!s_on && !s_released && !returningFromSecret && Joiners() > 0)
             {
                 // 0.6.10: also before a level the host didn't just finish (new campaign / saved game, first level of the session):
@@ -302,7 +325,7 @@ namespace OlCoop.World
         static void Prefix()
         {
             try { PostLevel.ReadyTick(); HostReady.Remind(); } catch (Exception ex) { CoopLog.Error("ReadyTick", ex); }
-            if (HostReady.On && MenuManager.m_menu_state == MenuState.MAIN_MENU) { CoopLog.Write("FLOW", "host: back at the main menu; ready check dropped"); HostReady.End(); }
+            if (HostReady.On && HostReady.AfterLevel && MenuManager.m_menu_state == MenuState.MAIN_MENU) { CoopLog.Write("FLOW", "host: back at the main menu; ready check dropped"); HostReady.End(); }
             bool post = PostLevel.Active || (CoopWorld.IsHost && (HostReady.On || HostReady.DeadFinish));
             if (!post || !PlayerShip.DeathPaused) return;
             PlayerShip.DeathPaused = false;

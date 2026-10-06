@@ -28,7 +28,7 @@ namespace OlCoop.Hud
             get
             {
                 if (s_respawn_at < 0f || !OlCoop.Death.CoopDeath.Active || OlCoop.Death.CoopSettings.Mode != OlCoop.Death.DeathMode.Respawn) return false;
-                var ship = GameManager.m_player_ship;
+                var ship = SpectateHud.RealShip ?? GameManager.m_player_ship;
                 return ship != null && ((bool)ship.m_dead || (bool)ship.m_dying) && s_respawn_at - Time.time >= 0f;
             }
         }
@@ -403,14 +403,18 @@ namespace OlCoop.Hud
                 catch { Write(t.c_player, sv.orig); throw; }
                 if (s_live_logged++ == 0) CoopLog.Write("SPECT", "HUD drawn with netId=" + t.c_player.netId.Value + "'s live values (armor " + st.hp.ToString("F0") + " energy " + st.energy.ToString("F0") + " ammo " + st.ammo + ")");
             }
+            RealShip = sv.ship;
             GameManager.m_player_ship = t; GameManager.m_local_player = t.c_player;
             return sv;
         }
 
+        /// 0.6.14: our own ship while the followed one is swapped in (the respawn timer must test OUR death, not theirs).
+        public static PlayerShip RealShip;
+
         public static void SwapOut(Saved sv)
         {
             if (sv == null) return;
-            GameManager.m_player_ship = sv.ship; GameManager.m_local_player = sv.player;
+            GameManager.m_player_ship = sv.ship; GameManager.m_local_player = sv.player; RealShip = null;
             if (sv.orig != null && sv.target != null) Write(sv.target, sv.orig);
         }
 
@@ -476,6 +480,7 @@ namespace OlCoop.Hud
             try
             {
                 if (OlCoop.Death.Spectate.Target == null) return;
+                if (GameplayManager.m_gameplay_state != GameplayState.PLAYING) { OlCoop.Death.Spectate.KeepHud(); return; } // menus draw as stock
                 OlCoop.Death.Spectate.NormalView();
                 if (!UIManager.TypeExists(UIElementType.HUD)) { UIManager.CreateUIElement(UIManager.SCREEN_CENTER, 7000, UIElementType.HUD); CoopLog.Write("SPECT", "HUD element was gone; re-created"); }
                 SpectateHud.LogUi(); // before the swap: our own viewer / camera

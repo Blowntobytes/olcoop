@@ -138,3 +138,6 @@ E. Reactor: does the reactor explosion sound play twice on the host? (Reported o
     Host log: [ITEM] "host: sent ... to joiners (switched on after they joined)".
 18. Joiner breaks a shoot-to-open button (and the host one): the door opens for everyone.
 19. INVITE THROUGH STEAM (host): the Steam overlay invite or the Steam friends list opens. Host log: [STEAM] "invite button: overlay enabled=...".
+34. (0.6.14) Joiner connects while the host is at the main menu / CO-OP screen: READY UP shows at once; after pressing it, WAITING FOR HOST.
+35. (0.6.14) Die while another player lives (respawn mode): respawn countdown shows, spectating shows the full HUD of the watched player.
+36. (0.6.14) Esc while spectating opens the pause menu; Esc/RESUME returns to spectating with the HUD.

@@ -13,7 +13,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.6.13 alpha"). Protocol = 25 (in build.sh). Message ids used so far: 160-208. Current build folder: build-alpha (since 0.6.0-alpha; build-online held 0.5.x).
+  `VERSION` ("0.6.14 alpha"). Protocol = 25 (in build.sh). Message ids used so far: 160-208. Current build folder: build-alpha (since 0.6.0-alpha; build-online held 0.5.x).
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 192 patches, 0 problems;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-alpha (current).
@@ -740,3 +740,15 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   arrived. k_EResultNoConnection = that Steam client had no connection to Steam's servers (also explains slow persona/friend data). Not
   the 0.6.12 paging/campaign changes. Fix: OnLobbyCreated failure -> CoopConfig.ClearRole + explicit LastStatus; Invite without lobby
   sets LastStatus.
+
+## 0.6.14-alpha status (2026-10-06) - installed, UNTESTED. Protocol 25 (no wire change). 0.6.12/0.6.13 items still untested.
+- Installed SHA1 fdf147a8a45301f40508bdeb409f34dd14c404a2 (297984 bytes), verified in game folder + build-alpha. Tag v0.6.14-alpha. 265 patches, 0 problems, 0 warnings.
+- Spectating HUD root cause (log `uiRenderer=False`): CoopDeath.HideShip(local wreck) disabled Viewer.c_ui_mesh_transform's MeshRenderer
+  (_ui_mesh is under the ship's c_cam_controller). HideShip now skips it; Spectate.KeepHud re-enables it and logs "[SPECT] UI surface renderer was off".
+- Respawn timer: HUD9 swaps GameManager.m_player_ship to the followed ship during UIManager.Draw (overlays drawn inside), so TimerWanted saw
+  a live ship. SpectateHud.RealShip holds ours during the swap.
+- Esc while spectating: Spectate.Tick opens PAUSE_MENU (stock DoPauseGameplay requires !m_dying); guarded so the Esc that closes the menu
+  doesn't reopen it. HUD9/NormalView only run while gameplay state PLAYING. Log: "[SPECT] Esc while spectating".
+- READY UP on join: HostReady.Remind arms a menu ("lobby") check when verified joiners exist and the host is in MENU state outside
+  PLAY_GAME/PAUSE_MENU (back stack checked). Gate at INIT uses the marks. Main-menu drop only for after-level checks. Log: "[FLOW] host: N joiner(s) connected in the menus; offering READY UP".
+- Pending: co-op challenge mode (new phase, new build folder) - awaiting go-ahead.
