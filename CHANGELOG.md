@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.7-alpha (2026-10-05) - ping tweaks, UNTESTED build (all players must run 0.6.7-alpha; protocol 22)
+- Ping markers and the map centre sphere 25% larger than in 0.6.6.
+- The guide wheel's CRYOTUBE slot stays CRYOTUBE. Instead, when the hologuide is out and a ping arrives (or it comes out while a
+  ping is shown), it heads straight to the ping; any command picked from its wheel takes over.
+- The map shows "USE FLARE TO PING".
+
 ## 0.6.6-alpha (2026-10-05) - ping markers smaller, teal, visible from anywhere, UNTESTED build (all players must run 0.6.6-alpha; protocol 22)
 - Ping markers and the map's centre sphere are 75% smaller and teal.
 - Ping markers show through all geometry from anywhere: Unity's occlusion culling no longer hides them behind walls, and a ping

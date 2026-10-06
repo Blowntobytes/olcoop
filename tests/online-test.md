@@ -1,5 +1,5 @@
-# Online test (build 0.6.6-alpha)
-All windows / PCs must show OLCOOP 0.6.6-ALPHA at the top-left of the main menu (older versions can't join: protocol 22).
+# Online test (build 0.6.7-alpha)
+All windows / PCs must show OLCOOP 0.6.7-ALPHA at the top-left of the main menu (older versions can't join: protocol 22).
 Steam must be running. Send BOTH PCs' `Overload\olcoop_logs` folders after the run, and say which PC hosted.
 
 ## New in 0.6.5 (check these first)
@@ -9,8 +9,9 @@ Steam must be running. Send BOTH PCs' `Overload\olcoop_logs` folders after the r
 9. Map ping: open the map; a small teal sphere sits at the centre of the view. Press FIRE FLARE (the map-marker key): every player
    gets "<NAME> PINGED" and a sound, and sees a small teal marker at that spot through all walls, from anywhere in the level, (in the level and on their map) for 15 s.
    Log: [PING] "sent at ..." / "from NBOOB at ...".
-10. Hologuide to a ping: within 60 s of a ping, the guide wheel's CRYOTUBE slot reads PING; choose it: "FOLLOW ME TO THE PING",
-    the guide leads there and stops when you are within 8 units. Log: [PING] "hologuide: lead to ..'s ping" / "reached the ping".
+10. Hologuide to a ping: with the hologuide out, someone pings: the guide says FOLLOW ME TO THE PING and leads there (also when it
+    is called out while a ping is still shown). Picking any command from its wheel stops that. The map shows USE FLARE TO PING.
+    Log: [PING] "hologuide: heading to ..'s ping" / "reached the ping" / "ping lead stopped (command from the guide wheel)".
 11. Claws and other sleeping robots: a joiner flies (and shoots) near lurking claws while the host is elsewhere / sitting still:
     they wake up and attack the joiner. Host log: [RSYNC] "host: joiner netId=.. fired; waking sleeping robots near it",
     "host: a joiner changed segment; re-checking which robots/items/doors/props are active".

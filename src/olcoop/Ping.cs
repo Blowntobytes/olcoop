@@ -2,8 +2,8 @@
 //  - In the map, the view centre shows a small white sphere (child of MapCamera.m_map_focus, the map's own pulsing focus point).
 //  - Setting the map marker (stock key: FIRE FLARE while the map is open) also pings that spot for every player: "<NAME> PINGED",
 //    a sound, and a white marker visible through walls for 15 s, in the level and on the map. One ping per player.
-//  - Hologuide: while a ping is less than 60 s old, the CRYOTUBE slot of the guide wheel reads PING; choosing it leads to the ping
-//    (the stock cryotube lead mode with the ping's segment as goal; reached within 8 u).
+//  - Hologuide: if the guide is out when a ping arrives (or comes out while a ping is shown), it leads to the ping (stock cryotube
+//    lead mode with the ping's segment as goal; reached within 8 u). Any command from its wheel takes over. Map hint: USE FLARE TO PING.
 // Network: msg 201 PingMsg {pos, name}: joiner -> host -> every other player; the host's own ping -> every joiner.
 using System;
 using System.Collections.Generic;
@@ -25,7 +25,7 @@ namespace OlCoop.World
     public static class CoopPing
     {
         public const short MsgPing = 201;
-        public const float Lifetime = 15f, GuideWindow = 60f, ReachDistance = 8f;
+        public const float Lifetime = 15f, ReachDistance = 8f;
 
         class Marker { public GameObject world, map; public float until; public Vector3 pos; }
         static readonly Dictionary<string, Marker> s_markers = new Dictionary<string, Marker>();
@@ -33,7 +33,6 @@ namespace OlCoop.World
         static GameObject s_focus_sphere;
 
         public static Vector3 LastPos; public static float LastTime = -1000f; public static string LastName;
-        public static bool GuideActive { get { return Time.time - LastTime < GuideWindow; } }
 
         static Material Mat()
         {
@@ -68,7 +67,7 @@ namespace OlCoop.World
                 s_focus_sphere = Sphere("olcoop_map_focus", MapCamera.m_map_focus.gameObject.layer);
                 s_focus_sphere.transform.SetParent(MapCamera.m_map_focus, false);
                 s_focus_sphere.transform.localPosition = Vector3.zero;
-                s_focus_sphere.transform.localScale = Vector3.one * 0.3f; // 75% smaller (0.6.6)
+                s_focus_sphere.transform.localScale = Vector3.one * 0.375f; // 0.6.7: 25% larger than 0.6.6
             }
             else if (!want && s_focus_sphere != null) { UnityEngine.Object.Destroy(s_focus_sphere); s_focus_sphere = null; }
         }
@@ -113,8 +112,9 @@ namespace OlCoop.World
             if (mk.map == null && MapCamera.m_map_focus != null) mk.map = Sphere("olcoop_ping_map_" + who, MapCamera.m_map_focus.gameObject.layer);
             mk.pos = m.pos; mk.until = Time.time + Lifetime;
             mk.world.transform.position = m.pos;
-            if (mk.map != null) { mk.map.transform.position = m.pos; mk.map.transform.localScale = Vector3.one * 0.625f; }
+            if (mk.map != null) { mk.map.transform.position = m.pos; mk.map.transform.localScale = Vector3.one * 0.78f; }
             LastPos = m.pos; LastTime = Time.time; LastName = who;
+            OnNewPing();
             GameplayManager.AddHUDMessage(mine ? "YOU PINGED A SPOT" : who + " PINGED", -1, true);
             try { SFXCueManager.PlayCue2D(SFXCue.hud_weapon_cycle_picker, 0.8f, 0.3f); } catch { }
             CoopLog.Write("PING", (mine ? "sent" : "from " + who) + " at " + m.pos.ToString("F0"));
@@ -146,7 +146,7 @@ namespace OlCoop.World
                         mk.world.transform.position = d > maxD && d > 0.01f ? cp + to / d * maxD : mk.pos;
                         float shown = Mathf.Min(d, maxD);
                         float pulse = 1f + 0.15f * Mathf.Sin(Time.time * 6f);
-                        mk.world.transform.localScale = Vector3.one * Mathf.Max(0.15f, d * 0.00625f) * (shown / Mathf.Max(d, 0.01f)) * pulse; // 75% smaller (0.6.6)
+                        mk.world.transform.localScale = Vector3.one * Mathf.Max(0.19f, d * 0.0078f) * (shown / Mathf.Max(d, 0.01f)) * pulse; // 75% smaller (0.6.6)
                     }
                 }
                 if (dead != null) foreach (var k in dead) s_markers.Remove(k);
@@ -157,29 +157,16 @@ namespace OlCoop.World
         public static void ClearAll()
         {
             foreach (var mk in s_markers.Values) { if (mk.world != null) UnityEngine.Object.Destroy(mk.world); if (mk.map != null) UnityEngine.Object.Destroy(mk.map); }
-            s_markers.Clear(); LastTime = -1000f; s_guiding = false;
+            s_markers.Clear(); LastTime = -1000f; s_guiding = false; s_pending = false;
         }
 
-        // ---- hologuide
-        static bool s_guiding;
-        static string s_cryo_label;
+        // ---- hologuide (0.6.7): no wheel slot. While the guide is out and a ping arrives (or it comes out while a ping is still
+        // shown), it heads straight there; any command picked from its wheel takes over. Uses the stock cryotube lead mode.
+        static bool s_guiding, s_pending;
 
-        /// Wheel label: CRYOTUBE slot (3) reads PING while a recent ping exists.
-        public static void UpdateWheelLabel()
-        {
-            var a = PlayerShip.GuidebotCommandStrings;
-            if (a == null || a.Length < 4) return;
-            if (s_cryo_label == null && a[3] != "PING") s_cryo_label = a[3];
-            string want = GuideActive && CoopConfig.Active ? "PING" : (s_cryo_label ?? a[3]);
-            if (a[3] != want) a[3] = want;
-        }
+        public static void OnNewPing() { s_pending = true; }
 
-        public static void OnWheelCommand()
-        {
-            if (Robot.m_guidebot_command == 3 && GuideActive && CoopConfig.Active) { s_guiding = true; CoopLog.Write("PING", "hologuide: lead to " + LastName + "'s ping"); }
-        }
-
-        /// Replaces the cryotube search while leading to a ping. Returns true when a path to the ping exists.
+        /// Replaces the cryotube search only while leading to a ping. Returns true when a path to the ping exists.
         public static bool FindPingSegment(Robot guide, out bool handled)
         {
             handled = false;
@@ -193,10 +180,25 @@ namespace OlCoop.World
             return true;
         }
 
-        public static void CancelGuide() { s_guiding = false; }
+        public static void CancelGuide(string why)
+        {
+            if (s_guiding || s_pending) CoopLog.Write("PING", "hologuide: ping lead stopped (" + why + ")");
+            s_guiding = false; s_pending = false;
+        }
 
         static void GuideTick()
         {
+            if (s_pending)
+            {
+                if (Time.time - LastTime > Lifetime) s_pending = false;            // the ping is gone before the guide came out
+                else if (Robot.m_guidebot != null && Robot.GuidebotAlive)
+                {
+                    s_pending = false; s_guiding = true;
+                    Robot.m_player_reached_cryotube = false;
+                    Robot.m_guidebot_goal = AIGuidebotSubmodeType.GO_TO_CRYOTUBE;   // -> GuidebotSetGoal -> FindSegmentContainingCryotube (PG4)
+                    CoopLog.Write("PING", "hologuide: heading to " + LastName + "'s ping");
+                }
+            }
             if (!s_guiding) return;
             if (Robot.m_guidebot == null) { s_guiding = false; return; }
             if (Robot.AI_guidebot_submode == AIGuidebotSubmodeType.GO_TO_CRYOTUBE) Robot.GuidebotStatusString = "FINDING PING";
@@ -207,6 +209,18 @@ namespace OlCoop.World
                 s_guiding = false;
                 CoopLog.Write("PING", "hologuide: reached the ping");
             }
+        }
+    }
+
+    /// PG8: hint on the map screen, centred under the bottom separator.
+    [HarmonyPatch(typeof(UIElement), "DrawMapHUD")]
+    static class PG8_MapHint
+    {
+        static void Postfix(UIElement __instance)
+        {
+            if (!CoopConfig.Active || GameplayManager.IsMultiplayer) return;
+            try { __instance.DrawStringSmall("USE FLARE TO PING", new Vector2(0f, UIManager.UI_BOTTOM - 32f), 0.5f, StringOffset.CENTER, new Color(0f, 0.8f, 0.75f), 1f, -1f); }
+            catch (Exception ex) { CoopLog.Error("PG8", ex); }
         }
     }
 
@@ -222,15 +236,14 @@ namespace OlCoop.World
         static void Postfix()
         {
             if (!CoopConfig.Active || GameplayManager.IsMultiplayer) return;
-            try { CoopPing.MapTick(); CoopPing.Tick(); CoopPing.UpdateWheelLabel(); } catch (Exception ex) { CoopLog.Error("PG2", ex); }
+            try { CoopPing.MapTick(); CoopPing.Tick(); } catch (Exception ex) { CoopLog.Error("PG2", ex); }
         }
     }
 
     [HarmonyPatch(typeof(PlayerShip), "IssueGuidebotCommandFromWheel")]
     static class PG3_WheelCommand
     {
-        static void Prefix() { try { CoopPing.OnWheelCommand(); } catch (Exception ex) { CoopLog.Error("PG3", ex); } }
-        static void Postfix(bool __result) { if (!__result) CoopPing.CancelGuide(); }
+        static void Postfix(bool __result) { if (__result) CoopPing.CancelGuide("command from the guide wheel"); }
     }
 
     [HarmonyPatch(typeof(Robot), "FindSegmentContainingCryotube")]

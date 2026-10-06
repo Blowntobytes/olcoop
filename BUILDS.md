@@ -56,4 +56,5 @@ Targets unless noted: Overload 1.1.1886, olmod 0.5.14.
 | 0.6.3-alpha | 20 | 10-05 17:03 | not tested (replaced by 0.6.4) | - | - | tag v0.6.3-alpha |
 | 0.6.4-alpha | 21 | 10-05 17:16 | tested (16:42-16:52 LAN, both logs, saved Titan, PeetzaGuest host) | joiner touch pickups 16/16 (log); controls held in the map (log); spectate readout drawn (log) | spectating doesn't look like playing; claws sometimes ignore players | tag v0.6.4-alpha |
 | 0.6.5-alpha | 22 | 10-05 17:52 | partly tested (user saw the ping sphere) | ping sphere shown | too big; not visible through geometry everywhere | tag v0.6.5-alpha |
-| 0.6.6-alpha | 22 | 10-05 18:12 | untested | - | - | tag v0.6.6-alpha, build-alpha, dist/olcoop-0.6.6-alpha.zip |
+| 0.6.6-alpha | 22 | 10-05 18:12 | partly tested (user) | ping sphere teal, through geometry | 25% too small; PING wheel slot not consistent | tag v0.6.6-alpha |
+| 0.6.7-alpha | 22 | 10-05 18:28 | untested | - | - | tag v0.6.7-alpha, build-alpha, dist/olcoop-0.6.7-alpha.zip |

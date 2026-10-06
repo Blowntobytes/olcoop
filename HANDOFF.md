@@ -1,4 +1,4 @@
-# olcoop handoff (state as of 2026-10-05 19:30 PT)
+# olcoop handoff (state as of 2026-10-05 20:00 PT)
 
 Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
@@ -13,7 +13,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.6.6 alpha"). Protocol = 22 (in build.sh). Current build folder: build-alpha (since 0.6.0-alpha; build-online held 0.5.x).
+  `VERSION` ("0.6.7 alpha"). Protocol = 22 (in build.sh). Current build folder: build-alpha (since 0.6.0-alpha; build-online held 0.5.x).
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 192 patches, 0 problems;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-alpha (current).
@@ -579,3 +579,14 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   allowOcclusionWhenDynamic = false (Unity occlusion culling skipped it behind walls before _ZTest Always applied - likely, not
   confirmed); beyond 0.9 x Camera.farClipPlane the world marker is placed on the same line of sight at that distance, scaled to keep
   its apparent size.
+
+## 0.6.7-alpha status (2026-10-05 20:00) - installed, UNTESTED. Protocol 22 (no wire change)
+- Installed SHA1 416f99b15f66949c9f90fc8e5ae4cd4718530806 (257536 bytes), verified in game folder + build-alpha. Tag v0.6.7-alpha.
+  233 patches, 0 problems, 0 warnings. Zip dist/olcoop-0.6.7-alpha.zip (SHA1 e422259f77659ed60cb144df5f06a5805e12cbdc).
+- User (17:47): markers 25% larger; drop the CRYOTUBE -> PING wheel label ("not consistent enough"); guide out + active ping -> go
+  there unless commanded from the wheel; map text "USE FLARE TO PING".
+- Ping.cs: sizes 0.375 / 0.78 / max(0.19, d*0.0078). Wheel label code removed. Show() -> OnNewPing (s_pending); GuideTick: pending and
+  ping < 15 s old and Robot.m_guidebot != null && Robot.GuidebotAlive -> Robot.m_guidebot_goal = GO_TO_CRYOTUBE (stock
+  GuidebotSetGoal -> FindSegmentContainingCryotube, PG4 returns the ping segment while s_guiding). PG3 is now a postfix:
+  IssueGuidebotCommandFromWheel returned true -> CancelGuide. PG8: UIElement.DrawMapHUD postfix draws the hint at
+  (0, UI_BOTTOM - 32), teal.
