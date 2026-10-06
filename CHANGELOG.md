@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.16-alpha (2026-10-06) - robots hunting joiners, robot animations, UNTESTED build (all players must run 0.6.16-alpha; protocol 26)
+From the 16:05 run on 0.6.15 (both logs). User: spectating HUD almost right (selected weapon not highlighted); Scorpions show no
+animation for the joiner and don't attack until the host comes near; Shredders show sparks but not the full animation.
+Confirmed in that run: team-wipe restart now works (host log "level restart; no ready check").
+- Fix: robots going after a joiner used a stale "where is the player" segment (the host only keeps its own ship's segment up to date,
+  a joiner's stayed 0). Claws chased the wrong place and never switched to attack; the host log shows the joiner's first claw hit only
+  once the host arrived. The joiner's segment is now kept current for the robot AI.
+- Fix: robot animations (claw swings, Shredder attack arms, waking, etc.) are now sent from the host and played on joiners.
+  Protocol 26: every player must update.
+- Not changed: the selected-weapon highlight in the spectating HUD.
+
 ## 0.6.15-alpha (2026-10-06) - team-wipe restart freeze, UNTESTED build (all players must run 0.6.15-alpha; protocol 25)
 From the 15:54 run on 0.6.14 (joiner log). User: one player spectating, the other died, both screens froze instead of restarting.
 - Fix: on a team wipe the host reloads the level, but since 0.6.10 its level start waited for every joiner to press READY UP - and

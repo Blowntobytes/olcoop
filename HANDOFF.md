@@ -13,7 +13,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.6.15 alpha"). Protocol = 25 (in build.sh). Message ids used so far: 160-208. Current build folder: build-alpha (since 0.6.0-alpha; build-online held 0.5.x).
+  `VERSION` ("0.6.16 alpha"). Protocol = 26 (in build.sh). Message ids used so far: 160-208. Current build folder: build-alpha (since 0.6.0-alpha; build-online held 0.5.x).
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 192 patches, 0 problems;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-alpha (current).
@@ -759,3 +759,12 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   INIT armed the initial ready check (added 0.6.10) -> joiners are still in the level dead (they don't self-leave since 0.3.10), never
   ready -> deadlock. Fix: DoReset calls HostReady.SkipGateForRestart (End + s_released; F16 LoadLevel clears it). Log: "[FLOW] host: level restart; no ready check".
 - User thinks the 0.6.14 HUD/timer/Esc/READY UP fixes work; more testing pending.
+
+## 0.6.16-alpha status (2026-10-06) - installed, UNTESTED. Protocol 26 (StateBatchMsg entries carry animator state).
+- Installed SHA1 a3f98d13fff0317eaae8ea4694575ef62bbce4a8 (299520 bytes), verified in game folder + build-alpha. Tag v0.6.16-alpha. 265 patches, 0 problems, 0 warnings.
+- 16:05 run (0.6.15): restart confirmed fixed. Host dumps show joiner ship seg=0 forever: PlayerShip.SegmentIndex is only copied from
+  c_moving_object for GameManager.m_player_ship (RobotManager.cs:319, GameplayManager.cs:3489). Robot AI reads m_player_ship.SegmentIndex
+  (AI_last_visible_player_segment, same-segment ATTACK). CoopTargets.Push now refreshes the target's SegmentIndex. Log "[RSYNC] host: robot target netId=... segment set to".
+- RState + anim (layer-0 shortNameHash, int) + animT (byte). Host Capture reads Robot.c_anim (private, FieldInfo RobotJoinNet.f_anim);
+  joiner ApplyAnim plays it when different (HasState check). Log "[RSYNC] puppet id=... animation set from the host". build.sh now references UnityEngine.AnimationModule.
+- Not done: spectating HUD selected-weapon highlight (user OK to leave).

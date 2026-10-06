@@ -142,3 +142,5 @@ E. Reactor: does the reactor explosion sound play twice on the host? (Reported o
 35. (0.6.14) Die while another player lives (respawn mode): respawn countdown shows, spectating shows the full HUD of the watched player.
 36. (0.6.14) Esc while spectating opens the pause menu; Esc/RESUME returns to spectating with the HUD.
 37. (0.6.15) Respawn mode, both players die (one spectating): CO-OP: TEAM WIPED, the level restarts for both within a few seconds.
+38. (0.6.16) Joiner alone near Scorpions (claws), host far away: they wake, swing (animated) and hit the joiner.
+39. (0.6.16) Joiner near a Shredder: arms/charge animation plays, blades spin.

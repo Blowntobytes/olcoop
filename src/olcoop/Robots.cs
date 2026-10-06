@@ -47,6 +47,7 @@ namespace OlCoop.Robots
     public struct RState
     {
         public ushort id; public byte flags, mode, sub, dmgFlash; public ushort hp;
+        public int anim; public byte animT; // 0.6.16: animator layer 0 state (shortNameHash) + normalized time (0-255)
         public Vector3 pos, vel; public Quaternion rot;
         public const byte F_ACTIVE = 1, F_CLOAK = 2, F_HEADLIGHT = 4, F_STASIS = 8, F_REVEALED = 16;
     }
@@ -63,6 +64,7 @@ namespace OlCoop.Robots
                 w.Write(s.pos); w.Write(s.rot);
                 w.Write((short)Mathf.Clamp(s.vel.x * 100f, -32767, 32767)); w.Write((short)Mathf.Clamp(s.vel.y * 100f, -32767, 32767)); w.Write((short)Mathf.Clamp(s.vel.z * 100f, -32767, 32767));
                 w.Write(s.hp); w.Write(s.dmgFlash);
+                w.Write(s.anim); w.Write(s.animT);
             }
         }
         public override void Deserialize(NetworkReader r)
@@ -75,6 +77,7 @@ namespace OlCoop.Robots
                 s.pos = r.ReadVector3(); s.rot = r.ReadQuaternion();
                 s.vel = new Vector3(r.ReadInt16() / 100f, r.ReadInt16() / 100f, r.ReadInt16() / 100f);
                 s.hp = r.ReadUInt16(); s.dmgFlash = r.ReadByte();
+                s.anim = r.ReadInt32(); s.animT = r.ReadByte();
                 e.Add(s);
             }
         }
@@ -348,11 +351,19 @@ namespace OlCoop.Robots
             // always keep the per-robot fields pointing at the chosen target (they persist between ticks)
             if (r.target_go != target.gameObject) { r.target_go = target.gameObject; f_target_rb.SetValue(r, target.c_rigidbody); }
             if (target == GameManager.m_player_ship) return;
+            // 0.6.16: PlayerShip.SegmentIndex is only kept current for the LOCAL ship (RobotManager/GameplayManager copy it from
+            // c_moving_object); a joiner's ship on the host kept 0. The robot AI reads m_player_ship.SegmentIndex for its last-seen
+            // segment, pathing and "same segment -> ATTACK" (claws), so robots hunting a joiner chased segment 0 and only attacked
+            // when the host came near (16:09 run: claw hits on the joiner started when the host arrived).
+            if (target.c_moving_object != null) { int sg = target.c_moving_object.CurrentSegmentIndex; if (sg >= 0 && target.SegmentIndex != sg) { target.SegmentIndex = sg; NoteSegFix(target); } }
             s_saved.t = Robot.c_target_transform; s_saved.p = Robot.c_target_transform_position; s_saved.ship = f_player_ship.GetValue(null); s_saved.valid = true;
             Robot.c_target_transform = target.c_transform;
             Robot.c_target_transform_position = target.c_transform.position;
             f_player_ship.SetValue(null, target);
         }
+
+        static int s_seg_logs;
+        static void NoteSegFix(PlayerShip t) { if (s_seg_logs++ < 5) CoopLog.Write("RSYNC", "host: robot target netId=" + t.c_player.netId.Value + " segment set to " + t.SegmentIndex + " (was stale)"); }
 
         public static void Pop(Robot r)
         {
@@ -414,12 +425,18 @@ namespace OlCoop.Robots
             if (r.m_headlight_on) s.flags |= RState.F_HEADLIGHT;
             if (r.m_stasis) s.flags |= RState.F_STASIS;
             if (!r.m_init_hidden) s.flags |= RState.F_REVEALED;
+            var an = RobotJoinNet.f_anim != null ? RobotJoinNet.f_anim.GetValue(r) as Animator : null;
+            if (an != null && an.isActiveAndEnabled)
+            {
+                var st = an.GetCurrentAnimatorStateInfo(0);
+                s.anim = st.shortNameHash; s.animT = (byte)Mathf.Clamp(Mathf.Repeat(st.normalizedTime, 1f) * 255f, 0f, 255f);
+            }
             return s;
         }
 
         static bool Changed(RState a, RState b)
         {
-            return a.flags != b.flags || a.mode != b.mode || a.sub != b.sub || a.hp != b.hp || a.dmgFlash != b.dmgFlash ||
+            return a.flags != b.flags || a.mode != b.mode || a.anim != b.anim || a.sub != b.sub || a.hp != b.hp || a.dmgFlash != b.dmgFlash ||
                    (a.pos - b.pos).sqrMagnitude > 0.0004f || Quaternion.Angle(a.rot, b.rot) > 1f;
         }
 
@@ -562,6 +579,23 @@ namespace OlCoop.Robots
             r.m_headlight_on = (s.flags & RState.F_HEADLIGHT) != 0;
             if ((s.flags & RState.F_REVEALED) != 0 && r.m_init_hidden) { r.RevealRobot(); CoopLog.Write("RSYNC", "revealed id=" + s.id); }
             p.lastMode = s.mode;
+            ApplyAnim(r, s);
+        }
+
+        /// 0.6.16: robot animations (claw swings, Shredder charge/blade arms, waking...) are started by the AI, which only runs on the
+        /// host. Play the host's current animator state on the puppet when it differs; the controller runs it on from there.
+        public static readonly FieldInfo f_anim = AccessTools.Field(typeof(Robot), "c_anim");
+        static int s_anim_logs;
+        static void ApplyAnim(Robot r, RState s)
+        {
+            if (s.anim == 0 || f_anim == null) return;
+            var an = f_anim.GetValue(r) as Animator;
+            if (an == null || !an.isActiveAndEnabled) return;
+            var cur = an.GetCurrentAnimatorStateInfo(0);
+            if (cur.shortNameHash == s.anim || an.IsInTransition(0) && an.GetNextAnimatorStateInfo(0).shortNameHash == s.anim) return;
+            if (!an.HasState(0, s.anim)) return;
+            an.Play(s.anim, 0, s.animT / 255f);
+            if (s_anim_logs++ < 10) CoopLog.Write("RSYNC", "puppet id=" + s.id + " " + r.robot_type + " animation set from the host (state " + s.anim + ")");
         }
 
         // ---- display time
