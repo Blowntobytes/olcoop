@@ -690,3 +690,6 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   living ship's Update raises it). Followed cockpit shown only if IsCockpitVisible (our opt_cockpit / opt_cockpit_VR).
 - Main menu version label: x + 40% of the UI width.
 - Reviewed by a separate agent: fixed the INIT-only gate (above), stale offer after release.
+- Host log of the 0.6.9 run (PeetzaGuest pid10572, 0.6.9-alpha, supplied 05:45) confirms: host cryosLevel 0 -> 4 / 3 -> 6 while the
+  joiner's stayed 0 all run (joiner never ran Collect for the host's pickups); ScriptActivateMatcen ran host-only at 04:53:30,
+  04:56:03, 04:58:30. Its 5 errors are the known olmod MPTweaksOnLoadoutDataMessage KeyNotFound at each joiner level load (0.4.13 note).
