@@ -13,7 +13,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.6.16 alpha"). Protocol = 26 (in build.sh). Message ids used so far: 160-208. Current build folder: build-alpha (since 0.6.0-alpha; build-online held 0.5.x).
+  `VERSION` ("0.6.17 alpha"). Protocol = 27 (in build.sh). Message ids used so far: 160-208. Current build folder: build-alpha (since 0.6.0-alpha; build-online held 0.5.x).
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 192 patches, 0 problems;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-alpha (current).
@@ -768,3 +768,11 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 - RState + anim (layer-0 shortNameHash, int) + animT (byte). Host Capture reads Robot.c_anim (private, FieldInfo RobotJoinNet.f_anim);
   joiner ApplyAnim plays it when different (HasState check). Log "[RSYNC] puppet id=... animation set from the host". build.sh now references UnityEngine.AnimationModule.
 - Not done: spectating HUD selected-weapon highlight (user OK to leave).
+
+## 0.6.17-alpha status (2026-10-06) - installed, UNTESTED. Protocol 27 (RState + animSpeed byte).
+- Installed SHA1 3ac53380d305f87947cb73394ebbd7cd07fc9e62 (299520 bytes), verified in game folder + build-alpha. Tag v0.6.17-alpha. 265 patches, 0 problems, 0 warnings.
+- 16:26 run (0.6.16): joiner replayed state 'active' (hash 1260321794) for puppet id 4 every 50 ms: ApplyAnim compared with the puppet's
+  current state, which doesn't change until the animator evaluates (sleeping robots: speed 0). Now Puppet.lastAnim (host-side changes
+  only) + animator speed synced (animSpeed = speed*50).
+- Segment fix confirmed in host log ("segment set to"). Claw hits on the joiner with the host far: 16:27:58 (~23 u), 16:28:20 (~57 u), 16:29:14.
+- Known gap: an animator re-enabled after culling restarts at its default state; not replayed until the host's state changes.

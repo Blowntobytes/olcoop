@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.17-alpha (2026-10-06) - Scorpion animation fix, UNTESTED build (all players must run 0.6.17-alpha; protocol 27)
+From the 16:26 run on 0.6.16 (both logs). User: Scorpion animation partial and glitchy; still didn't attack with the host far away.
+- Fix: the joiner restarted the same animation every update (joiner log: "animation set from the host" for the same claw every
+  50 ms), so swings never played through. Animations now change only when the host's robot changes animation, and the animation speed
+  is sent too (sleeping robots run their animation at speed 0).
+- Attacks: the host log shows claws hitting the joiner with the host far away (16:28:20, host ~57 units away; also 16:27:58 and
+  16:29:14). With the swing animation broken those hits had no visible attack. If a Scorpion still ignores the joiner, note the time.
+  Protocol 27.
+
 ## 0.6.16-alpha (2026-10-06) - robots hunting joiners, robot animations, UNTESTED build (all players must run 0.6.16-alpha; protocol 26)
 From the 16:05 run on 0.6.15 (both logs). User: spectating HUD almost right (selected weapon not highlighted); Scorpions show no
 animation for the joiner and don't attack until the host comes near; Shredders show sparks but not the full animation.

@@ -47,7 +47,7 @@ namespace OlCoop.Robots
     public struct RState
     {
         public ushort id; public byte flags, mode, sub, dmgFlash; public ushort hp;
-        public int anim; public byte animT; // 0.6.16: animator layer 0 state (shortNameHash) + normalized time (0-255)
+        public int anim; public byte animT, animSpeed; // 0.6.16: animator layer 0 state (shortNameHash) + normalized time (0-255)
         public Vector3 pos, vel; public Quaternion rot;
         public const byte F_ACTIVE = 1, F_CLOAK = 2, F_HEADLIGHT = 4, F_STASIS = 8, F_REVEALED = 16;
     }
@@ -64,7 +64,7 @@ namespace OlCoop.Robots
                 w.Write(s.pos); w.Write(s.rot);
                 w.Write((short)Mathf.Clamp(s.vel.x * 100f, -32767, 32767)); w.Write((short)Mathf.Clamp(s.vel.y * 100f, -32767, 32767)); w.Write((short)Mathf.Clamp(s.vel.z * 100f, -32767, 32767));
                 w.Write(s.hp); w.Write(s.dmgFlash);
-                w.Write(s.anim); w.Write(s.animT);
+                w.Write(s.anim); w.Write(s.animT); w.Write(s.animSpeed);
             }
         }
         public override void Deserialize(NetworkReader r)
@@ -77,7 +77,7 @@ namespace OlCoop.Robots
                 s.pos = r.ReadVector3(); s.rot = r.ReadQuaternion();
                 s.vel = new Vector3(r.ReadInt16() / 100f, r.ReadInt16() / 100f, r.ReadInt16() / 100f);
                 s.hp = r.ReadUInt16(); s.dmgFlash = r.ReadByte();
-                s.anim = r.ReadInt32(); s.animT = r.ReadByte();
+                s.anim = r.ReadInt32(); s.animT = r.ReadByte(); s.animSpeed = r.ReadByte();
                 e.Add(s);
             }
         }
@@ -131,6 +131,7 @@ namespace OlCoop.Robots
     {
         public float t0 = -1f, t1 = -1f; public Vector3 p0, p1, v1; public Quaternion r0, r1;
         public byte lastMode = 255;
+        public int lastAnim;
         // 0.6.2 prediction: what is on screen minus the prediction, decayed to zero, so a new host state never snaps the robot.
         public Vector3 err; public Quaternion rerr = Quaternion.identity; public bool rebase, shown;
     }
@@ -430,13 +431,14 @@ namespace OlCoop.Robots
             {
                 var st = an.GetCurrentAnimatorStateInfo(0);
                 s.anim = st.shortNameHash; s.animT = (byte)Mathf.Clamp(Mathf.Repeat(st.normalizedTime, 1f) * 255f, 0f, 255f);
+                s.animSpeed = (byte)Mathf.Clamp(an.speed * 50f, 0f, 255f);
             }
             return s;
         }
 
         static bool Changed(RState a, RState b)
         {
-            return a.flags != b.flags || a.mode != b.mode || a.anim != b.anim || a.sub != b.sub || a.hp != b.hp || a.dmgFlash != b.dmgFlash ||
+            return a.flags != b.flags || a.mode != b.mode || a.anim != b.anim || a.animSpeed != b.animSpeed || a.sub != b.sub || a.hp != b.hp || a.dmgFlash != b.dmgFlash ||
                    (a.pos - b.pos).sqrMagnitude > 0.0004f || Quaternion.Angle(a.rot, b.rot) > 1f;
         }
 
@@ -579,23 +581,27 @@ namespace OlCoop.Robots
             r.m_headlight_on = (s.flags & RState.F_HEADLIGHT) != 0;
             if ((s.flags & RState.F_REVEALED) != 0 && r.m_init_hidden) { r.RevealRobot(); CoopLog.Write("RSYNC", "revealed id=" + s.id); }
             p.lastMode = s.mode;
-            ApplyAnim(r, s);
+            ApplyAnim(r, s, p);
         }
 
         /// 0.6.16: robot animations (claw swings, Shredder charge/blade arms, waking...) are started by the AI, which only runs on the
         /// host. Play the host's current animator state on the puppet when it differs; the controller runs it on from there.
         public static readonly FieldInfo f_anim = AccessTools.Field(typeof(Robot), "c_anim");
         static int s_anim_logs;
-        static void ApplyAnim(Robot r, RState s)
+        static void ApplyAnim(Robot r, RState s, Puppet p)
         {
             if (s.anim == 0 || f_anim == null) return;
             var an = f_anim.GetValue(r) as Animator;
             if (an == null || !an.isActiveAndEnabled) return;
-            var cur = an.GetCurrentAnimatorStateInfo(0);
-            if (cur.shortNameHash == s.anim || an.IsInTransition(0) && an.GetNextAnimatorStateInfo(0).shortNameHash == s.anim) return;
+            // 0.6.17: the host's speed too (robots sleep with animator speed 0; the AI sets it back to 1 when it plays a state)
+            an.speed = s.animSpeed / 50f;
+            // 0.6.17: only when the HOST's state changes. 0.6.16 compared with the puppet's current state, which reads back the old
+            // state until the animator next evaluates, so the same state was restarted with every update (glitchy claw animation).
+            if (s.anim == p.lastAnim) return;
+            p.lastAnim = s.anim;
             if (!an.HasState(0, s.anim)) return;
             an.Play(s.anim, 0, s.animT / 255f);
-            if (s_anim_logs++ < 10) CoopLog.Write("RSYNC", "puppet id=" + s.id + " " + r.robot_type + " animation set from the host (state " + s.anim + ")");
+            if (s_anim_logs++ < 20) CoopLog.Write("RSYNC", "puppet id=" + s.id + " " + r.robot_type + " animation " + s.anim + " speed " + (s.animSpeed / 50f).ToString("F2") + " from the host");
         }
 
         // ---- display time
