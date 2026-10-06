@@ -145,9 +145,11 @@ namespace OlCoop.World
             {
                 int idx = msg.ReadMessage<UnityEngine.Networking.NetworkSystem.IntegerMessage>().value;
                 if (!CoopWorld.IsJoiner || !GameplayManager.LevelIsLoaded) return;
-                foreach (var c in UnityEngine.Object.FindObjectsOfType<PropCryotube>())
+                // Resources.FindObjectsOfTypeAll: pods outside our visible rooms are switched off (FindObjectsOfType skips them -
+                // 0.6.10 run 14:31: "cryotube 5 not found")
+                foreach (var c in Resources.FindObjectsOfTypeAll<PropCryotube>())
                 {
-                    if (c == null || c.m_index != idx) continue;
+                    if (c == null || !InScene(c) || c.m_index != idx) continue;
                     if (c.m_has_been_collected) { CoopLog.Write("FX", "joiner: cryotube " + idx + " already collected here"); return; }
                     c.Collect();
                     CoopLog.Write("FX", "joiner: cryotube " + idx + " collected (host)");

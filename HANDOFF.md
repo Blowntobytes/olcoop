@@ -1,4 +1,4 @@
-# olcoop handoff (state as of 2026-10-06 05:45 PT)
+# olcoop handoff (state as of 2026-10-06 14:55 PT)
 
 Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
@@ -13,7 +13,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.6.10 alpha"). Protocol = 25 (in build.sh). Message ids used so far: 160-208. Current build folder: build-alpha (since 0.6.0-alpha; build-online held 0.5.x).
+  `VERSION` ("0.6.11 alpha"). Protocol = 25 (in build.sh). Message ids used so far: 160-208. Current build folder: build-alpha (since 0.6.0-alpha; build-online held 0.5.x).
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 192 patches, 0 problems;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-alpha (current).
@@ -693,3 +693,16 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 - Host log of the 0.6.9 run (PeetzaGuest pid10572, 0.6.9-alpha, supplied 05:45) confirms: host cryosLevel 0 -> 4 / 3 -> 6 while the
   joiner's stayed 0 all run (joiner never ran Collect for the host's pickups); ScriptActivateMatcen ran host-only at 04:53:30,
   04:56:03, 04:58:30. Its 5 errors are the known olmod MPTweaksOnLoadoutDataMessage KeyNotFound at each joiner level load (0.4.13 note).
+
+## 0.6.11-alpha status (2026-10-06 14:55) - installed, UNTESTED. Protocol 25 (no wire change)
+- Installed SHA1 59d31f7cbdab66a38ff26ee7aaed0fdc6fee9232 (291328 bytes), verified in game folder + build-alpha. Tag v0.6.11-alpha.
+  260 patches, 0 problems, 0 warnings. Zip dist/olcoop-0.6.11-alpha.zip (SHA1 963ae5d4c17722115a77f02e5f83c74e46a7734d).
+- 0.6.10 run 14:28 (BlownToBits joiner pid5492, 0.6.10 protocol 25; host PeetzaGuest, no host log): joiner got msg 208 for cryotubes
+  5,4,3,2 -> "not found" (FindObjectsOfType skips inactive objects; props outside the joiner's visible segments are SetActive(false));
+  1 and 0 "already collected here". WorldFx OnCryo now uses Resources.FindObjectsOfTypeAll + InScene.
+- Spectating (user: "literally no change"): log shows HUD9 ran with live values; NormalView ran each tick. UIManager.Draw itself (stock,
+  ~7160): MP branch (co-op has IsMultiplayerActive) draws all elements, but DrawFullScreenEffects only if !m_player_ship.m_dying, and
+  DrawFullScreenEffects draws the dying black-out quad from m_player_ship.m_dying/m_dead; DrawMultiplayerNames only without bars. HUD9
+  now swaps ship/player + live values around the whole UIManager.Draw (not UIElement.DrawHUD), re-creates the HUD element if missing,
+  and logs [SPECT] "ui: hudElement hudAlpha HUD_ALPHA bars bgDark bgFade blackOut vr elements uiMesh cam" every 5 s. NOT a confirmed
+  diagnosis: if the next run is still wrong, read those lines (and ask the user for a screenshot / flat vs VR).

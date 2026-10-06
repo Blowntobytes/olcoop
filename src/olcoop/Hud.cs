@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using HarmonyLib;
 using Overload;
 using UnityEngine;
@@ -415,6 +416,28 @@ namespace OlCoop.Hud
 
         static PlayerShip Target { get { return OlCoop.Death.Spectate.Target; } }
 
+        static readonly FieldInfo f_bars = AccessTools.Field(typeof(UIManager), "m_overlay_show_bars");
+        static float s_next_ui_log;
+        /// Diagnostics while spectating (every 5 s): what decides what is on screen.
+        public static void LogUi()
+        {
+            if (Time.realtimeSinceStartup < s_next_ui_log) return;
+            s_next_ui_log = Time.realtimeSinceStartup + 5f;
+            float hudAlpha = -1f;
+            for (int i = 0; i < UIManager.m_num_elements && i < UIManager.m_ui_element.Length; i++)
+            {
+                var e = UIManager.m_ui_element[i];
+                if (e != null && e.m_type == UIElementType.HUD) { hudAlpha = e.m_alpha; break; }
+            }
+            var me = GameManager.m_player_ship; var cam = Camera.main;
+            var ui = me != null && me.c_viewer != null ? me.c_viewer.c_ui_mesh_transform : null;
+            CoopLog.Write("SPECT", "ui: hudElement=" + UIManager.TypeExists(UIElementType.HUD) + " hudAlpha=" + hudAlpha.ToString("F2") + " HUD_ALPHA=" + UIElement.HUD_ALPHA.ToString("F2") +
+                " bars=" + (f_bars != null ? f_bars.GetValue(null) : "?") + " bgDark=" + UIManager.ui_bg_dark + " bgFade=" + UIManager.ui_bg_fade.ToString("F2") +
+                " blackOut=" + UIManager.ui_dying_black_out.ToString("F2") + " vr=" + GameplayManager.VRActive + " elements=" + UIManager.m_num_elements +
+                " uiMesh=" + (ui != null ? (ui.parent != null ? ui.parent.name : "null") + " " + ui.localPosition.ToString("F2") + " active=" + ui.gameObject.activeInHierarchy : "null") +
+                " cam=" + (cam != null ? (cam.transform.parent != null ? cam.transform.parent.name : "null") + " " + cam.transform.localPosition.ToString("F2") : "null"));
+        }
+
         public static void Ensure()
         {
             bool want = OlCoop.Death.Spectate.On && Target != null;
@@ -433,10 +456,12 @@ namespace OlCoop.Hud
         }
     }
 
-    /// HUD9 (0.6.5): while spectating, the stock HUD is drawn as if the followed ship were ours (GameManager.m_player_ship /
-    /// m_local_player swapped for the duration of UIElement.DrawHUD only), with that player's live values (0.6.9).
-    [HarmonyPatch(typeof(UIElement), "DrawHUD")]
-    static class HUD9_SpectatedHud
+    /// HUD9 (0.6.11): while spectating, the WHOLE UI frame (UIManager.Draw: element loop incl. the HUD, full-screen effects, bars,
+    /// names) is drawn as if the followed ship were ours: GameManager.m_player_ship / m_local_player swapped and its live values written
+    /// in, restored afterwards. 0.6.5-0.6.10 swapped only around UIElement.DrawHUD, but UIManager.Draw itself decides from the local
+    /// ship (our wreck, m_dying) whether HUD elements and screen effects are drawn at all, and the death view stayed on screen.
+    [HarmonyPatch(typeof(UIManager), "Draw")]
+    static class HUD9_SpectatedUi
     {
         static bool s_logged;
         static void Prefix(out SpectateHud.Saved __state)
@@ -444,9 +469,12 @@ namespace OlCoop.Hud
             __state = null;
             try
             {
+                if (OlCoop.Death.Spectate.Target == null) return;
+                OlCoop.Death.Spectate.NormalView();
+                if (!UIManager.TypeExists(UIElementType.HUD)) { UIManager.CreateUIElement(UIManager.SCREEN_CENTER, 7000, UIElementType.HUD); CoopLog.Write("SPECT", "HUD element was gone; re-created"); }
                 __state = SpectateHud.SwapIn();
-                if (__state != null) OlCoop.Death.Spectate.NormalView();
-                if (__state != null && !s_logged) { s_logged = true; CoopLog.Write("SPECT", "drawing the HUD for netId=" + __state.target.netId.Value); }
+                if (__state != null && !s_logged) { s_logged = true; CoopLog.Write("SPECT", "drawing the UI as netId=" + __state.target.netId.Value); }
+                SpectateHud.LogUi();
             }
             catch (Exception ex) { CoopLog.Error("HUD9 pre", ex); }
         }

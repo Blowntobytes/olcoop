@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.11-alpha (2026-10-06) - spectating, cryotubes far away, UNTESTED build (all players must run 0.6.11-alpha; protocol 25)
+From the 14:28 run on 0.6.10 (PeetzaGuest hosting, BlownToBits joining; joiner log). User: spectating unchanged; only the last
+cryotube showed for both.
+- Fix: cryotubes picked up far from a joiner still didn't count there: the host's message arrived ("cryotube 5 not found") but the pod
+  was switched off on the joiner (out of sight) and the lookup skipped switched-off objects. It now finds them.
+- Spectating: the whole screen is now drawn as if the watched ship were yours (before, only the HUD drawing was; the game decided from
+  your wrecked ship whether to draw the HUD and screen effects at all). The HUD is re-created if missing. Diagnostics: a [SPECT] "ui:"
+  line every 5 s while spectating (HUD element, alphas, bars, background, VR, UI mesh and camera) - please send the log after testing.
+
 ## 0.6.10-alpha (2026-10-06) - fabricators, Shredder blades and cryotubes for joiners, READY UP before every level, upgrade points for late joiners, spectating like normal play, UNTESTED build (all players must run 0.6.10-alpha; protocol 25)
 From the 04:43-05:05 runs on 0.6.9 (PeetzaGuest hosting, BlownToBits joining; joiner log). Confirmed in the log: READY UP from the
 menus (04:54:55), exit flights starting on the exit path.
