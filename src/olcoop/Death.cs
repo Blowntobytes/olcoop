@@ -583,6 +583,7 @@ namespace OlCoop.Death
             }
             UnityEngine.Object.Destroy(s_rig);
             s_rig = null; s_target = null; s_owner = null;
+            SpectateView.Restore();
         }
 
         static void Next(int dir)
@@ -597,6 +598,7 @@ namespace OlCoop.Death
             CoopDeath.HideShip(s_target, true, true); // first-person view from inside their ship: hull hidden, cockpit shown
             ShowCockpit(s_target, true);
             BoostLights(s_target);
+            try { SpectateView.Refresh(s_target, true); } catch (Exception ex) { CoopLog.Error("SpectateView", ex); }
             GameplayManager.AddHUDMessage("SPECTATING " + Hud.CoopHud.NameOf(s_target.c_player), -1, true);
             CoopLog.Write("SPECT", "following netId=" + s_target.c_player.netId.Value);
         }
@@ -620,10 +622,102 @@ namespace OlCoop.Death
             if (Controls.JustPressed(CCInput.FIRE_WEAPON)) Next(+1);
             if (s_target == null) return;
             KeepLights(s_target);
+            try { SpectateView.Refresh(s_target, false); } catch (Exception ex) { CoopLog.Error("SpectateView", ex); }
             if (Time.time >= s_next_light_log) { s_next_light_log = Time.time + 15f; LogLights("tick", s_target); }
             var eye = Eye(s_target);
             s_rig.transform.position = eye.position;
             s_rig.transform.rotation = Quaternion.Slerp(s_rig.transform.rotation, eye.rotation, 0.35f);
+        }
+    }
+
+    /// <summary>
+    /// 0.6.9 spectator lighting. The level's chunks, lights, reflection probes and ambient sounds are switched on and off around
+    /// GameManager.m_player_ship (ChunkManager.ActivateChunks / DisableLights / UpdateLights / DisableReflectionProbes /
+    /// AmbientSoundsEnable: segment visibility from its SegmentIndex, lights within 60 u of its position). While spectating that is
+    /// our own wreck, often far away, so the followed player's area was dark or half lit ("random" depending on where we died).
+    /// While following a ship these run as if it were ours (SP1), and they are re-run when it changes segment (Refresh).
+    /// Other players' copies keep SegmentIndex 0 on joiners, so the followed ship's segment is computed from its position.
+    /// </summary>
+    public static class SpectateView
+    {
+        static int s_seg = -1, s_applied = -2;
+        static int s_logged;
+
+        public static int TargetSegment(PlayerShip t)
+        {
+            int seg = RobotManager.FindSegmentContainingWorldPosition(t.c_transform.position, s_seg, false);
+            if (seg < 0) seg = RobotManager.FindSegmentContainingWorldPosition(t.c_transform.position, -1, false);
+            if (seg >= 0) s_seg = seg;
+            return s_seg;
+        }
+
+        /// Spectate tick: the followed ship entered another segment (or we just started/switched): re-run the visibility updates.
+        public static void Refresh(PlayerShip t, bool force)
+        {
+            if (t == null) return;
+            int seg = TargetSegment(t);
+            if (seg < 0 || (!force && seg == s_applied)) return;
+            s_applied = seg;
+            ChunkManager.ActivateChunks();
+            ChunkManager.DisableReflectionProbes();
+            ChunkManager.DisableLights();
+            if (s_logged++ < 10) CoopLog.Write("SPECT", "level lights/chunks now follow netId=" + t.c_player.netId.Value + " (seg " + seg + ")");
+        }
+
+        /// Spectating ended: put the level view back on our own ship.
+        public static void Restore()
+        {
+            s_seg = -1; s_applied = -2;
+            try
+            {
+                var me = GameManager.m_player_ship;
+                if (me == null || me.SegmentIndex < 0) return;
+                ChunkManager.ActivateChunks(); ChunkManager.DisableReflectionProbes(); ChunkManager.DisableLights();
+            }
+            catch (Exception ex) { CoopLog.Error("SpectateView.Restore", ex); }
+        }
+
+        public struct Saved { public PlayerShip ship; public PlayerShip target; public int seg; public bool valid; }
+
+        public static Saved SwapIn()
+        {
+            var r = default(Saved);
+            var t = Spectate.Target;
+            if (t == null || t.c_player == null || !CoopConfig.Active) return r;
+            int seg = TargetSegment(t);
+            if (seg < 0) return r;
+            r.ship = GameManager.m_player_ship; r.target = t; r.seg = t.SegmentIndex; r.valid = true;
+            t.SegmentIndex = seg;
+            t.c_transform_position = t.c_transform.position;
+            GameManager.m_player_ship = t;
+            return r;
+        }
+
+        public static void SwapOut(Saved st)
+        {
+            if (!st.valid) return;
+            GameManager.m_player_ship = st.ship;
+            if (st.target != null && st.target != st.ship) st.target.SegmentIndex = st.seg;
+        }
+    }
+
+    [HarmonyPatch]
+    static class SP1_SpectatedLevelView
+    {
+        static IEnumerable<MethodBase> TargetMethods()
+        {
+            foreach (var n in new[] { "ActivateChunks", "DisableReflectionProbes", "DisableLights", "UpdateLights", "AmbientSoundsEnable" })
+            {
+                var m = AccessTools.Method(typeof(ChunkManager), n);
+                if (m != null) yield return m;
+            }
+        }
+        static void Prefix(out SpectateView.Saved __state) { __state = default(SpectateView.Saved); try { __state = SpectateView.SwapIn(); } catch (Exception ex) { CoopLog.Error("SP1", ex); } }
+        static Exception Finalizer(SpectateView.Saved __state, Exception __exception)
+        {
+            SpectateView.SwapOut(__state);
+            if (__exception != null) CoopLog.Error("SP1 body", __exception);
+            return null;
         }
     }
 

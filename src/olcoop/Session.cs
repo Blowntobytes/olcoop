@@ -112,6 +112,7 @@ namespace OlCoop.Session
         {
             int seg = RobotManager.FindSegmentContainingWorldPosition(p, -1, false);
             if (seg < 0) { why = "outside level"; return false; }
+            if (s_room != null && !s_room.Contains(seg)) { why = "behind a door (seg " + seg + ")"; return false; }
             RaycastHit hit;
             if (Physics.Linecast(anchor, p, out hit, GEOM_MASK, QueryTriggerInteraction.Ignore)) { why = "blocked by " + hit.collider.name; return false; }
             if (Physics.CheckSphere(p, 1.6f, GEOM_MASK, QueryTriggerInteraction.Ignore)) { why = "no room"; return false; }
@@ -208,8 +209,43 @@ namespace OlCoop.Session
         /// segment centre reachable from the anchor's segment without passing a door.
         public static bool FindNear(string label, Vector3 anchor, Quaternion rot, int start, ref LevelData.SpawnPoint result)
         {
-            if (TryAround(label, anchor, rot, start, ref result)) return true;
-            return TrySegments(label, anchor, rot, start, ref result);
+            // 0.6.9: lockdown regroups placed players outside the room. The regroup runs right after the lockdown script, while the
+            // doors are still animating shut, so the line-of-sight test passed through the open doorway; then the door closed between
+            // the player and the room. A spot must now be in a segment reachable from the anchor's segment without passing a door.
+            s_room = RoomOf(anchor);
+            try
+            {
+                if (TryAround(label, anchor, rot, start, ref result)) return true;
+                return TrySegments(label, anchor, rot, start, ref result);
+            }
+            finally { s_room = null; }
+        }
+
+        static HashSet<int> s_room;
+        /// Segments reachable from the anchor's segment through open portals only (no door portals), up to 512 segments.
+        public static HashSet<int> RoomOf(Vector3 anchor)
+        {
+            var ld = GameManager.m_level_data;
+            if (ld == null || ld.Segments == null) return null;
+            int seg0 = RobotManager.FindSegmentContainingWorldPosition(anchor, -1, false);
+            if (seg0 < 0) return null;
+            var segs = ld.Segments; var portals = ld.Portals;
+            var set = new HashSet<int> { seg0 };
+            var q = new Queue<int>(); q.Enqueue(seg0);
+            while (q.Count > 0 && set.Count < 512)
+            {
+                var sd = segs[q.Dequeue()];
+                if (sd == null || sd.Portals == null) continue;
+                foreach (int pi in sd.Portals)
+                {
+                    if (pi < 0 || portals == null || pi >= portals.Length) continue;
+                    var pd = portals[pi];
+                    if (pd == null || pd.DoorData != null) continue;
+                    foreach (int n in new[] { pd.MasterSegmentIndex, pd.SlaveSegmentIndex })
+                        if (n >= 0 && n < segs.Length && set.Add(n)) q.Enqueue(n);
+                }
+            }
+            return set;
         }
 
         static bool TrySegments(string label, Vector3 anchor, Quaternion rot, int start, ref LevelData.SpawnPoint result)

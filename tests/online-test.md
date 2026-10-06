@@ -1,6 +1,22 @@
-# Online test (build 0.6.8-alpha)
-All windows / PCs must show OLCOOP 0.6.8-ALPHA at the top-left of the main menu (older versions can't join: protocol 23).
+# Online test (build 0.6.9-alpha)
+All windows / PCs must show OLCOOP 0.6.9-ALPHA at the top-left of the main menu, now a bit lower (older versions can't join: protocol 24).
 Steam must be running. Send BOTH PCs' `Overload\olcoop_logs` folders after the run, and say which PC hosted.
+
+## New in 0.6.9
+20. Lockdowns (e.g. Ymir / outer_03-05): joiners see LOCKDOWN / TARGETS REMAINING with the same count as the host, hear the alarm and
+    the kill blips, the doors close for everyone, and "LOCKDOWN PROCEDURES DEACTIVATED" when it's over. Everyone teleported is INSIDE
+    the room (can fly anywhere in it). Logs: joiner [LOCK] "targets remaining a -> b (host)", "host ended the lockdown"; host [LOCK]
+    "host: lockdown=True ... remaining=..". Note any lockdown where someone wasn't teleported (and who triggered it).
+21. Boss bar: Goliath (outer_05) - the joiners' boss health bar drops like the host's. Also a reactor level, if you get there.
+22. Exits: at every exit door all players appear in the exit tunnel in a line and fly out; nobody stays behind, nobody bumps.
+    Logs: host [FLOW] "exit tunnel: n slot(s)", every PC "exit flight starts at path point ..". If a flight stalls: "exit flight stuck
+    ... finishing it" (tell me which level).
+23. READY UP from the menus: host finishes a level; while the host is on results/upgrades, a player joins from the main menu. That
+    player's main menu CO-OP button reads CO-OP: READY UP (and the CO-OP screen has READY UP); pressing it lets the host start.
+    Logs: joiner [FLOW] "the host is waiting for players to ready up", "READY UP pressed"; host "joiner conn .. is ready".
+24. Spectating: die (Respawn or Spectate mode) and watch others in dark and lit rooms: the level looks as lit as for the player you
+    watch. Their HUD matches theirs exactly: armor/energy/ammo drop as they fire/boost/get hit, missiles count down.
+    Logs: [SPECT] "level lights/chunks now follow netId=..", "HUD drawn with netId=..'s live values".
 
 ## New in 0.6.8
 14. Flare colors: each player sets CO-OP OPTIONS > FLARE COLOR (ORIGINAL, RED, ORANGE, YELLOW, GREEN, PURPLE; also joiners).

@@ -20,6 +20,20 @@ namespace OlCoop.World
         static float s_gate_since;
 
         public static bool InMenus { get { return s_active && !s_at_gate; } }
+
+        // ---------------- 0.6.9: READY UP for a joiner who joined while the host was on its end-of-level screens
+        /// Joiner: the host is holding the next level for ready players (status 3, repeated every 3 s to joiners that aren't ready).
+        public static bool HostWaiting { get { return s_waiting_until > Time.realtimeSinceStartup; } set { s_waiting_until = value ? Time.realtimeSinceStartup + 10f : 0f; } }
+        static float s_waiting_until;
+        /// Joiner: READY UP pressed on the main menu / CO-OP screen.
+        public static bool ManualReady;
+        /// Show the READY UP button: joined from the menus (no end-of-level screens of our own), host waiting, not ready yet.
+        public static bool ReadyButton { get { return CoopConfig.IsJoiner && HostWaiting && !ManualReady && !s_active && GameManager.m_game_state == GameManager.GameState.MENU; } }
+        public static void PressReady()
+        {
+            ManualReady = true; s_ready_next = 0f;
+            CoopLog.Write("FLOW", "joiner: READY UP pressed (joined while the host was between levels)");
+        }
         public static bool Active { get { return s_active; } }
 
         /// The stock end-of-level screens. Only while the joiner is in one of these is the host's level held back (10:05 run: a joiner
@@ -65,8 +79,9 @@ namespace OlCoop.World
         /// exit without menus, tell the host we're ready. Repeated every 3 s until the next level loads (cheap; survives a lost message).
         public static void ReadyTick()
         {
-            if (!CoopConfig.IsJoiner) return;
-            bool ready = s_at_gate || (s_active && MenuManager.m_menu_state == MenuState.MAIN_MENU) || (!s_active && CoopFlow.Waiting);
+            if (!CoopConfig.IsJoiner || Client.GetClient() == null || !Client.IsConnected()) { ManualReady = false; HostWaiting = false; return; }
+            if (ManualReady && !HostWaiting) ManualReady = false; // host stopped waiting (started the level or went back to its menu)
+            bool ready = s_at_gate || (s_active && MenuManager.m_menu_state == MenuState.MAIN_MENU) || (!s_active && CoopFlow.Waiting) || (ManualReady && GameManager.m_game_state == GameManager.GameState.MENU);
             if (!ready || Time.realtimeSinceStartup < s_ready_next) return;
             var c = Client.GetClient();
             if (c == null || !Client.IsConnected()) return;
@@ -88,7 +103,7 @@ namespace OlCoop.World
             CoopLog.Write("FLOW", "joiner: level complete - running the end-of-level screens (results, upgrades)");
         }
 
-        public static void Reset() { s_active = false; s_at_gate = false; s_pending = null; AllowPlay = false; s_ready_sent = 0; s_ready_next = 0f; }
+        public static void Reset() { s_active = false; s_at_gate = false; s_pending = null; AllowPlay = false; s_ready_sent = 0; s_ready_next = 0f; ManualReady = false; HostWaiting = false; }
 
         /// C1: host's level arrived. Hold it while the joiner is still in its end-of-level menus.
         public static bool ShouldDefer(string name)
@@ -142,6 +157,18 @@ namespace OlCoop.World
         public static void End() { if (s_on || DeadFinish) { s_on = false; DeadFinish = false; s_ready.Clear(); CoopStatus.Clear(); } }
 
         public static bool IsReady(int conn) { return s_on && s_ready.Contains(conn); }
+
+        static float s_next_remind;
+        /// Host, every menu frame: while holding for ready players, tell every verified joiner that isn't ready yet (status 3), so a
+        /// player who joined from the main menu during the end-of-level screens gets a READY UP button.
+        public static void Remind()
+        {
+            if (!s_on || !CoopWorld.IsHost || Time.realtimeSinceStartup < s_next_remind) return;
+            s_next_remind = Time.realtimeSinceStartup + 3f;
+            foreach (var c in NetworkServer.connections)
+                if (c != null && c.connectionId != 0 && c.isConnected && Session.CoopHost.Verified.Contains(c.connectionId) && !s_ready.Contains(c.connectionId))
+                    c.Send(FNet.Status, new UnityEngine.Networking.NetworkSystem.IntegerMessage(3));
+        }
 
         public static void Mark(int conn)
         {
@@ -197,7 +224,7 @@ namespace OlCoop.World
         static bool s_logged;
         static void Prefix()
         {
-            try { PostLevel.ReadyTick(); } catch (Exception ex) { CoopLog.Error("ReadyTick", ex); }
+            try { PostLevel.ReadyTick(); HostReady.Remind(); } catch (Exception ex) { CoopLog.Error("ReadyTick", ex); }
             if (HostReady.On && MenuManager.m_menu_state == MenuState.MAIN_MENU) { CoopLog.Write("FLOW", "host: back at the main menu; ready check dropped"); HostReady.End(); }
             bool post = PostLevel.Active || (CoopWorld.IsHost && (HostReady.On || HostReady.DeadFinish));
             if (!post || !PlayerShip.DeathPaused) return;

@@ -1,4 +1,4 @@
-# olcoop handoff (state as of 2026-10-05 20:45 PT)
+# olcoop handoff (state as of 2026-10-05 21:45 PT)
 
 Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
@@ -13,7 +13,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.6.8 alpha"). Protocol = 23 (in build.sh). Current build folder: build-alpha (since 0.6.0-alpha; build-online held 0.5.x).
+  `VERSION` ("0.6.9 alpha"). Protocol = 24 (in build.sh). Message ids used so far: 160-205. Current build folder: build-alpha (since 0.6.0-alpha; build-online held 0.5.x).
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 192 patches, 0 problems;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-alpha (current).
@@ -606,3 +606,55 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   others 1. Table: joiner sends 202 every 2 s in a level; host sends 203 (all players incl. its own) every 2 s.
   build.sh now references UnityEngine.ParticleSystemModule.
 - Ping.cs Lifetime 15 -> 30 s (markers and the hologuide start window).
+
+## 0.6.9-alpha status (2026-10-05 21:45) - installed, UNTESTED. Protocol 24 (msg 200 grew; new 204 lockdown/boss bar H->J, 205 own HUD J->H; status 188 code 3)
+- Installed SHA1 bc3a26fccf0c116602baa9663176e85941cc3772 (281600 bytes), verified in game folder + build-alpha. Tag v0.6.9-alpha.
+  254 patches, 0 problems, 0 warnings. Zip dist/olcoop-0.6.9-alpha.zip (SHA1 5ee875834dc8e991adbaa8229782c485250bf2ed).
+- 0.6.8 runs 19:29-20:45 PT, 4 players over Steam, host DescMax7930 (host clock = PT + 2 h; match by Steam lobby id), joiners
+  BlownToBits (pid26932 20:12, pid28112 19:29 from the PC), JosheM (no log), PeetzaGuest (pid20216). Levels outer_01-05, titan_06.
+  All [INIT] 0.6.8-alpha protocol 23.
+- Lockdown: joiners logged "script N ScriptLockdownMaster is host-only; not run here" -> no LockdownBegin on joiners (counter
+  UIElement ~7272 reads LockdownActive/LockdownRobotsRemaining; alarm cues 361/351; WarningPopup), and LockdownDoors never
+  ForceClose'd there. Host copy of a joiner's ship is authoritative -> invisible wall at the host's closed door.
+  Lockdown.cs: ScriptLockdownMaster removed from HostOnly (and both lockdown scripts kept out of the catch-up history: NoHistory);
+  joiner guards LK1 LockdownSpawnBot, LK2 LockdownUpdate (private), LK3 LockdownDestroyedBot -> skipped while CoopWorld.Matched.
+  Host msg 204 LevelHudMsg {active, boss, showHP, clear, remaining, hpPct, name, script id} on change (<=10/s) + 1/s. Joiner: runs the
+  script by id if the host is in a lockdown we haven't started (late join), sets the count (bot-died cue on a drop), LockdownEnd(clear)
+  when the host's ends (LK7 records the host's clear flag). Boss lockdowns untouched (each machine's boss copies count down and start
+  the escape; Goliath = BOSS1 + BOSS1B). [LOCK] log lines.
+- Boss/reactor bar: ReactorShowHP/ReactorHPPct/ReactorName are set by Robot damage (host) and each machine's Reactor.Update from its own
+  copy. LK5 (DrawHUD prefix, Priority.First) applies the host's values from msg 204 on joiners (< 3 s old).
+- Lockdown teleport outside the room: HostScriptActivated is a W1 postfix, DoorAnimating.ForceClose only starts the close
+  (OpenForever=false, m_open_timer=0), so the regroup linecast passed the open doorway. CoopHost.FindNear now restricts every spot
+  (TryAround via SpawnOk, TrySegments already) to RoomOf(anchor): segments reachable without crossing a door portal (DoorData != null).
+  Applies to lockdown regroups, joiner spawns and respawns. The logs show every lockdown regroup moved the others ("moved netId=..");
+  "not teleported" was most likely the out-of-room spots - check [FLOW] "lockdown: moved" against what the players saw.
+- Exit stuck (PeetzaGuest 19:59:53-20:01:01, gpState=EXIT, ship parked at (24, 2.7, 54) seg 1272): stock ExitSequenceFrame pushes the
+  ship straight (AddForce) at m_path_to_exit[m_exit_path_index] centres, starting at index 0 = the ExitSegmentType.Start segment
+  (CreatePlayerPathToEnd), and only EscapeLevels within 2 u of path[len-2]. Our 10-u "lane spot" below the exiting ship had a wall
+  between it and the Start segment. LevelFlow.cs ExitTunnel: host builds one slot per player on the path polyline (Start ->
+  path[len-2]), 5 u apart (min 2.5, compressed for short paths), trigger-er in front; HostPlaceSelfForExit(door) / Regroup / revive
+  use the slots; X2 (ExitSequenceStart postfix, every machine) sets m_exit_path_index to the next path point ahead of the local ship
+  and m_camera_path_index to match; X3 (ExitSequenceFrame postfix) forces the stock completion (m_exit_completing, timer 1.1) after 5 s
+  without getting 1 u closer to the end or 25 s total. X1 (ship colliders ignore each other) unchanged. Teleport/warp exits keep the
+  old placement (no flight). Log: [FLOW] "exit tunnel: n slot(s)", "placed in the exit tunnel", "exit flight starts at path point",
+  "exit flight stuck ... finishing it".
+- READY UP from the menus: the host's ready check counted a joiner who joined during the end-of-level screens (22:12:41 host) but that
+  joiner never sent Ready (ReadyTick only after its own level end). HostReady.Remind (MenuManager.Update) sends status 3 every 3 s
+  to verified joiners not ready; joiner PostLevel.HostWaiting (expires after 10 s), ReadyButton -> main menu CO-OP button reads
+  "CO-OP: READY UP" (select = ready) and the CO-OP screen gets a READY UP item; ManualReady makes ReadyTick send Ready. Cleared when
+  not connected / host stops waiting / level start. GameplayManager.LevelIsLoaded is NOT cleared on returning to the menus: use
+  GameManager.m_game_state == MENU.
+- Spectate lighting: ChunkManager.ActivateChunks / DisableLights / UpdateLights / DisableReflectionProbes / AmbientSoundsEnable all use
+  GameManager.m_player_ship (segment visibility, lights within 60 u). SP1 (Death.cs SpectateView) swaps in the followed ship for those
+  calls (its SegmentIndex computed from its position - remote copies keep 0 on joiners - and restored); Spectate.Next/Tick re-run
+  ActivateChunks/DisableReflectionProbes/DisableLights when it changes segment; Stop restores. [SPECT] "level lights/chunks now follow".
+- Spectate HUD: msg 200 now carries hp, energy, ammo, weapon, missile, missile ammo[8], weapon/missile levels[8], boost heat,
+  overheat timer, boosting, 10/s. Joiners send their own values (205, unreliable, 10/s); the host uses them for joiner entries
+  (armor from its own copy). HUD9 writes the followed player's newest values (< 1.5 s) into its Player/PlayerShip for the DrawHUD call
+  only and restores them. [SPECT] "HUD drawn with netId=..'s live values".
+- Main menu version label 20% of the UI height lower (OptionsScreen M5).
+- Reviewed by a separate agent before release: fixed report staleness (shared Stats object), lockdown clear flag, exit indices reset by
+  a late CreatePlayerPathToEnd (PathPoints keeps idx/cam during EXIT), READY UP state not cleared on leave.
+- Still open: buttons a joiner couldn't break (W9/W9b: no hit lines in these logs either), robot lag at long distance, reactor sound
+  maybe doubled, README pickups issue (P16), per-player pickups, 4 players (this run had 4: lobby/joins/levels worked per the logs).

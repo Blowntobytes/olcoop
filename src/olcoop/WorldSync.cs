@@ -87,12 +87,16 @@ namespace OlCoop.World
 
         /// Scripts that drive robots, counters, saves or level flow: host only, never replayed on joiners.
         static readonly HashSet<string> HostOnly = new HashSet<string> {
-            "ScriptActivateMatcen", "ScriptRobotAttack", "ScriptLockdownRobot", "ScriptLockdownMaster",
+            "ScriptActivateMatcen", "ScriptRobotAttack", "ScriptLockdownRobot",
             "ScriptRevealRobot", "ScriptOnCount", "ScriptOnDestroy", "ScriptOnPickup", "ScriptOnRobotKills", "ScriptCheckpointSave",
             "ScriptSecretLevel", "ScriptTeleportOut", "ScriptAnalyticsChokepoint", "ScriptLevel1", "ScriptLevel12", "ScriptLevel16" };
         /// Scripts that only make sound/text: played live, not replayed to a late joiner.
         static readonly HashSet<string> LiveOnly = new HashSet<string> {
             "ScriptCommMessage", "ScriptObjectiveMessage", "ScriptTutorialMessage", "ScriptFadeMusic", "ScriptHologuidePosition" };
+
+        /// 0.6.9: lockdowns run on joiners too (doors, counter, alarm; robots stay host-side, see Lockdown.cs), but are not replayed to a
+        /// late joiner from the history: the host's lockdown state (msg 204) runs the script only if that lockdown is still going.
+        static readonly HashSet<string> NoHistory = new HashSet<string> { "ScriptLockdownMaster", "ScriptLockdownBoss" };
 
         public static bool IsHostOnly(ScriptBase s) { return HostOnly.Contains(s.GetType().Name); }
 
@@ -148,11 +152,11 @@ namespace OlCoop.World
         {
             ushort id;
             if (!TryScriptId(s, out id)) { CoopLog.Write("WORLD", "host: unregistered script activated " + Describe(s)); return; }
-            if (!IsHostOnly(s) && !LiveOnly.Contains(s.GetType().Name)) s_history.Add(id);
+            if (!IsHostOnly(s) && !LiveOnly.Contains(s.GetType().Name) && !NoHistory.Contains(s.GetType().Name)) s_history.Add(id);
             SendAll(WNet.Script, new IdMsg { id = id });
             CoopLog.Write("WORLD", "host: script " + id + " " + Describe(s) + (IsHostOnly(s) ? " (host-only)" : ""));
             string tn = s.GetType().Name;
-            if (tn == "ScriptLockdownMaster" || tn == "ScriptLockdownBoss") { try { CoopFlow.HostLockdown(s); } catch (Exception ex) { CoopLog.Error("HostLockdown", ex); } }
+            if (tn == "ScriptLockdownMaster" || tn == "ScriptLockdownBoss") { CoopLockdown.HostNoteScript(s); try { CoopFlow.HostLockdown(s); } catch (Exception ex) { CoopLog.Error("HostLockdown", ex); } }
         }
 
         public static void HostDestroyed(Destroyable d)

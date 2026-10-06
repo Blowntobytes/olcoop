@@ -58,4 +58,5 @@ Targets unless noted: Overload 1.1.1886, olmod 0.5.14.
 | 0.6.5-alpha | 22 | 10-05 17:52 | partly tested (user saw the ping sphere) | ping sphere shown | too big; not visible through geometry everywhere | tag v0.6.5-alpha |
 | 0.6.6-alpha | 22 | 10-05 18:12 | partly tested (user) | ping sphere teal, through geometry | 25% too small; PING wheel slot not consistent | tag v0.6.6-alpha |
 | 0.6.7-alpha | 22 | 10-05 18:28 | tested (user: looks good) | ping size, hologuide to a ping, map hint | - | tag v0.6.7-alpha |
-| 0.6.8-alpha | 23 | 10-05 18:45 | untested | - | - | tag v0.6.8-alpha, build-alpha, dist/olcoop-0.6.8-alpha.zip |
+| 0.6.8-alpha | 23 | 10-05 18:45 | tested (19:29-20:45, 4 players over Steam, host DescMax7930; host + 2 joiner logs) | 4-player session, level hand-offs, exits, lockdown regroups (log) | joiner: no lockdown counter/alarm, lockdown doors open (invisible wall), teleport outside the room; Goliath bar host-only; joiner stuck in the exit flight (behind a wall); no READY UP for a player joining between levels; spectating dark | tag v0.6.8-alpha |
+| 0.6.9-alpha | 24 | 10-05 21:45 | untested | - | - | tag v0.6.9-alpha, build-alpha, dist/olcoop-0.6.9-alpha.zip |

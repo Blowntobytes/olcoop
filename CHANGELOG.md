@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.6.9-alpha (2026-10-05) - lockdowns and boss bar for joiners, exit tunnel, READY UP from the menus, spectating, UNTESTED build (all players must run 0.6.9-alpha; protocol 24)
+From the 19:29-20:45 runs on 0.6.8 (DescMax7930 hosting, BlownToBits, JosheM and PeetzaGuest joining; host log + BlownToBits and
+PeetzaGuest logs).
+- Fix: lockdowns on joiners. Joiners never ran the lockdown itself (it was host-only): no LOCKDOWN / TARGETS REMAINING counter, no
+  alarm, no warning, and the lockdown doors stayed open on the joiner while they were closed on the host - an invisible wall. Joiners
+  now run it (doors close, counter, alarm, "LOCKDOWN PROCEDURES INITIATED!"); the counter follows the host's kills (with the kill
+  sound) and the lockdown ends when the host's ends. Robots stay the host's.
+- Fix: lockdown teleports put players outside the lockdown room. The spot was picked while the doors were still closing, so it could
+  be on the far side of a door. Teleport, spawn and respawn spots are now never behind a door from the player they're next to.
+- Fix: the boss health bar (Goliath and other bosses) and the reactor bar didn't move on joiners. Joiners now show the host's bar.
+- Change: every exit door puts all players inside the exit tunnel, lined up (whoever reached the exit in front), and everyone flies
+  out from their own spot; players don't collide. Fix: a player who was placed behind a wall at the exit (19:59, PeetzaGuest) pushed
+  against it forever and his game never left the level; an exit flight that stops moving now finishes by itself.
+- New: READY UP from the menus. A player who joins while the host is on the results/upgrade screens gets a READY UP button (main
+  menu CO-OP button and the CO-OP screen); the host's next level starts once everyone is ready.
+- Fix: spectating was dark or half lit depending on where you died: the level's lights and rooms were switched on around your own
+  wreck. They now follow the player you're watching.
+- Change: spectating shows the watched player's HUD with their live values: armor, energy, ammo, all missiles, weapon and missile
+  levels, boost heat, updated 10 times a second (a joiner's own energy/ammo come from that joiner).
+- The version on the main menu is 20% lower (it was cut off at the top).
+
 ## 0.6.8-alpha (2026-10-05) - flare colors, 30 s pings, UNTESTED build (all players must run 0.6.8-alpha; protocol 23)
 - New: flare colors. CO-OP OPTIONS > FLARE COLOR (your own setting): ORIGINAL, RED, ORANGE, YELLOW, GREEN or PURPLE. Every player
   sees your flares in your color - the flare's two lights, its glow and its lens flare. Darker colors (red, purple) get a stronger

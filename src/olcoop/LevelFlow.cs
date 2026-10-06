@@ -24,7 +24,7 @@ namespace OlCoop.World
         public const short Exit = 186;        // H->J PoseMsg: kind + where to put your ship before the exit sequence
         public const short Teleport = 187;    // H->J PoseMsg: regroup (lockdown) - move your ship here
         public const short Ready = 189;       // J->H IntegerMessage 1: end-of-level screens done, ready for the next level
-        public const short Status = 188;      // H->J IntegerMessage: 1 = host on the level summary, 2 = host loading the next level
+        public const short Status = 188;      // H->J IntegerMessage: 1 = host on the level summary, 2 = host loading the next level, 3 = host waiting for you to ready up
         public const byte KindDoor = 0, KindWarp = 1, KindTeleport = 2;
     }
 
@@ -86,8 +86,11 @@ namespace OlCoop.World
             {
                 if (p == null || p.c_player_ship == null) continue;
                 var ship = p.c_player_ship;
+                LevelData.SpawnPoint tsp = default(LevelData.SpawnPoint);
+                bool tunnel = msgType == FNet.Exit && ExitTunnel.TryGet(ship, out tsp);
                 if (ship == anchor)
                 {
+                    if (tunnel && Alive(ship) && !p.isLocalPlayer) MoveShip(ship, tsp.position, tsp.orientation);
                     if (msgType == FNet.Exit && !p.isLocalPlayer && p.connectionToClient != null)
                         p.connectionToClient.Send(msgType, new PoseMsg { kind = kind, pos = ship.c_transform.position, rot = ship.c_transform.rotation });
                     continue;
@@ -99,6 +102,14 @@ namespace OlCoop.World
                 }
                 if (minDist > 0f && (ship.c_transform.position - anchor.c_transform.position).magnitude < minDist) continue;
                 LevelData.SpawnPoint sp;
+                if (tunnel)
+                {
+                    MoveShip(ship, tsp.position, tsp.orientation);
+                    if (!p.isLocalPlayer && p.connectionToClient != null)
+                        p.connectionToClient.Send(msgType, new PoseMsg { kind = kind, pos = tsp.position, rot = tsp.orientation });
+                    CoopLog.Write("FLOW", "host: " + why + ": netId=" + p.netId.Value + " placed in the exit tunnel at " + tsp.position.ToString("F1"));
+                    continue;
+                }
                 if (!SpotNear(anchor, ship, idx++, out sp, msgType == FNet.Exit))
                 {
                     CoopLog.Write("FLOW", "host: " + why + ": no free spot next to netId=" + anchor.c_player.netId.Value + "; netId=" + p.netId.Value + " stays where it is");
@@ -153,7 +164,7 @@ namespace OlCoop.World
         static bool s_requested, s_exit_sent, s_wait_shown;
         public static bool Waiting { get { return s_wait_shown; } }
 
-        public static void ResetForLevel() { PostLevel.Reset(); if (s_wait_shown) { try { UIManager.SetScreenFade(0f); } catch { } } CoopStatus.Clear(); s_lockdowns_done.Clear(); s_last_trigger_ship = null; s_exit_anchor = null; s_pending_pose = null; s_pending_exit = -1; s_dead_wait_until = -1f; s_revive.Clear(); s_revive_anchor = null; s_revive_until = -1f; s_requested = false; s_exit_sent = false; s_wait_shown = false; ApplyingExit = false; ApplyingLog = false; }
+        public static void ResetForLevel() { PostLevel.Reset(); if (s_wait_shown) { try { UIManager.SetScreenFade(0f); } catch { } } CoopStatus.Clear(); s_lockdowns_done.Clear(); s_last_trigger_ship = null; s_exit_anchor = null; s_pending_pose = null; s_pending_exit = -1; s_dead_wait_until = -1f; s_revive.Clear(); s_revive_anchor = null; s_revive_until = -1f; s_requested = false; s_exit_sent = false; s_wait_shown = false; ApplyingExit = false; ApplyingLog = false; ExitTunnel.Reset(); }
 
         static bool LocalAlive()
         {
@@ -236,15 +247,28 @@ namespace OlCoop.World
             var anchor = s_exit_anchor != null ? s_exit_anchor : GameManager.m_player_ship;
             s_revive_anchor = anchor; s_revive_kind = kind;
             if (anchor == null) { SendAll(FNet.Exit, new PoseMsg { kind = kind }); return; }
+            if (kind == FNet.KindDoor && !ExitTunnel.Built) ExitTunnel.Build(anchor);
             Regroup(anchor, FNet.Exit, kind, 0f, KindName(kind));
             CoopLog.Write("FLOW", "host: " + KindName(kind) + " sequence started at netId=" + anchor.c_player.netId.Value + "; told joiners to exit too");
         }
 
         /// Host, joiner-triggered exit: put the host's own ship next to that joiner before the host's exit sequence starts.
-        public static void HostPlaceSelfForExit()
+        public static void HostPlaceSelfForExit(bool door)
         {
             var me = GameManager.m_player_ship;
-            if (s_exit_anchor == null || me == null || s_exit_anchor == me || !Alive(me)) return;
+            if (me == null || !Alive(me)) return;
+            if (door)
+            {
+                ExitTunnel.Build(s_exit_anchor != null ? s_exit_anchor : me);
+                LevelData.SpawnPoint tsp;
+                if (ExitTunnel.TryGet(me, out tsp))
+                {
+                    MoveShip(me, tsp.position, tsp.orientation);
+                    CoopLog.Write("FLOW", "host: own ship placed in the exit tunnel at " + tsp.position.ToString("F1"));
+                    return;
+                }
+            }
+            if (s_exit_anchor == null || s_exit_anchor == me) return;
             LevelData.SpawnPoint sp;
             if (!SpotNear(s_exit_anchor, me, 0, out sp, true)) { CoopLog.Write("FLOW", "host: no free spot next to netId=" + s_exit_anchor.c_player.netId.Value + "; host exits from where it is"); return; }
             MoveShip(me, sp.position, sp.orientation);
@@ -367,7 +391,8 @@ namespace OlCoop.World
                     if (anchor != null)
                     {
                         LevelData.SpawnPoint sp;
-                        if (!SpotNear(anchor, s, i, out sp, true)) sp = new LevelData.SpawnPoint(anchor.c_transform.position - anchor.c_transform.forward * 4f, anchor.c_transform.rotation, 0);
+                        if (!(s_revive_kind == FNet.KindDoor && ExitTunnel.TryGet(s, out sp)) && !SpotNear(anchor, s, i, out sp, true))
+                            sp = new LevelData.SpawnPoint(anchor.c_transform.position - anchor.c_transform.forward * 4f, anchor.c_transform.rotation, 0);
                         try { OlCoop.Death.CoopDeath.RespawnAt(s, sp.position, sp.orientation, "exit"); s_revived.Add(s); }
                         catch (Exception ex) { CoopLog.Error("revive for exit", ex); }
                         continue;
@@ -405,9 +430,16 @@ namespace OlCoop.World
             {
                 int code = msg.ReadMessage<IntegerMessage>().value;
                 CoopLog.Write("FLOW", "joiner: host status " + code);
+                if (code == 3)
+                {
+                    if (!PostLevel.HostWaiting) CoopLog.Write("FLOW", "joiner: the host is waiting for players to ready up" + (PostLevel.ReadyButton ? " (READY UP button shown)" : ""));
+                    PostLevel.HostWaiting = true;
+                    return;
+                }
                 if (code == 1) CoopStatus.Set(1, "LEVEL COMPLETE - THE HOST IS ON THE LEVEL SUMMARY");
                 else if (code == 2)
                 {
+                    PostLevel.HostWaiting = false;
                     CoopStatus.Set(2, "THE HOST IS STARTING THE NEXT LEVEL...");
                     GameplayManager.AddHUDMessage("CO-OP: THE HOST IS STARTING THE NEXT LEVEL", -1, true);
                     if (!Session.CoopClient.Awaiting) Session.CoopClient.AwaitLevel();
@@ -423,6 +455,161 @@ namespace OlCoop.World
             if (ps == null && other.attachedRigidbody != null) ps = other.attachedRigidbody.GetComponent<PlayerShip>();
             return ps != null && ps.isLocalPlayer;
         }
+    }
+
+    /// <summary>
+    /// 0.6.9 exit tunnel. The stock exit flight (GameplayManager.ExitSequenceFrame) pushes the ship in a straight line (AddForce)
+    /// toward the centres of m_path_to_exit, the path from the level's exit Start segment to its End segment, starting at index 0;
+    /// EscapeLevel only runs once the ship is within 2 u of the second-to-last centre. A ship placed elsewhere (0.6.8 "lane spots"
+    /// behind the player who reached the exit) can have a wall between it and the Start segment: 19:59 run, PeetzaGuest sat in EXIT
+    /// at (24, 2.7, 54) pushing into the wall until he quit. Now every player is placed ON the path, lined up (whoever reached the
+    /// exit in front), every machine starts its flight at the next path point ahead of its ship (X2), ship-ship collisions are off
+    /// (X1), and a flight that stops making progress is finished by the stock completion (X3).
+    /// </summary>
+    public static class ExitTunnel
+    {
+        static readonly System.Reflection.FieldInfo f_path = AccessTools.Field(typeof(GameplayManager), "m_path_to_exit");
+        static readonly System.Reflection.FieldInfo f_len = AccessTools.Field(typeof(GameplayManager), "m_exit_path_length");
+        static readonly System.Reflection.FieldInfo f_idx = AccessTools.Field(typeof(GameplayManager), "m_exit_path_index");
+        static readonly System.Reflection.FieldInfo f_cam = AccessTools.Field(typeof(GameplayManager), "m_camera_path_index");
+        static readonly System.Reflection.FieldInfo f_completing = AccessTools.Field(typeof(GameplayManager), "m_exit_completing");
+        static readonly System.Reflection.FieldInfo f_complete_timer = AccessTools.Field(typeof(GameplayManager), "m_exit_complete_timer");
+        const float SPACING = 5f, MIN_SPACING = 2.5f, END_MARGIN = 6f;
+
+        static readonly Dictionary<PlayerShip, LevelData.SpawnPoint> s_slots = new Dictionary<PlayerShip, LevelData.SpawnPoint>();
+        public static bool Built;
+
+        public static void Reset() { s_slots.Clear(); Built = false; s_watch = false; }
+
+        /// The exit path's points (segment centres from the Start segment to the second-to-last one, where the flight completes).
+        static List<Vector3> PathPoints()
+        {
+            if (f_path == null || f_len == null || GameManager.m_level_data == null) return null;
+            // CreatePlayerPathToEnd resets the flight's path/camera index: keep them if our own exit flight is already running
+            object idx = f_idx != null ? f_idx.GetValue(null) : null, cam = f_cam != null ? f_cam.GetValue(null) : null;
+            bool ok = GameplayManager.CreatePlayerPathToEnd();
+            if (GameplayManager.m_gameplay_state == GameplayState.EXIT) { if (idx != null) f_idx.SetValue(null, idx); if (cam != null) f_cam.SetValue(null, cam); }
+            if (!ok) return null;
+            var path = (int[])f_path.GetValue(null); int len = (int)f_len.GetValue(null);
+            if (path == null || len < 3) return null;
+            var segs = GameManager.m_level_data.Segments;
+            var pts = new List<Vector3>();
+            for (int i = 0; i <= len - 2; i++) pts.Add(segs[path[i]].Center);
+            return pts;
+        }
+
+        static float Length(List<Vector3> pts) { float L = 0f; for (int i = 1; i < pts.Count; i++) L += (pts[i] - pts[i - 1]).magnitude; return L; }
+
+        /// Point and direction at arc distance a along the path.
+        static void At(List<Vector3> pts, float a, out Vector3 pos, out Vector3 dir)
+        {
+            for (int i = 1; i < pts.Count; i++)
+            {
+                float d = (pts[i] - pts[i - 1]).magnitude;
+                if (a <= d || i == pts.Count - 1)
+                {
+                    float t = d > 0.001f ? Mathf.Clamp01(a / d) : 0f;
+                    pos = Vector3.Lerp(pts[i - 1], pts[i], t);
+                    dir = d > 0.001f ? (pts[i] - pts[i - 1]) / d : Vector3.forward;
+                    return;
+                }
+                a -= d;
+            }
+            pos = pts[0]; dir = Vector3.forward;
+        }
+
+        /// Host: one slot per player, the player who reached the exit in front, the others behind it in player order.
+        public static void Build(PlayerShip front)
+        {
+            if (Built) return;
+            Built = true; s_slots.Clear();
+            try
+            {
+                var pts = PathPoints();
+                if (pts == null) { CoopLog.Write("FLOW", "host: exit tunnel: this level has no exit path; players exit next to each other"); return; }
+                var order = new List<PlayerShip>();
+                if (front != null) order.Add(front);
+                foreach (var p in Overload.NetworkManager.m_Players)
+                    if (p != null && p.c_player_ship != null && !order.Contains(p.c_player_ship)) order.Add(p.c_player_ship);
+                if (order.Count == 0) return;
+                float L = Length(pts), usable = Mathf.Max(0f, L - END_MARGIN);
+                float gap = order.Count > 1 ? Mathf.Max(MIN_SPACING, Mathf.Min(SPACING, usable / (order.Count - 1))) : 0f;
+                if (order.Count > 1 && (order.Count - 1) * gap > usable) gap = usable / (order.Count - 1); // short exit: ships overlap (no collisions) rather than start at the end
+                for (int k = 0; k < order.Count; k++)
+                {
+                    float a = (order.Count - 1 - k) * gap; // front player furthest in
+                    Vector3 pos, dir; At(pts, a, out pos, out dir);
+                    var up = order[k].c_transform.up;
+                    if (Mathf.Abs(Vector3.Dot(up, dir)) > 0.95f) up = Vector3.Cross(dir, Vector3.right).normalized;
+                    s_slots[order[k]] = new LevelData.SpawnPoint(pos, Quaternion.LookRotation(dir, up), 0);
+                }
+                CoopLog.Write("FLOW", "host: exit tunnel: " + order.Count + " slot(s) " + gap.ToString("F1") + " u apart on the exit path (" + pts.Count + " points, " + L.ToString("F0") + " u to the end)");
+            }
+            catch (Exception ex) { CoopLog.Error("ExitTunnel.Build", ex); s_slots.Clear(); }
+        }
+
+        public static bool TryGet(PlayerShip s, out LevelData.SpawnPoint sp) { sp = default(LevelData.SpawnPoint); return s != null && s_slots.TryGetValue(s, out sp); }
+
+        // ---------------------------------------------------------------- every machine
+        static bool s_watch; static float s_start, s_best, s_best_time; static int s_logged;
+
+        /// X2 (ExitSequenceStart postfix, door exits, co-op): start our flight at the first path point ahead of our ship instead of
+        /// path point 0 (which is behind a ship placed further in, and may be behind a wall for a ship placed elsewhere).
+        public static void AfterStart()
+        {
+            s_watch = false;
+            if (GameplayManager.m_gameplay_state != GameplayState.EXIT || f_path == null) return;
+            var me = GameManager.m_player_ship;
+            if (me == null) return;
+            var path = (int[])f_path.GetValue(null); int len = (int)f_len.GetValue(null);
+            if (path == null || len < 3) return;
+            var segs = GameManager.m_level_data.Segments;
+            Vector3 p = me.c_transform.position;
+            // the path segment closest to us, then the next one ahead of that (never past len-2, where the flight completes)
+            int best = 0; float bd = float.MaxValue;
+            for (int i = 0; i <= len - 2; i++) { float d = (segs[path[i]].Center - p).sqrMagnitude; if (d < bd) { bd = d; best = i; } }
+            int next = best;
+            if (best < len - 2)
+            {
+                Vector3 a = segs[path[best]].Center, b = segs[path[best + 1]].Center;
+                if (Vector3.Dot(p - a, b - a) > 0f) next = best + 1; // already past the closest point
+            }
+            f_idx.SetValue(null, next);
+            if (f_cam != null) f_cam.SetValue(null, Mathf.Max(1, Mathf.Min(next, len - 1)));
+            s_watch = true; s_start = Time.time; s_best = float.MaxValue; s_best_time = Time.time;
+            CoopLog.Write("FLOW", "exit flight starts at path point " + next + "/" + (len - 2) + " (" + Mathf.Sqrt(bd).ToString("F1") + " u from the path)");
+        }
+
+        /// X3 (ExitSequenceFrame postfix): a flight that gets no closer to the end for 5 s, or takes over 25 s, is finished with the
+        /// stock completion (explosions, fade, EscapeLevel).
+        public static void Watch()
+        {
+            if (!s_watch || GameplayManager.m_gameplay_state != GameplayState.EXIT || f_completing == null) return;
+            if ((bool)f_completing.GetValue(null)) { s_watch = false; return; }
+            var me = GameManager.m_player_ship;
+            var path = (int[])f_path.GetValue(null); int len = (int)f_len.GetValue(null);
+            if (me == null || path == null || len < 3) return;
+            float d = (GameManager.m_level_data.Segments[path[len - 2]].Center - me.c_transform.position).magnitude;
+            if (d < s_best - 1f) { s_best = d; s_best_time = Time.time; }
+            bool stuck = Time.time - s_best_time > 5f, slow = Time.time - s_start > 25f;
+            if (!stuck && !slow) return;
+            s_watch = false;
+            if (s_logged++ < 5) CoopLog.Write("FLOW", "exit flight " + (stuck ? "stuck (no progress for 5 s, " + d.ToString("F1") + " u from the end)" : "took over 25 s") + "; finishing it");
+            f_completing.SetValue(null, true);
+            if (f_complete_timer != null) f_complete_timer.SetValue(null, 1.1f);
+        }
+    }
+
+    [HarmonyPatch(typeof(GameplayManager), "ExitSequenceStart")]
+    static class X2_ExitFromOwnSpot
+    {
+        static void Postfix() { if (!CoopWorld.Active) return; try { ExitTunnel.AfterStart(); } catch (Exception ex) { CoopLog.Error("X2", ex); } }
+    }
+
+    [HarmonyPatch(typeof(GameplayManager), "ExitSequenceFrame")]
+    static class X3_ExitWatchdog
+    {
+        static void Postfix() { if (!CoopWorld.Active) return; try { ExitTunnel.Watch(); } catch (Exception ex) { CoopLog.Error("X3", ex); } }
     }
 
     // ================================================================= patches
@@ -474,7 +661,7 @@ namespace OlCoop.World
     [HarmonyPatch(typeof(GameplayManager), "ExitSequenceStart")]
     static class F4_ExitStart
     {
-        static void Prefix() { if (CoopWorld.IsHost) { try { CoopFlow.HostPlaceSelfForExit(); } catch (Exception ex) { CoopLog.Error("F4 pre", ex); } } }
+        static void Prefix() { if (CoopWorld.IsHost) { try { CoopFlow.HostPlaceSelfForExit(true); } catch (Exception ex) { CoopLog.Error("F4 pre", ex); } } }
         static void Postfix()
         {
             if (!CoopWorld.IsHost || GameplayManager.m_gameplay_state != GameplayState.EXIT) return;
@@ -486,7 +673,7 @@ namespace OlCoop.World
     [HarmonyPatch(typeof(GameplayManager), "TeleportSequenceStart")]
     static class F5_TeleportStart
     {
-        static void Prefix() { if (CoopWorld.IsHost) { try { CoopFlow.HostPlaceSelfForExit(); } catch (Exception ex) { CoopLog.Error("F5 pre", ex); } } }
+        static void Prefix() { if (CoopWorld.IsHost) { try { CoopFlow.HostPlaceSelfForExit(false); } catch (Exception ex) { CoopLog.Error("F5 pre", ex); } } }
         static void Postfix(bool alien_warp)
         {
             if (!CoopWorld.IsHost || GameplayManager.m_gameplay_state != GameplayState.EXIT) return;

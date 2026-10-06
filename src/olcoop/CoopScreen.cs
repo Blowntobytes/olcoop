@@ -21,7 +21,7 @@ namespace OlCoop.UI
         public static readonly MenuState msCoop = (MenuState)121;
         public static readonly UIElementType uiCoop = (UIElementType)123;
         public const int MainMenuItemId = 40;
-        const int ID_HOST = 0, ID_OVERLAY = 1, ID_LEAVE = 3, ID_FRIEND0 = 10, MAX_FRIENDS = 7, ID_BACK = 100;
+        const int ID_HOST = 0, ID_OVERLAY = 1, ID_LEAVE = 3, ID_READY = 4, ID_FRIEND0 = 10, MAX_FRIENDS = 7, ID_BACK = 100;
         static readonly MethodInfo s_goBack = AccessTools.Method(typeof(MenuManager), "GoBack");
 
         static List<SteamLink.Friend> s_friends = new List<SteamLink.Friend>();
@@ -63,6 +63,8 @@ namespace OlCoop.UI
         {
             var p = discordPos; p.x = 500f;
             string label = CoopConfig.IsHost ? "CO-OP: HOSTING" : CoopConfig.IsJoiner ? "CO-OP: JOINED" : "CO-OP: HOST / JOIN";
+            if (OlCoop.World.PostLevel.ReadyButton) label = "CO-OP: READY UP";
+            else if (CoopConfig.IsJoiner && OlCoop.World.PostLevel.ManualReady && OlCoop.World.PostLevel.HostWaiting) label = "CO-OP: READY - WAITING";
             uie.SelectAndDrawHalfItem(label, p, MainMenuItemId, false);
         }
 
@@ -90,6 +92,16 @@ namespace OlCoop.UI
             {
                 uie.SelectAndDrawItem("INVITE THROUGH STEAM", pos, ID_OVERLAY, false, 1f, 0.75f);
                 pos.y += 62f;
+            }
+            if (OlCoop.World.PostLevel.ReadyButton)
+            {
+                uie.SelectAndDrawItem("READY UP", pos, ID_READY, false, 1f, 0.75f);
+                pos.y += 62f;
+            }
+            else if (CoopConfig.IsJoiner && OlCoop.World.PostLevel.ManualReady && OlCoop.World.PostLevel.HostWaiting)
+            {
+                uie.DrawStringSmall("READY - WAITING FOR THE HOST TO START THE LEVEL", pos, 0.45f, StringOffset.CENTER, UIManager.m_col_hi4, 1f, -1f);
+                pos.y += 40f;
             }
             if (CoopConfig.IsJoiner)
             {
@@ -159,7 +171,7 @@ namespace OlCoop.UI
                         UIManager.CreateUIElement(UIManager.SCREEN_CENTER, 7000, uiCoop);
                         MenuManager.m_menu_sub_state = MenuSubState.ACTIVE;
                         s_next_refresh = 0f;
-                        MenuManager.SetDefaultSelection(CoopConfig.IsJoiner ? ID_LEAVE : ID_HOST);
+                        MenuManager.SetDefaultSelection(OlCoop.World.PostLevel.ReadyButton ? ID_READY : CoopConfig.IsJoiner ? ID_LEAVE : ID_HOST);
                     }
                     break;
                 case MenuSubState.ACTIVE:
@@ -179,6 +191,7 @@ namespace OlCoop.UI
                         MenuManager.PlaySelectSound();
                     }
                     else if (sel == ID_OVERLAY) { SteamLink.OpenInviteOverlay(); MenuManager.PlaySelectSound(); }
+                    else if (sel == ID_READY) { if (OlCoop.World.PostLevel.ReadyButton) OlCoop.World.PostLevel.PressReady(); MenuManager.PlaySelectSound(); MenuManager.SetDefaultSelection(ID_LEAVE); }
                     else if (sel == ID_LEAVE)
                     {
                         SteamLink.Leave();
@@ -239,6 +252,7 @@ namespace OlCoop.UI
             if (MenuManager.m_menu_state != MenuState.MAIN_MENU || MenuManager.m_menu_sub_state != MenuSubState.ACTIVE) return;
             if (UIManager.m_menu_selection == CoopSessionMenu.MainMenuItemId && UIManager.PushedSelect(-1))
             {
+                if (OlCoop.World.PostLevel.ReadyButton) { OlCoop.World.PostLevel.PressReady(); MenuManager.PlaySelectSound(); return; }
                 MenuManager.ChangeMenuState(CoopSessionMenu.msCoop);
                 UIManager.DestroyAll();
                 MenuManager.PlaySelectSound();
