@@ -234,7 +234,10 @@ namespace OlCoop.Challenge
                 if (changed) { LoadoutChosen = false; CoopLog.Write("CHAL", "joiner: host chose challenge level " + m.level + " countdown=" + m.countdown + " difficulty=" + m.difficulty); }
                 Pending = m;
                 ChallengeManager.CountdownMode = m.countdown;
-                if (GameManager.m_game_state != GameManager.GameState.MENU || MenuManager.m_menu_state != MenuState.MAIN_MENU) return;
+                // 0.7.2: from any menu outside a level (main menu, CO-OP screen, options) - not mid-briefing/results/loading
+                var ms = MenuManager.m_menu_state;
+                if (GameManager.m_game_state != GameManager.GameState.MENU || GameplayManager.LevelIsLoaded && GameManager.m_game_state != GameManager.GameState.MENU ||
+                    ms == MenuState.CHALLENGE_BRIEFING || ms == MenuState.CHALLENGE_RESULTS || ms == MenuState.PLAY_GAME || ms == MenuState.PAUSE_MENU) return;
                 if (LoadoutChosen) return; // already waiting with a loadout for this level
                 if (s_declined == m.level) return; // backed out of this briefing; READY UP on the CO-OP screen still works
                 OpenBriefing(m);

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.2-challenge (2026-10-06) - joiner ship in challenge, UNTESTED build (all players must run 0.7.2-challenge; protocol 28)
+From the 18:14 run on 0.7.1 (both logs). User: the joiner could only look around; the loadout screen didn't come up.
+- Fix: the joiner never got a ship. When it asked to spawn, olmod's multiplayer spawn-point chooser crashed in the challenge level
+  (host log 18:16:20: KeyNotFoundException in MPRespawn_ChooseSpawnPoint), so the game never created it. If that chooser fails in
+  co-op, the joiner is now placed at a level start point / beside the host.
+- Fix: the joiner's loadout screen only opened from the main menu; the joiner was on the CO-OP screen. It now opens from any menu
+  outside a level.
+
 ## 0.7.1-challenge (2026-10-06) - challenge death rules, UNTESTED build (all players must run 0.7.1-challenge; protocol 28)
 User's revised rules for challenge co-op (replaces 0.7.0's "follow the CO-OP OPTIONS death setting" in challenge mode only):
 - Infinite: dead players spectate; the run ends (results for everyone) when every player is dead.

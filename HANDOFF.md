@@ -13,7 +13,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.7.1 challenge"). Protocol = 28 (in build.sh). Message ids used so far: 160-212. Current build folder: build-challenge (since 0.7.0; build-alpha holds 0.6.18-alpha, build-online held 0.5.x).
+  `VERSION` ("0.7.2 challenge"). Protocol = 28 (in build.sh). Message ids used so far: 160-212. Current build folder: build-challenge (since 0.7.0; build-alpha holds 0.6.18-alpha, build-online held 0.5.x).
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 192 patches, 0 problems;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-alpha, build-challenge (current).
@@ -806,3 +806,12 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 - User changed the challenge death rules: infinite = spectate until all dead (run ends); countdown = respawn after the cooldown like MP,
   never ends by death (no TEAM WIPED; if nobody alive, RespawnAt a random LevelData.m_player_spawn_points entry). CoopSettings.Effective
   (Death.cs) overrides Mode in challenge; used by HostTick/LocalTick/dead state and Hud.TimerWanted. Campaign unchanged.
+
+## 0.7.2-challenge status (2026-10-06) - installed, UNTESTED. Protocol 28.
+- Installed SHA1 18bc3929f2dcacfc5e2134b8e417f01afdbc1564 (315904 bytes), verified in game folder + build-challenge. Tag v0.7.2-challenge.
+- 18:14 run (0.7.1): host 18:16:20 AddPlayer conn 20 -> olmod MPRespawn_ChooseSpawnPoint.GetRespawnPointScores KeyNotFoundException ->
+  no joiner player (joiner dumps netId=0 local=False netPlayers=0 all run). H5 now has a Finalizer: in co-op, swallow and use a random
+  LevelData.m_player_spawn_points entry (+ NextSpawnPoint beside host). Log "[HOST] spawn point chooser failed ...".
+- Joiner OnInfo opened the briefing only from MAIN_MENU; joiner was on the CO-OP screen (menu 121). Now any MENU state except
+  CHALLENGE_BRIEFING/RESULTS/PLAY_GAME/PAUSE_MENU.
+- Seen, harmless: joiner NRE Robot.AimInstantTarget in SpawnNewRobotNoParent for spawns arriving before its level loaded (world sync re-sent them).

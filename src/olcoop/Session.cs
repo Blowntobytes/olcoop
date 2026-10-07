@@ -409,6 +409,24 @@ namespace OlCoop.Session
             if (GameplayManager.IsMultiplayer || !CoopHost.SpawnPosValid) return;
             try { CoopHost.NextSpawnPoint(ref __result); } catch (Exception ex) { CoopLog.Error("H5", ex); }
         }
+
+        /// 0.7.2: olmod's MP spawn chooser (MPRespawn_ChooseSpawnPoint) threw KeyNotFoundException in a challenge level (18:16:20 run),
+        /// so Server.OnAddPlayerMessage never created the joiner's ship (joiner could only look around). In co-op, swallow it and
+        /// place the joiner ourselves (a level start point, then beside the host as usual).
+        static Exception Finalizer(Exception __exception, MpTeam team, ref LevelData.SpawnPoint __result)
+        {
+            if (__exception == null || !CoopHost.Enabled || GameplayManager.IsMultiplayer) return __exception;
+            try
+            {
+                var sps = GameManager.m_level_data != null ? GameManager.m_level_data.m_player_spawn_points : null;
+                if (sps == null || sps.Length == 0) return __exception;
+                __result = sps[UnityEngine.Random.Range(0, sps.Length)];
+                if (CoopHost.SpawnPosValid) CoopHost.NextSpawnPoint(ref __result);
+                CoopLog.Write("HOST", "spawn point chooser failed (" + __exception.GetType().Name + "); joiner placed at " + __result.position.ToString("F1"));
+                return null;
+            }
+            catch (Exception ex) { CoopLog.Error("H5 fallback", ex); return __exception; }
+        }
     }
 
     [HarmonyPatch(typeof(Server), "OnAddPlayerMessage")]
