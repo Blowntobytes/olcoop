@@ -591,9 +591,24 @@ namespace OlCoop.Death
             catch (Exception ex) { CoopLog.Error("MoveHud", ex); }
         }
 
+        /// 0.7.5: where the ship's camera belongs. PlayerShip.StartDying records the camera's CURRENT parent as m_camera_parent; a
+        /// second death while spectating records our rig (destroyed on stop). Never hand the camera back to the rig or to nothing.
+        public static Transform SafeCameraHome(PlayerShip o)
+        {
+            if (o == null) return null;
+            var p = o.m_camera_parent;
+            bool bad = p == null || (s_rig != null && (p == s_rig.transform || p.IsChildOf(s_rig.transform))) || p.name == "olcoop_spectate_cam" || p.name == "VR_death_cam_parent" && !GameplayManager.VRActive;
+            if (!bad) return p;
+            var home = o.c_cam_controller != null ? o.c_cam_controller : o.c_transform;
+            if (s_safe_logs++ < 5) CoopLog.Write("SPECT", "camera home was '" + (p != null ? p.name : "null") + "'; using '" + home.name + "'");
+            return home;
+        }
+        static int s_safe_logs;
+
         public static void Stop(PlayerShip owner)
         {
             if (s_rig == null) return;
+            { var oo = owner ?? s_owner; if (oo != null) { var h = SafeCameraHome(oo); if (h != oo.m_camera_parent) oo.m_camera_parent = h; } }
             var o = owner ?? s_owner;
             var cam = Cam();
             if (o != null && cam != null)

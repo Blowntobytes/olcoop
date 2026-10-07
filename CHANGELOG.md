@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.5-challenge (2026-10-06) - challenge end screen, UNTESTED build (all players must run 0.7.5-challenge; protocol 29)
+From the 19:05 countdown run on 0.7.4 (both logs). User: the end screen still locked up.
+- Found: when a player dies while already spectating (countdown respawn), the game remembers the spectator camera holder as the
+  camera's home. At the end of the run the camera was handed back there - and that holder is removed a moment later, taking the
+  game camera with it. From then on every screen draw failed (both logs: error in the full-screen effects right after the results
+  screen opened), so no menu and a frozen picture. The camera now always goes back to the ship's own camera mount, and a failure
+  in the full-screen effects can no longer stop the menus from drawing.
+- The "results watch" log lines now report every 0.5 s (screen elements, UI surface, camera distance) in case anything is left.
+
 ## 0.7.4-challenge (2026-10-06) - challenge results screen, saved-game doors, UNTESTED build (all players must run 0.7.4-challenge; protocol 29)
 From the 18:48 run on 0.7.3 (both logs) and a campaign saved-game test. User: no more spinning, but after both died the screen still
 had no menu; in a saved campaign game an unlocked security door didn't open for the joiner (half passable).

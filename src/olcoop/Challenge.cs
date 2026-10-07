@@ -81,19 +81,25 @@ namespace OlCoop.Challenge
         }
 
         /// Every menu frame on the host: on the challenge briefing, announce the level (at once, then every 3 s for late joiners).
-        static float s_results_watch = -1f;
+        static float s_results_watch = -1f, s_next_watch;
         /// Every menu frame for 6 s after the results screen was asked for: log what the game is doing (once per second).
         public static void ResultsWatch()
         {
             if (s_results_watch < 0f) return;
             float t = Time.realtimeSinceStartup - s_results_watch;
             if (t > 6f) { s_results_watch = -1f; return; }
-            if ((int)(t * 10f) % 10 != 0) return;
+            if (t < s_next_watch) return;
+            s_next_watch = t + 0.5f;
             var cam = Camera.main;
+            var ui = GameManager.m_viewer != null ? GameManager.m_viewer.c_ui_mesh_transform : null;
+            var mr = ui != null ? ui.GetComponent<MeshRenderer>() : null;
             CoopLog.Write("CHAL", "results watch +" + t.ToString("F1") + "s: game=" + GameManager.m_game_state + " gameplay=" + GameplayManager.m_gameplay_state +
                 " menu=" + MenuManager.m_menu_state + "/" + MenuManager.m_menu_sub_state + " resultsUi=" + UIManager.TypeExists(UIElementType.CHALLENGE_RESULTS) +
                 " deathPaused=" + PlayerShip.DeathPaused + " bgFade=" + UIManager.ui_bg_fade.ToString("F1") + " timeScale=" + Time.timeScale +
-                " cam=" + (cam != null ? (cam.transform.parent != null ? cam.transform.parent.name : "null") + " enabled=" + cam.enabled : "none"));
+                " cam=" + (cam != null ? (cam.transform.parent != null ? cam.transform.parent.name : "null") + " enabled=" + cam.enabled : "none") +
+                " elements=" + UIManager.m_num_elements + " uiMesh=" + (ui != null ? (ui.parent != null ? ui.parent.name : "null") + " active=" + ui.gameObject.activeInHierarchy + " renderer=" + (mr != null && mr.enabled) +
+                " dist=" + (cam != null ? Vector3.Distance(cam.transform.position, ui.position).ToString("F2") : "-") : "none") +
+                " blocker=" + (GameManager.m_player_ship != null && GameManager.m_player_ship.c_bright_blocker_go != null));
         }
 
         public static void HostMenuTick()
@@ -223,7 +229,12 @@ namespace OlCoop.Challenge
                 UIManager.ShowCinematicBars(false); UIManager.SetScreenFade(0f); UIManager.SetOverlayAntiAlias(false);
                 if (ship != null && ship.c_camera_transform != null)
                 {
-                    ship.c_camera_transform.parent = ship.m_camera_parent;
+                    // 0.7.5: a death while spectating records the spectate rig as the camera's home (PlayerShip.StartDying:
+                    // m_camera_parent = camera.parent). The rig is destroyed at the end of the frame - with the camera and its bright
+                    // blocker under it: every UI draw then threw (19:13 run, HUD9 NRE in DrawFullScreenEffects) = no menu, frozen view.
+                    var home = OlCoop.Death.Spectate.SafeCameraHome(ship);
+                    ship.m_camera_parent = home;
+                    ship.c_camera_transform.parent = home;
                     ship.c_camera_transform.localPosition = Vector3.zero;
                     ship.ResetCameraPosition();
                     ship.ResetCameraSway();
@@ -239,7 +250,7 @@ namespace OlCoop.Challenge
             }
             catch (Exception ex) { CoopLog.Error("CHAL results post", ex); }
             OlCoop.World.CoopWorldTick.MenuOpen = false; // results screen, not an Esc menu: nothing keeps running behind it
-            s_results_watch = Time.realtimeSinceStartup;
+            s_results_watch = Time.realtimeSinceStartup; s_next_watch = 0f;
             CoopLog.Write("CHAL", "results screen opened (menu " + MenuManager.m_menu_state + ", camera on " + (Camera.main != null && Camera.main.transform.parent != null ? Camera.main.transform.parent.name : "null") + ")");
         }
 
@@ -588,6 +599,19 @@ namespace OlCoop.Challenge
             CoopLog.Write("CHAL", "co-op run: leaderboard upload skipped (local best score kept)");
             __result = Empty();
             return false;
+        }
+    }
+
+    /// 0.7.5 safety: a missing bright blocker (destroyed camera child) must not abort the whole UI draw (= no menus at all).
+    [HarmonyPatch(typeof(UIManager), "DrawFullScreenEffects")]
+    static class CH14_SafeFullScreenEffects
+    {
+        static int s_logged;
+        static Exception Finalizer(Exception __exception)
+        {
+            if (__exception == null || !CoopConfig.Active) return __exception;
+            if (s_logged++ < 3) CoopLog.Write("CHAL", "full-screen effects failed (" + __exception.GetType().Name + "); menus still drawn");
+            return null;
         }
     }
 

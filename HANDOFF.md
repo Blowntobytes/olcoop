@@ -13,7 +13,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.7.4 challenge"). Protocol = 29 (in build.sh). Message ids used so far: 160-213. Current build folder: build-challenge (since 0.7.0; build-alpha holds 0.6.18-alpha, build-online held 0.5.x).
+  `VERSION` ("0.7.5 challenge"). Protocol = 29 (in build.sh). Message ids used so far: 160-213. Current build folder: build-challenge (since 0.7.0; build-alpha holds 0.6.18-alpha, build-online held 0.5.x).
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 192 patches, 0 problems;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-alpha, build-challenge (current).
@@ -836,3 +836,13 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   DeathPaused, bgFade, timeScale, camera each second for 6 s (from CH8 MenuManager.Update and CH9 GameplayManager.Update postfixes).
 - Doors: CoopDoors (WorldFx.cs): host sends LockType/OpenForever/HasBeenOpened for all DoorBase (sorted by position) after the world
   manifest when hashes match; joiner applies if counts match. Log "[WORLD] joiner: door states from the host: N of M changed ...".
+
+## 0.7.5-challenge status (2026-10-06) - installed, UNTESTED. Protocol 29.
+- Installed SHA1 6477a93de8fc97f52d7c1cf0ab353e8fde76350d (321536 bytes), verified in game folder + build-challenge. Tag v0.7.5-challenge.
+- 19:05 run (0.7.4): both "results screen opened ... camera on olcoop_spectate_cam" then "[ERROR] HUD9: NRE GameObject.SetActive in
+  DrawFullScreenEffects" (c_bright_blocker_go, a Main Camera child, gone). PlayerShip.StartDying sets m_camera_parent = camera.parent
+  (2841); dying while spectating stores our rig; OpenResults restored the camera to it; rig Destroy took Main Camera. Results watch
+  logged only once (draw threw every frame). Fix: Spectate.SafeCameraHome (never rig/null -> c_cam_controller), applied in OpenResults
+  and at Spectate.Stop (also repairs m_camera_parent for later respawns). CH14 finalizer on UIManager.DrawFullScreenEffects swallows
+  exceptions in co-op. Watch logs every 0.5 s (elements, ui mesh parent/active/renderer, cam-ui distance, blocker).
+- 0.7.3 lockup (no NRE, camera on _cam_controller) is still unexplained; the watch lines will show it if it recurs.
