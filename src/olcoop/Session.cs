@@ -76,6 +76,7 @@ namespace OlCoop.Session
             NetworkServer.SetClientNotReady(conn);
             NetworkServer.SendToClient(conn.connectionId, OlCoop.Death.DNet.Config, new OlCoop.Death.ConfigMsg { mode = (byte)OlCoop.Death.CoopSettings.Mode, delay = OlCoop.Death.CoopSettings.RespawnDelay, ff = OlCoop.Death.CoopSettings.FriendlyFire });
             NetworkServer.SendToClient(conn.connectionId, OlCoop.Robots.RNet.LevelInfo, new IntegerMessage((int)GameplayManager.DifficultyLevel));
+            OlCoop.Challenge.CoopChallenge.SendInfoTo(conn);
             NetworkServer.SendToClient(conn.connectionId, 48, new StringMessage(scene));
             NetworkServer.SendToClient(conn.connectionId, 49, new StringMessage(scene));
             CoopLog.Write("HOST", "sent SceneLoad/SceneLoaded '" + scene + "' to conn " + conn.connectionId);
@@ -710,7 +711,16 @@ namespace OlCoop.Session
             var story = GameManager.StoryMission;
             if (story == null) { CoopLog.Write("JOIN", "LoadScene '" + name + "': no story mission loaded"); return true; }
             int idx = story.FindLevelIndex(name);
-            if (idx < 0) return true;
+            if (idx < 0)
+            {
+                // 0.7.0: a challenge level
+                bool inLvl = GameManager.m_game_state == GameManager.GameState.GAMEPLAY || GameplayManager.LevelIsLoaded;
+                if (GameManager.ChallengeMission == null || GameManager.ChallengeMission.FindLevelIndex(name) < 0) return true;
+                if (name == s_last_scene && Time.realtimeSinceStartup - s_last_scene_at < 6f) { CoopLog.Write("JOIN", "ignoring duplicate LoadScene '" + name + "' (already loading it)"); return false; }
+                s_last_scene = name; s_last_scene_at = Time.realtimeSinceStartup;
+                CoopClient.LevelArrived();
+                return !OlCoop.Challenge.CoopChallenge.TryLoadChallenge(name, inLvl);
+            }
             if (OlCoop.World.PostLevel.ShouldDefer(name)) return false;
             if (name == s_last_scene && Time.realtimeSinceStartup - s_last_scene_at < 6f)
             {

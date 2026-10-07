@@ -204,6 +204,8 @@ namespace OlCoop.World
         /// 0.6.14: team-wipe / hardcore restart. The joiners are still in the level (dead) and come along with the host's scene send;
         /// they can't press READY UP, so the INIT gate must not hold the reload (0.6.10-0.6.14 froze both screens here).
         public static void SkipGateForRestart() { End(); s_released = true; CoopLog.Write("FLOW", "host: level restart; no ready check"); }
+        /// 0.7.0: forget who was ready (the host picked another challenge level / reopened the briefing).
+        public static void ClearMarks() { if (s_ready.Count > 0) CoopLog.Write("FLOW", "host: ready marks cleared (" + s_ready.Count + ")"); s_ready.Clear(); s_shown_ready = -1; s_shown_total = -1; }
         public static void End() { s_released = false; if (s_on || DeadFinish) { s_on = false; DeadFinish = false; s_ready.Clear(); CoopStatus.Clear(); } }
 
         static int Joiners()

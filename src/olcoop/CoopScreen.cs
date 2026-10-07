@@ -21,7 +21,7 @@ namespace OlCoop.UI
         public static readonly MenuState msCoop = (MenuState)121;
         public static readonly UIElementType uiCoop = (UIElementType)123;
         public const int MainMenuItemId = 40;
-        const int ID_HOST = 0, ID_OVERLAY = 1, ID_LEAVE = 3, ID_READY = 4, ID_CAMPAIGN = 5, ID_PREV = 8, ID_NEXT = 9, ID_FRIEND0 = 10, MAX_FRIENDS = 20, ID_BACK = 100;
+        const int ID_HOST = 0, ID_OVERLAY = 1, ID_LEAVE = 3, ID_READY = 4, ID_CAMPAIGN = 5, ID_CHALLENGE = 6, ID_PREV = 8, ID_NEXT = 9, ID_FRIEND0 = 10, MAX_FRIENDS = 20, ID_BACK = 100;
         static int s_page, s_per_page = 1;
         static readonly MethodInfo s_goBack = AccessTools.Method(typeof(MenuManager), "GoBack");
 
@@ -92,6 +92,9 @@ namespace OlCoop.UI
             {
                 // 0.6.12: start the campaign from here (the stock mission select: new game / level select)
                 uie.SelectAndDrawItem("PLAY CAMPAIGN", pos, ID_CAMPAIGN, false, 1f, 0.75f);
+                pos.y += 62f;
+                // 0.7.0: co-op challenge mode (the stock challenge level select)
+                uie.SelectAndDrawItem("PLAY CHALLENGE", pos, ID_CHALLENGE, false, 1f, 0.75f);
                 pos.y += 62f;
             }
             if (CoopConfig.IsHost && steam && SteamLink.Lobby != CSteamID.Nil)
@@ -226,6 +229,13 @@ namespace OlCoop.UI
                     {
                         UIManager.DestroyAll();
                         MenuManager.ChangeMenuState(MenuState.MISSION_SELECT);
+                        MenuManager.PlaySelectSound();
+                    }
+                    else if (sel == ID_CHALLENGE)
+                    {
+                        UIManager.DestroyAll();
+                        MenuManager.m_selected_mission = GameManager.ChallengeMission;
+                        MenuManager.ChangeMenuState(MenuState.CHALLENGE_SELECT);
                         MenuManager.PlaySelectSound();
                     }
                     else if (sel == ID_PREV) { s_page--; MenuManager.PlaySelectSound(); }

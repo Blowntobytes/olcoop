@@ -13,10 +13,10 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.6.18 alpha"). Protocol = 27 (in build.sh). Message ids used so far: 160-208. Current build folder: build-alpha (since 0.6.0-alpha; build-online held 0.5.x).
+  `VERSION` ("0.7.0 challenge"). Protocol = 28 (in build.sh). Message ids used so far: 160-212. Current build folder: build-challenge (since 0.7.0; build-alpha holds 0.6.18-alpha, build-online held 0.5.x).
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 192 patches, 0 problems;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
-- ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-alpha (current).
+- ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-alpha, build-challenge (current).
   Bug fixes overwrite the current phase folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
 - Also install the DLL directly into the game folder via the device bridge and verify size/mtime (user's install.bat runs proved unreliable).
 - Check the `[INIT] olcoop x.y.z` line of every log before analysing a test — twice the user tested a stale version.
@@ -783,3 +783,20 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   transitions wait on it (ClawSetAnimationState/ClawLegalToSwitchAnimState/MaybePlayQueuedAnimation). Joiner log: claw id 3 in 'waking'
   (hash -2143358888) 16:54:35 -> 16:57:17. HostAnimators.Keep (from P4 host branch) sets AnimatorCullingMode.AlwaysAnimate once per robot.
   Log "[RSYNC] host: CLAWBOTA animator was ...; now always animates". Watch host frame rate on big levels.
+
+## 0.7.0-challenge status (2026-10-06) - NEW PHASE "challenge", installed, UNTESTED. Protocol 28 (msgs 209-212). Folder build-challenge.
+- Installed SHA1 67eb227ac033619a732f4de6ed6c5ed068675d5a (314880 bytes), verified in game folder + build-challenge. Tag v0.7.0-challenge. 278 patches, 0 problems, 0 warnings.
+- User decisions: deaths follow the co-op death setting (Respawn/Spectate: run ends when nobody alive; Hardcore: first death ends it);
+  each player picks own loadout on the briefing; kill upgrades for everyone.
+- src/olcoop/Challenge.cs: 209 ChallengeInfo (level idx in ChallengeMission, countdown, difficulty; host on CHALLENGE_BRIEFING every 3 s
+  + before every scene send), 210 state 4/s (score, kills, time, combo, end reason), 211 kill upgrade (joiner runs UpgradeRandom* on its
+  own player and re-sends its loadout), 212 run over (everyone opens CHALLENGE_RESULTS via PlayerHasDied with AllowResults bypass of D2).
+  Joiner skips ChallengeManager.Update (JoinerUpdate: countdown + beeps + combo decay), AddKill blocked, ChooseSpawnPointSinglePlayer -> null.
+  Host: countdown expiry ends the run (HostUpdatePrefix; first expiry with host alive = stock COUNTDOWN COMPLETE, then end; deferred to CH9
+  postfix), SpawnRobot swaps GameManager.m_player_ship to a random living player (segment index refreshed), joiner start armor
+  InitChallengeForPlayer + cap clamp (CH10), leaderboard upload skipped in co-op (CH13). Death.DoReset in challenge -> HostEndRun.
+  Joiner menus (CH7): briefing START -> MAIN_MENU + ManualReady (LoadoutChosen); CHALLENGE_SELECT/DIFFICULTY -> MAIN_MENU; BACK on a briefing
+  = declined for that level (READY UP still works). Host clears ready marks on entering the briefing / level change (HostReady.ClearMarks).
+  Session C1: non-story scene name -> TryLoadChallenge (keeps chosen loadout across CreateNewGame; else random stock loadout; drops campaign carry).
+- Reviewed by an independent agent before release; blocker (stale ready marks) and 4 should-fix items fixed.
+- Known gaps: super warning only on host; joiner local best score saved from the team score.

@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.7.0-challenge (2026-10-06) - NEW PHASE: challenge mode in co-op, UNTESTED build (all players must run 0.7.0-challenge; protocol 28)
+New build folder: build-challenge (build-alpha keeps 0.6.18-alpha).
+- New: PLAY CHALLENGE on the host's CO-OP screen opens the stock challenge level select (level, countdown/infinite, difficulty).
+- When the host reaches the loadout (briefing) screen, joiners in the main menu are taken to the same briefing to pick their own
+  weapons and missiles; START marks them ready and they wait. The host's START waits until every joiner is ready. A joiner who
+  presses READY UP instead (or joins mid-run) gets the game's random loadout.
+- The host runs the challenge (robot waves, timer, score); joiners see the same score, kills, combo and countdown (with the last
+  10 seconds' beeps). Kills by any player count. New robots appear around a random living player, not only around the host.
+- Kill upgrades (every 25 kills, 20 in countdown) are given to every player's ship.
+- Deaths follow the CO-OP OPTIONS death setting: Respawn and Spectate keep the run going while anyone is alive; Hardcore ends it
+  on the first death. The run ends for everyone (results screen on every machine) when the countdown runs out or nobody is left.
+- Co-op runs keep your local best score but are not uploaded to the Steam leaderboards.
+- Known gap: the "INCOMING SUPER AUTO-OP" warning shows only on the host.
+
 ## 0.6.18-alpha (2026-10-06) - Scorpions near a joiner, UNTESTED build (all players must run 0.6.18-alpha; protocol 27)
 From the 16:51 run on 0.6.17 (both logs, PeetzaGuest hosting). User: Scorpions near the joiner just stare at him unless the host is near.
 - Fix: the host only animated robots its own camera could see. A Scorpion only moves on to its next action when its current

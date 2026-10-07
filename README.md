@@ -24,6 +24,7 @@ expect rough edges. Download the latest zip from [Releases](https://github.com/B
   through olmod): right-click a friend > Invite to Game. The INVITE button next to each friend on the CO-OP screen works in-game.
 - Every player must run the same olcoop version; the game refuses to connect otherwise.
 - Improper disconnections can cause game freezing. Either 'leave session' or 'stop hosting' for proper disconnect.
+- Challenge co-op (new): the "INCOMING SUPER AUTO-OP" warning only shows for the host. Co-op challenge scores are not sent to the Steam leaderboards.
 - Over long-distance connections robots lag behind on joiners' screens (they are shown about 0.1 s behind the host plus the ping).
 
 ## Install (players)
@@ -68,6 +69,7 @@ change how joiners display robots. Logs: `Overload\olcoop_logs\`.
 | `LevelFlow.cs` | Audio logs, exiting together (everyone lined up in the exit tunnel), lockdown regroups, teammates on the automap, closing the map safely, no flying in the map |
 | `Lockdown.cs` | Lockdowns on joiners (doors, counter, alarm) and the boss/reactor health bar |
 | `WorldFx.cs` | Auto-op fabricator (robot maker) effects and cryotube pickups on joiners |
+| `Challenge.cs` | Challenge mode in co-op: shared score/kills/timer, kill upgrades for everyone, joiner loadout briefing, results for everyone |
 | `Ping.cs` | Map pings shown to every player, hologuide to a ping |
 | `FlareColors.cs` | Per-player flare colors |
 | `Items.cs` | Saved-game items, late-activated items, joiner pickups, pickup sounds/ammo/energy, shared upgrade points and weapons, armor/energy cap, hologuide item list |

@@ -167,6 +167,10 @@ namespace OlCoop.Combat
         }
 
         /// Joiner: our ship just started in a co-op level; send our loadout to the host shortly (its copy of us must exist first).
+        /// 0.7.0: challenge mode starts with the briefing loadout; no carry-over from a campaign level.
+        public static void DropCarry() { if (s_carry != null) CoopLog.Write("COMBAT", "joiner: challenge level, campaign loadout not carried over"); s_carry = null; s_carry_taken = true; }
+        /// 0.7.0: re-send our loadout to the host now (challenge kill upgrades).
+        public static void SendSoon() { s_send_at = Time.realtimeSinceStartup + 0.1f; }
         public static void JoinerShipStarted() { s_send_at = Time.realtimeSinceStartup + 1.0f; s_carry_taken = false; s_last_state = null; }
 
         public static void JoinerTick()

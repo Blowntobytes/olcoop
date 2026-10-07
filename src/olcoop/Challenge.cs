@@ -1,0 +1,546 @@
+// Challenge mode in co-op (0.7.0, phase "challenge").
+//  Stock challenge mode is single-player: ChallengeManager.Update (run from GameplayManager.Update while IsChallengeMode) spawns the
+//  robots, counts score/kills/time, awards weapon upgrades every 25 (countdown: 20) kills and ends the run through the local player's
+//  death (PlayerHasDied -> DoneLevel(Died) -> CHALLENGE_RESULTS). In co-op:
+//   - host: runs ChallengeManager as stock; robots it spawns go through the mod's dynamic-spawn sync (Robots.cs P2). Each spawn is
+//     placed around a random living player (spawn choice reads GameManager.m_player_ship). Score, kills, time and combo go to joiners
+//     4x a second (210); every kill upgrade is sent (211) so every player gets one; the run ends for everyone (212) when the countdown
+//     runs out or the co-op death rules say the run is over (team wiped / hardcore death) - see CoopDeath.DoReset.
+//   - joiner: never runs the challenge simulation (it would spawn its own robots); shows the host's numbers, counts the countdown
+//     down between updates, plays the last-10-seconds beeps, applies kill upgrades to its own ship and opens the results screen
+//     when the host ends the run.
+//   - menus: the host picks a level from CHALLENGE on the CO-OP screen. When it reaches the briefing (loadout) screen it tells
+//     joiners (209: level, countdown mode, difficulty); a joiner in the main menu is taken to the same briefing, picks its own
+//     loadout and presses START, which marks it ready (the host's level start waits for ready players, PostLevel.HostReady).
+using System;
+using System.Collections.Generic;
+using System.Reflection;
+using HarmonyLib;
+using Overload;
+using UnityEngine;
+using UnityEngine.Networking;
+
+namespace OlCoop.Challenge
+{
+    public class ChallengeInfoMsg : MessageBase
+    {
+        public int level; public bool countdown; public int difficulty;
+        public override void Serialize(NetworkWriter w) { w.Write(level); w.Write(countdown); w.Write(difficulty); }
+        public override void Deserialize(NetworkReader r) { level = r.ReadInt32(); countdown = r.ReadBoolean(); difficulty = r.ReadInt32(); }
+    }
+
+    public class ChallengeStateMsg : MessageBase
+    {
+        public int score, kills; public float time, combo; public byte endReason;
+        public override void Serialize(NetworkWriter w) { w.Write(score); w.Write(kills); w.Write(time); w.Write(combo); w.Write(endReason); }
+        public override void Deserialize(NetworkReader r) { score = r.ReadInt32(); kills = r.ReadInt32(); time = r.ReadSingle(); combo = r.ReadSingle(); endReason = r.ReadByte(); }
+    }
+
+    public class ChallengeEndMsg : MessageBase
+    {
+        public int score, kills; public string reason;
+        public override void Serialize(NetworkWriter w) { w.Write(score); w.Write(kills); w.Write(reason ?? ""); }
+        public override void Deserialize(NetworkReader r) { score = r.ReadInt32(); kills = r.ReadInt32(); reason = r.ReadString(); }
+    }
+
+    public static class CoopChallenge
+    {
+        public const short MsgInfo = 209;     // H->J ChallengeInfoMsg (host on the challenge briefing, and before every scene send)
+        public const short MsgState = 210;    // H->J ChallengeStateMsg, 4/s in a challenge level
+        public const short MsgUpgrade = 211;  // H->J IntegerMessage: 0 weapon upgrade, 1 missile upgrade
+        public const short MsgEnd = 212;      // H->J ChallengeEndMsg: the run is over
+
+        /// Set while our own code calls GameplayManager.PlayerHasDied to open the results screen (D2 lets it through).
+        public static bool AllowResults;
+        /// Host: the run has been ended (no second end, no restart).
+        public static bool Ending;
+        /// Set while the host applies a kill upgrade to its own ship (so the postfix sends exactly one event per award).
+        static bool s_in_update;
+
+        public static bool InChallenge { get { return CoopConfig.Active && GameplayManager.IsChallengeMode; } }
+
+        static IEnumerable<NetworkConnection> Joiners()
+        {
+            foreach (var c in NetworkServer.connections)
+                if (c != null && c.connectionId != 0 && c.isConnected && Session.CoopHost.Verified.Contains(c.connectionId)) yield return c;
+        }
+        static void SendAll(short type, MessageBase m) { foreach (var c in Joiners()) c.Send(type, m); }
+
+        public static void ResetForLevel() { Ending = false; s_end_pending = null; s_next_state = 0f; s_end_alert = false; s_upgrades_sent = 0; }
+
+        // ================================================================ host: menus
+        static float s_next_info;
+        static MenuState s_last_menu;
+        static string s_last_key;
+
+        public static ChallengeInfoMsg CurrentInfo()
+        {
+            var li = GameplayManager.Level;
+            int idx = li != null && GameManager.ChallengeMission != null ? GameManager.ChallengeMission.FindLevelIndex(li.FileName) : -1;
+            return new ChallengeInfoMsg { level = idx, countdown = ChallengeManager.CountdownMode, difficulty = (int)GameplayManager.DifficultyLevel };
+        }
+
+        /// Every menu frame on the host: on the challenge briefing, announce the level (at once, then every 3 s for late joiners).
+        public static void HostMenuTick()
+        {
+            if (!CoopConfig.IsHost || !NetworkServer.active) return;
+            var ms = MenuManager.m_menu_state;
+            bool entered = ms != s_last_menu; s_last_menu = ms;
+            if (ms != MenuState.CHALLENGE_BRIEFING || !GameplayManager.IsChallengeMode) return;
+            if (!entered && Time.realtimeSinceStartup < s_next_info) return;
+            s_next_info = Time.realtimeSinceStartup + 3f;
+            var m = CurrentInfo();
+            if (m.level < 0) return;
+            string key = m.level + "|" + m.countdown + "|" + m.difficulty;
+            if (entered || key != s_last_key)
+            {
+                // a joiner marked ready earlier (main menu READY UP / another level) must pick this level's loadout first
+                s_last_key = key;
+                OlCoop.World.HostReady.ClearMarks();
+            }
+            SendAll(MsgInfo, m);
+            if (entered) CoopLog.Write("CHAL", "host: on the challenge briefing; told joiners level " + m.level + " (" + GameplayManager.Level.FileName + ") countdown=" + m.countdown + " difficulty=" + m.difficulty);
+        }
+
+        /// Host, right before a scene send to one joiner: the challenge settings that level needs.
+        public static void SendInfoTo(NetworkConnection conn)
+        {
+            if (!GameplayManager.IsChallengeMode) return;
+            var m = CurrentInfo();
+            if (m.level < 0) return;
+            NetworkServer.SendToClient(conn.connectionId, MsgInfo, m);
+            CoopLog.Write("CHAL", "host: challenge settings to conn " + conn.connectionId + ": level " + m.level + " countdown=" + m.countdown);
+        }
+
+        // ================================================================ host: in level
+        static float s_next_state;
+        static int s_upgrades_sent;
+
+        public static void HostTick()
+        {
+            if (!CoopConfig.IsHost || !NetworkServer.active || !GameplayManager.IsChallengeMode || !GameplayManager.LevelIsLoaded || Ending) return;
+            if (s_end_pending != null) { HostEndRun(s_end_pending); return; }
+            if (Time.realtimeSinceStartup < s_next_state) return;
+            s_next_state = Time.realtimeSinceStartup + 0.25f;
+            SendAll(MsgState, new ChallengeStateMsg { score = ChallengeManager.ChallengeScore, kills = ChallengeManager.ChallengeRobotsDestroyed,
+                time = ChallengeManager.ChallengeModeTime, combo = ChallengeManager.CMComboTimer, endReason = (byte)ChallengeManager.m_secret_end_reason });
+        }
+
+        /// Host prefix of ChallengeManager.Update. False = skip the stock update this frame.
+        public static bool HostUpdatePrefix()
+        {
+            if (Ending || s_end_pending != null) return false;
+            s_in_update = true;
+            if (!ChallengeManager.CountdownMode || GameplayManager.Level == null || GameplayManager.Level.IsSecret) return true;
+            float left = ChallengeManager.ChallengeModeTime;
+            if (left > RUtility.FRAMETIME_GAME) return true;
+            var ship = GameManager.m_player_ship;
+            bool hostAlive = ship != null && !(bool)ship.m_dying && !(bool)ship.m_dead;
+            // first expiry with the host alive: stock "COUNTDOWN COMPLETE" (popup, slow motion, 2 more seconds); the second expiry (or a
+            // dead host, where stock would wait forever for a living ship) ends the run for everyone instead of the stock self-kill
+            if (ChallengeManager.m_secret_end_reason == ChallengeManager.SecretLevelEnd.NONE && hostAlive) return true;
+            HostEndRunSoon("TIME EXPIRED");
+            return false;
+        }
+        public static void HostUpdateFinalizer() { s_in_update = false; }
+
+        /// Host: a kill upgrade was just given to the host's ship from ChallengeManager.Update - give every joiner one too.
+        public static void HostUpgraded(bool missile)
+        {
+            if (!s_in_update || !CoopConfig.IsHost || !NetworkServer.active) return;
+            SendAll(MsgUpgrade, new UnityEngine.Networking.NetworkSystem.IntegerMessage(missile ? 1 : 0));
+            if (s_upgrades_sent++ < 20) CoopLog.Write("CHAL", "host: kill upgrade (" + (missile ? "missile" : "weapon") + ") at " + (int)ChallengeManager.ChallengeRobotsDestroyed + " kills; sent to joiners");
+        }
+
+        /// Host: the run is over (countdown, team wiped, hardcore death). Everyone gets the results screen.
+        static string s_end_pending;
+        /// From inside ChallengeManager.Update (GameplayManager.Update): end the run after this frame's update, not mid-update.
+        public static void HostEndRunSoon(string reason) { if (!Ending && s_end_pending == null) s_end_pending = reason; }
+
+        public static void HostEndRun(string reason)
+        {
+            s_end_pending = null;
+            if (Ending) return;
+            Ending = true;
+            int score = ChallengeManager.ChallengeScore, kills = ChallengeManager.ChallengeRobotsDestroyed;
+            CoopLog.Write("CHAL", "host: run over (" + reason + "): score " + score + ", " + kills + " kills; results for everyone");
+            SendAll(MsgEnd, new ChallengeEndMsg { score = score, kills = kills, reason = reason });
+            foreach (var c in Joiners()) c.FlushChannels();
+            OpenResults();
+        }
+
+        static void OpenResults()
+        {
+            try { OlCoop.Death.Spectate.Stop(GameManager.m_player_ship); } catch { }
+            try { OlCoop.Hud.CoopHud.ClearRespawn(); } catch { }
+            try
+            {
+                var ship = GameManager.m_player_ship;
+                if (ship != null && ((bool)ship.m_dying || (bool)ship.m_dead)) OlCoop.World.PostLevel.ClearDeathForMenus(CoopConfig.IsHost ? "host" : "joiner");
+            }
+            catch (Exception ex) { CoopLog.Error("CHAL results", ex); }
+            AllowResults = true;
+            try { GameplayManager.PlayerHasDied(); }
+            finally { AllowResults = false; }
+        }
+
+        /// Host: spawn placement reads GameManager.m_player_ship; place each new robot around a random living player.
+        static readonly System.Random s_rng = new System.Random();
+        public static PlayerShip PickSpawnFocus()
+        {
+            var alive = new List<PlayerShip>();
+            foreach (var p in Overload.NetworkManager.m_Players)
+            {
+                var s = p != null ? p.c_player_ship : null;
+                if (s == null || (bool)s.m_dying || (bool)s.m_dead || !s.gameObject.activeInHierarchy) continue;
+                if (!s.isLocalPlayer)
+                {
+                    int sg = s.c_moving_object != null ? s.c_moving_object.CurrentSegmentIndex : -1;
+                    if (sg < 0) continue; // unknown segment: spawn choice indexes segment tables with it
+                    s.SegmentIndex = sg;  // only kept current for the local ship
+                }
+                alive.Add(s);
+            }
+            if (alive.Count == 0) return null; // nobody alive: stock (around the host)
+            return alive[s_rng.Next(alive.Count)];
+        }
+
+        /// Host: a joiner's player object was just created in a challenge level - the stock per-player setup (countdown +50 armor).
+        public static void HostNewPlayer(NetworkConnection conn)
+        {
+            if (!GameplayManager.IsChallengeMode || conn == null || conn.playerControllers == null) return;
+            foreach (var pc in conn.playerControllers)
+            {
+                var pl = pc != null && pc.gameObject != null ? pc.gameObject.GetComponent<Player>() : null;
+                if (pl == null || pl.isLocalPlayer) continue;
+                ChallengeManager.InitChallengeForPlayer(pl);
+                OlCoop.World.CoopCaps.Clamp(pl, "challenge start");
+                CoopLog.Write("CHAL", "host: challenge start armor for netId=" + pl.netId.Value + ": " + ((float)pl.m_hitpoints).ToString("F0"));
+            }
+        }
+
+        // ================================================================ joiner
+        public static ChallengeInfoMsg Pending;      // last settings from the host
+        public static bool LoadoutChosen;
+        static int s_declined = -1;            // the joiner pressed START on the briefing for Pending.level
+        static bool s_end_alert;
+
+        public static void OnInfo(NetworkMessage msg)
+        {
+            try
+            {
+                var m = msg.ReadMessage<ChallengeInfoMsg>();
+                bool changed = Pending == null || Pending.level != m.level || Pending.countdown != m.countdown || Pending.difficulty != m.difficulty;
+                if (changed) { LoadoutChosen = false; CoopLog.Write("CHAL", "joiner: host chose challenge level " + m.level + " countdown=" + m.countdown + " difficulty=" + m.difficulty); }
+                Pending = m;
+                ChallengeManager.CountdownMode = m.countdown;
+                if (GameManager.m_game_state != GameManager.GameState.MENU || MenuManager.m_menu_state != MenuState.MAIN_MENU) return;
+                if (LoadoutChosen) return; // already waiting with a loadout for this level
+                if (s_declined == m.level) return; // backed out of this briefing; READY UP on the CO-OP screen still works
+                OpenBriefing(m);
+            }
+            catch (Exception ex) { CoopLog.Error("CHAL info", ex); }
+        }
+
+        static void OpenBriefing(ChallengeInfoMsg m)
+        {
+            var mission = GameManager.ChallengeMission;
+            if (mission == null || m.level < 0 || m.level >= mission.NumLevels) { CoopLog.Write("CHAL", "joiner: challenge level " + m.level + " not found"); return; }
+            GameplayManager.DifficultyLevel = m.difficulty;
+            ChallengeManager.CountdownMode = m.countdown;
+            MenuManager.m_selected_mission = mission;
+            OlCoop.World.PostLevel.AllowPlay = false;
+            OlCoop.World.PostLevel.ManualReady = false; // ready again only after START on this briefing
+            s_declined = -1;
+            UIManager.DestroyAll();
+            GameplayManager.CreateNewGame(mission, m.level);
+            MenuManager.ChangeMenuState(MenuState.CHALLENGE_BRIEFING);
+            CoopLog.Write("CHAL", "joiner: opened the challenge briefing for level " + m.level + " - pick a loadout and press START");
+        }
+
+        /// ChangeMenuState prefix on a joiner. False = state replaced/blocked.
+        public static bool JoinerRedirect(ref MenuState state)
+        {
+            if (!CoopConfig.IsJoiner || !Session.CoopClient.ConnectIssued) return true;
+            if (state == MenuState.PLAY_GAME && GameplayManager.IsChallengeMode && !OlCoop.World.PostLevel.AllowPlay &&
+                MenuManager.m_menu_state == MenuState.CHALLENGE_BRIEFING)
+            {
+                // START on the briefing: keep the loadout, tell the host we're ready, wait in the main menu for the level
+                LoadoutChosen = true;
+                OlCoop.World.PostLevel.ManualReady = true;
+                OlCoop.World.PostLevel.HostWaiting = true;
+                CoopLog.Write("CHAL", "joiner: loadout chosen (weapons " + string.Join(",", Array.ConvertAll(ChallengeManager.m_selected_weapons, x => x.ToString())) +
+                    " missiles " + string.Join(",", Array.ConvertAll(ChallengeManager.m_selected_missiles, x => x.ToString())) + "); ready, waiting for the host");
+                state = MenuState.MAIN_MENU;
+                return true;
+            }
+            if (state == MenuState.CHALLENGE_SELECT || state == MenuState.DIFFICULTY_SELECT && GameplayManager.IsChallengeMode)
+            {
+                if (MenuManager.m_menu_state == MenuState.CHALLENGE_BRIEFING && Pending != null) s_declined = Pending.level;
+                // the host picks the level; a joiner backing out of the briefing or the results screen waits in the main menu
+                CoopLog.Write("CHAL", "joiner: " + state + " -> main menu (the host picks the challenge level)");
+                state = MenuState.MAIN_MENU;
+                return true;
+            }
+            return true;
+        }
+
+        /// Joiner level loader: the scene name is a challenge level. Mirrors Session.C1 for the story mission.
+        public static bool TryLoadChallenge(string name, bool inLevel)
+        {
+            var mission = GameManager.ChallengeMission;
+            int idx = mission != null ? mission.FindLevelIndex(name) : -1;
+            if (idx < 0) return false;
+            CoopLog.Write("JOIN", "loading host's challenge level '" + name + "' (index " + idx + ")" + (inLevel ? " from inside a level" : "") +
+                " countdown=" + (Pending != null && Pending.countdown) + " loadout=" + (LoadoutChosen ? "chosen" : "default"));
+            if (inLevel) { OlCoop.Death.Spectate.Stop(null); GameplayManager.DoneLevel(GameplayManager.DoneReason.Quit); }
+            UIManager.DestroyAll(true);
+            if (Pending != null) { ChallengeManager.CountdownMode = Pending.countdown; GameplayManager.DifficultyLevel = Pending.difficulty; }
+            else if (OlCoop.Robots.CoopRobots.HostDifficulty >= 0) GameplayManager.DifficultyLevel = OlCoop.Robots.CoopRobots.HostDifficulty;
+            // CreateNewGame re-rolls the loadout (FauxGiveWeaponsAndMissiles); keep the one picked on the briefing
+            var sw = (int[])ChallengeManager.m_starting_weapons.Clone(); var sm = (int[])ChallengeManager.m_starting_missiles.Clone();
+            var aw = (bool[])ChallengeManager.AvailableWeapons.Clone(); var am = (bool[])ChallengeManager.AvailableMissiles.Clone();
+            bool keep = LoadoutChosen && Pending != null && Pending.level == idx;
+            MenuManager.m_selected_mission = mission;
+            GameplayManager.CreateNewGame(mission, idx);
+            if (keep)
+            {
+                Array.Copy(sw, ChallengeManager.m_starting_weapons, sw.Length); Array.Copy(sm, ChallengeManager.m_starting_missiles, sm.Length);
+                Array.Copy(aw, ChallengeManager.AvailableWeapons, aw.Length); Array.Copy(am, ChallengeManager.AvailableMissiles, am.Length);
+            }
+            else
+            {
+                // no briefing on this machine (joined mid-run or pressed READY UP): the stock random loadout
+                ChallengeManager.SetAvailableMissiles(GameManager.m_local_player);
+                ChallengeManager.SetAvailableWeapons(GameManager.m_local_player);
+                ChallengeManager.CopyStartingToSelected();
+            }
+            LoadoutChosen = false;
+            try { OlCoop.Combat.CoopLoadout.DropCarry(); } catch (Exception ex) { CoopLog.Error("CHAL carry", ex); }
+            OlCoop.World.PostLevel.ManualReady = false;
+            OlCoop.World.PostLevel.AllowPlay = true;
+            if (inLevel) { GameplayManager.m_between_level_start = Time.realtimeSinceStartup; GameplayManager.SwitchToMenu(MenuState.PLAY_GAME); }
+            else MenuManager.ChangeMenuState(MenuState.PLAY_GAME);
+            return true;
+        }
+
+        /// Joiner replacement for ChallengeManager.Update: show the host's run, no simulation.
+        public static void JoinerUpdate()
+        {
+            if (Ending) return;
+            if (ChallengeManager.CountdownMode)
+            {
+                ChallengeManager.ChallengeModeTime = Mathf.Max(0f, (float)ChallengeManager.ChallengeModeTime - RUtility.FRAMETIME_GAME);
+                int left = (int)(float)ChallengeManager.ChallengeModeTime;
+                if (left <= ChallengeManager.NextCMCountdownTime && ChallengeManager.NextCMCountdownTime >= 0)
+                {
+                    SFXCueManager.PlayCue2D((SFXCue)(12 - ChallengeManager.NextCMCountdownTime), 1f, 0f, 0f, reverb: true);
+                    ChallengeManager.NextCMCountdownTime--;
+                }
+            }
+            ChallengeManager.CMComboDelay -= RUtility.FRAMETIME_GAME;
+            if (ChallengeManager.CMComboDelay < 0f) ChallengeManager.CMComboTimer = Mathf.Clamp(ChallengeManager.CMComboTimer - RUtility.FRAMETIME_GAME / 20f, 0f, 1f);
+        }
+
+        static int s_state_logs;
+        public static void OnState(NetworkMessage msg)
+        {
+            try
+            {
+                var m = msg.ReadMessage<ChallengeStateMsg>();
+                if (!GameplayManager.IsChallengeMode || Ending) return;
+                int oldKills = ChallengeManager.ChallengeRobotsDestroyed;
+                ChallengeManager.ChallengeScore = m.score;
+                ChallengeManager.ChallengeRobotsDestroyed = m.kills;
+                ChallengeManager.KillCountLast = m.kills;
+                ChallengeManager.ChallengeModeTime = m.time;
+                ChallengeManager.CMComboTimer = m.combo;
+                if (m.kills > oldKills) UIElement.CM_KILL_FLASH = 0.6f;
+                if (m.endReason == (byte)ChallengeManager.SecretLevelEnd.FINISHED && !s_end_alert)
+                {
+                    s_end_alert = true;
+                    GameManager.m_audio.PlayCue2D(285, 1f, 0.2f);
+                    GameplayManager.AlertPopup(Loc.LS("COUNTDOWN COMPLETE"), Loc.LS("TIME EXPIRED"));
+                }
+                if (s_state_logs++ == 0) CoopLog.Write("CHAL", "joiner: showing the host's run (score " + m.score + ", " + m.kills + " kills, time " + m.time.ToString("F0") + ")");
+            }
+            catch (Exception ex) { CoopLog.Error("CHAL state", ex); }
+        }
+
+        public static void OnUpgrade(NetworkMessage msg)
+        {
+            try
+            {
+                int kind = msg.ReadMessage<UnityEngine.Networking.NetworkSystem.IntegerMessage>().value;
+                var me = GameManager.m_local_player;
+                if (me == null || !GameplayManager.IsChallengeMode) return;
+                if (kind == 1) ChallengeManager.UpgradeRandomMissile(me); else ChallengeManager.UpgradeRandomWeapon(me);
+                OlCoop.Combat.CoopLoadout.SendSoon(); // the host's copy of our ship must know the new level/ammo
+                CoopLog.Write("CHAL", "joiner: team kill upgrade (" + (kind == 1 ? "missile" : "weapon") + ") applied to our ship");
+            }
+            catch (Exception ex) { CoopLog.Error("CHAL upgrade", ex); }
+        }
+
+        public static void OnEnd(NetworkMessage msg)
+        {
+            try
+            {
+                var m = msg.ReadMessage<ChallengeEndMsg>();
+                CoopLog.Write("CHAL", "joiner: host ended the run (" + m.reason + "): score " + m.score + ", " + m.kills + " kills");
+                if (!GameplayManager.IsChallengeMode || !GameplayManager.LevelIsLoaded || Ending) return;
+                Ending = true;
+                ChallengeManager.ChallengeScore = m.score;
+                ChallengeManager.ChallengeRobotsDestroyed = m.kills;
+                OpenResults();
+            }
+            catch (Exception ex) { CoopLog.Error("CHAL end", ex); }
+        }
+    }
+
+    // ==================================================================== patches
+
+    [HarmonyPatch(typeof(ChallengeManager), "Update")]
+    static class CH1_Update
+    {
+        static bool Prefix()
+        {
+            if (!CoopConfig.Active || GameplayManager.IsMultiplayer) return true;
+            try
+            {
+                if (OlCoop.Robots.CoopRobots.IsJoiner) { CoopChallenge.JoinerUpdate(); return false; }
+                if (OlCoop.Robots.CoopRobots.IsHost) return CoopChallenge.HostUpdatePrefix();
+            }
+            catch (Exception ex) { CoopLog.Error("CH1", ex); }
+            return true;
+        }
+        static Exception Finalizer(Exception __exception) { CoopChallenge.HostUpdateFinalizer(); return __exception; }
+    }
+
+    /// Joiner: kills are counted on the host (its numbers arrive 4/s); no local score, combo, achievements.
+    [HarmonyPatch(typeof(ChallengeManager), "AddKill")]
+    static class CH2_NoJoinerKills
+    {
+        static bool Prefix() { return !OlCoop.Robots.CoopRobots.IsJoiner; }
+    }
+
+    [HarmonyPatch(typeof(ChallengeManager), "UpgradeRandomWeapon")]
+    static class CH3_WeaponUpgrade
+    {
+        static void Postfix() { if (OlCoop.Robots.CoopRobots.IsHost) CoopChallenge.HostUpgraded(false); }
+    }
+
+    [HarmonyPatch(typeof(ChallengeManager), "UpgradeRandomMissile")]
+    static class CH4_MissileUpgrade
+    {
+        static void Postfix() { if (OlCoop.Robots.CoopRobots.IsHost) CoopChallenge.HostUpgraded(true); }
+    }
+
+    /// Host: each new challenge robot is placed around a random living player (stock: always around the host).
+    [HarmonyPatch(typeof(ChallengeManager), "SpawnRobot")]
+    static class CH5_SpawnNearAnyPlayer
+    {
+        static void Prefix(out PlayerShip __state)
+        {
+            __state = null;
+            if (!OlCoop.Robots.CoopRobots.IsHost || !GameplayManager.IsChallengeMode) return;
+            try
+            {
+                var focus = CoopChallenge.PickSpawnFocus();
+                if (focus == null || focus == GameManager.m_player_ship) return;
+                __state = GameManager.m_player_ship;
+                GameManager.m_player_ship = focus;
+            }
+            catch (Exception ex) { CoopLog.Error("CH5", ex); }
+        }
+        static Exception Finalizer(PlayerShip __state, Exception __exception)
+        {
+            if (__state != null) GameManager.m_player_ship = __state;
+            return __exception;
+        }
+    }
+
+    /// Joiner: don't move our ship to the single-player start point (the host places joiners).
+    [HarmonyPatch(typeof(ChallengeManager), "ChooseSpawnPointSinglePlayer")]
+    static class CH6_JoinerStartPoint
+    {
+        static bool Prefix(ref LevelData.SpawnPoint __result)
+        {
+            if (!CoopConfig.IsJoiner || !CoopConfig.Active) return true;
+            __result = null;
+            return false;
+        }
+    }
+
+    /// Joiner menu redirects (briefing START -> ready + wait; no own level select).
+    [HarmonyPatch(typeof(MenuManager), "ChangeMenuState")]
+    static class CH7_JoinerMenus
+    {
+        [HarmonyPriority(Priority.High)]
+        static bool Prefix(ref MenuState new_state)
+        {
+            try { return CoopChallenge.JoinerRedirect(ref new_state); }
+            catch (Exception ex) { CoopLog.Error("CH7", ex); return true; }
+        }
+    }
+
+    [HarmonyPatch(typeof(MenuManager), "Update")]
+    static class CH8_HostMenuTick
+    {
+        static void Postfix() { try { CoopChallenge.HostMenuTick(); } catch (Exception ex) { CoopLog.Error("CH8", ex); } }
+    }
+
+    [HarmonyPatch(typeof(GameplayManager), "Update")]
+    static class CH9_HostTick
+    {
+        static void Postfix()
+        {
+            if (!CoopConfig.Active || GameplayManager.IsMultiplayer) return;
+            try { CoopChallenge.HostTick(); } catch (Exception ex) { CoopLog.Error("CH9", ex); }
+        }
+    }
+
+    [HarmonyPatch(typeof(Server), "OnAddPlayerMessage")]
+    static class CH10_NewPlayer
+    {
+        static void Postfix(NetworkMessage msg)
+        {
+            if (!CoopConfig.IsHost || !CoopConfig.Active) return;
+            try { CoopChallenge.HostNewPlayer(msg.conn); } catch (Exception ex) { CoopLog.Error("CH10", ex); }
+        }
+    }
+
+    [HarmonyPatch(typeof(GameplayManager), "LoadLevel")]
+    static class CH11_Reset
+    {
+        static void Prefix() { if (CoopConfig.Active) CoopChallenge.ResetForLevel(); }
+    }
+
+    /// Co-op team scores stay off the public (solo) Steam leaderboards; the local best score is still saved.
+    [HarmonyPatch(typeof(GameplayManager), "UpdateChallengeLeaderboardScore")]
+    static class CH13_NoLeaderboard
+    {
+        static System.Collections.IEnumerator Empty() { yield break; }
+        static bool Prefix(ref System.Collections.IEnumerator __result)
+        {
+            if (!CoopConfig.Active) return true;
+            CoopLog.Write("CHAL", "co-op run: leaderboard upload skipped (local best score kept)");
+            __result = Empty();
+            return false;
+        }
+    }
+
+    [HarmonyPatch(typeof(Client), "RegisterHandlers")]
+    static class CH12_ClientHandlers
+    {
+        static void Postfix()
+        {
+            CoopConfig.EnsureInit();
+            if (!CoopConfig.IsJoiner || Client.GetClient() == null) return;
+            var c = Client.GetClient();
+            c.RegisterHandler(CoopChallenge.MsgInfo, CoopChallenge.OnInfo);
+            c.RegisterHandler(CoopChallenge.MsgState, CoopChallenge.OnState);
+            c.RegisterHandler(CoopChallenge.MsgUpgrade, CoopChallenge.OnUpgrade);
+            c.RegisterHandler(CoopChallenge.MsgEnd, CoopChallenge.OnEnd);
+        }
+    }
+}

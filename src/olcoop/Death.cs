@@ -261,21 +261,30 @@ namespace OlCoop.Death
             OnTimer(netId, seconds); // host's own display
         }
 
+        static string s_reset_reason;
+        static string Ending { get { return GameplayManager.IsChallengeMode ? " - RUN OVER" : " - RESTARTING LEVEL"; } }
         static void ScheduleReset(string reason)
         {
             if (s_reset_latched) return;
             s_reset_latched = true;
             s_reset_at = Time.time + 4f;
+            s_reset_reason = reason;
             CoopLog.Write("DEATH", "level reset scheduled: " + reason);
             var m = new StringMessage(reason);
             foreach (var c in NetworkServer.connections)
                 if (c != null && c.connectionId != 0 && c.isConnected && Session.CoopHost.Verified.Contains(c.connectionId)) c.Send(DNet.TeamReset, m);
-            GameplayManager.AddHUDMessage("CO-OP: " + reason + " - RESTARTING LEVEL", -1, true);
+            GameplayManager.AddHUDMessage("CO-OP: " + reason + Ending, -1, true);
         }
 
         static void DoReset()
         {
             s_reset_at = -1f;
+            if (GameplayManager.IsChallengeMode)
+            {
+                // 0.7.0: a co-op challenge run isn't restarted - it ends for everyone with the results screen
+                OlCoop.Challenge.CoopChallenge.HostEndRun(s_reset_reason ?? "TEAM WIPED");
+                return;
+            }
             CoopLog.Write("DEATH", "restarting level for everyone");
             Spectate.Stop(GameManager.m_player_ship);
             GameplayManager.DoneLevel(GameplayManager.DoneReason.Quit);
@@ -792,7 +801,7 @@ namespace OlCoop.Death
             {
                 var m = msg.ReadMessage<StringMessage>();
                 CoopLog.Write("DEATH", "host: " + m.value);
-                GameplayManager.AddHUDMessage("CO-OP: " + m.value + " - RESTARTING LEVEL", -1, true);
+                GameplayManager.AddHUDMessage("CO-OP: " + m.value + (GameplayManager.IsChallengeMode ? " - RUN OVER" : " - RESTARTING LEVEL"), -1, true);
             });
         }
     }
@@ -816,6 +825,7 @@ namespace OlCoop.Death
         static bool Prefix()
         {
             // Also while our in-level flag is set: stock code can flip game type / IsMultiplayerActive mid-level (host restart).
+            if (OlCoop.Challenge.CoopChallenge.AllowResults) return true; // 0.7.0: our own end of a co-op challenge run
             if (!CoopDeath.Active && !(CoopConfig.Active && Session.CoopSession.InLevel)) return true;
             CoopLog.Write("DEATH", "blocked single-player death menu (co-op)");
             return false;
