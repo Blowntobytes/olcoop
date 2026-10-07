@@ -66,7 +66,41 @@ namespace OlCoop.Challenge
         }
         static void SendAll(short type, MessageBase m) { foreach (var c in Joiners()) c.Send(type, m); }
 
-        public static void ResetForLevel() { JoinerLoadoutGiven = false; Ending = false; s_end_pending = null; s_next_state = 0f; s_end_alert = false; s_upgrades_sent = 0; }
+        // ================================================================ per-player scores (0.7.11, user: no combined tally)
+        // The stock ChallengeScore / ChallengeRobotsDestroyed stay the team totals on the host (stock logic: combo, kill upgrades every
+        // N kills - shared by design). Each player sees only their own: the host keeps a score per player from the robot's killer;
+        // each joiner is sent its own numbers (msgs 210/212 unchanged, now per connection); the host's own are swapped in for drawing.
+        static readonly Dictionary<uint, int[]> s_scores = new Dictionary<uint, int[]>();
+        public static uint PendingKiller;
+        public static void CreditKill(int points)
+        {
+            uint k = PendingKiller; PendingKiller = 0;
+            if (k == 0) return; // no player did it (blast, robot friendly fire): team total only
+            int[] e; if (!s_scores.TryGetValue(k, out e)) s_scores[k] = e = new int[2];
+            e[0] += points; e[1]++;
+        }
+        public static int[] ScoreOf(uint netId) { int[] e; return s_scores.TryGetValue(netId, out e) ? e : new int[2]; }
+        static uint NetIdOf(NetworkConnection c)
+        {
+            if (c == null || c.playerControllers == null) return 0;
+            foreach (var pc in c.playerControllers)
+                if (pc != null && pc.gameObject != null) { var pl = pc.gameObject.GetComponent<Player>(); if (pl != null) return pl.netId.Value; }
+            return 0;
+        }
+        public static bool HostOwnScore(out int score, out int kills)
+        {
+            score = kills = 0;
+            if (!CoopConfig.IsHost || !InChallenge || GameManager.m_local_player == null) return false;
+            var e = ScoreOf(GameManager.m_local_player.netId.Value); score = e[0]; kills = e[1]; return true;
+        }
+        static string ScoreList()
+        {
+            var parts = new List<string>();
+            foreach (var kv in s_scores) parts.Add("netId " + kv.Key + ": " + kv.Value[0] + " (" + kv.Value[1] + " kills)");
+            return parts.Count == 0 ? "none" : string.Join(", ", parts.ToArray());
+        }
+
+        public static void ResetForLevel() { s_scores.Clear(); PendingKiller = 0; JoinerLoadoutGiven = false; Ending = false; s_end_pending = null; s_next_state = 0f; s_end_alert = false; s_upgrades_sent = 0; }
 
         // ================================================================ host: menus
         static float s_next_info;
@@ -144,8 +178,12 @@ namespace OlCoop.Challenge
             if (s_end_pending != null) { HostEndRun(s_end_pending); return; }
             if (Time.realtimeSinceStartup < s_next_state) return;
             s_next_state = Time.realtimeSinceStartup + 0.25f;
-            SendAll(MsgState, new ChallengeStateMsg { score = ChallengeManager.ChallengeScore, kills = ChallengeManager.ChallengeRobotsDestroyed,
-                time = ChallengeManager.ChallengeModeTime, combo = ChallengeManager.CMComboTimer, endReason = (byte)ChallengeManager.m_secret_end_reason });
+            foreach (var c in Joiners())
+            {
+                var e = ScoreOf(NetIdOf(c));
+                c.Send(MsgState, new ChallengeStateMsg { score = e[0], kills = e[1],
+                    time = ChallengeManager.ChallengeModeTime, combo = ChallengeManager.CMComboTimer, endReason = (byte)ChallengeManager.m_secret_end_reason });
+            }
         }
 
         /// Host prefix of ChallengeManager.Update. False = skip the stock update this frame.
@@ -185,8 +223,8 @@ namespace OlCoop.Challenge
             if (Ending) return;
             Ending = true;
             int score = ChallengeManager.ChallengeScore, kills = ChallengeManager.ChallengeRobotsDestroyed;
-            CoopLog.Write("CHAL", "host: run over (" + reason + "): score " + score + ", " + kills + " kills; results for everyone");
-            SendAll(MsgEnd, new ChallengeEndMsg { score = score, kills = kills, reason = reason });
+            CoopLog.Write("CHAL", "host: run over (" + reason + "): team score " + score + ", " + kills + " kills; per player: " + ScoreList() + "; results for everyone");
+            foreach (var c in Joiners()) { var e = ScoreOf(NetIdOf(c)); c.Send(MsgEnd, new ChallengeEndMsg { score = e[0], kills = e[1], reason = reason }); }
             foreach (var c in Joiners()) c.FlushChannels();
             OpenResults();
         }
@@ -333,6 +371,17 @@ namespace OlCoop.Challenge
             CoopLog.Write("CHAL", "joiner: opened the challenge briefing for level " + m.level + " - pick a loadout and press START");
         }
 
+        /// READY UP on the challenge briefing: keep the loadout, tell the host we're ready (PostLevel.ReadyTick, every 3 s).
+        public static void MarkReady(string where)
+        {
+            LoadoutChosen = true;
+            OlCoop.World.PostLevel.ManualReady = true;
+            OlCoop.World.PostLevel.HostWaiting = true;
+            CoopLog.Write("CHAL", "joiner: loadout chosen (weapons " + string.Join(",", Array.ConvertAll(ChallengeManager.m_starting_weapons, x => x.ToString())) +
+                " missiles " + string.Join(",", Array.ConvertAll(ChallengeManager.m_starting_missiles, x => x.ToString())) + "); READY UP - waiting for the host on the " + where);
+            OlCoop.World.CoopStatus.Set(0, "READY - WAITING FOR THE HOST TO START THE CHALLENGE");
+        }
+
         /// ChangeMenuState prefix on a joiner. False = state replaced/blocked.
         public static bool JoinerRedirect(ref MenuState state)
         {
@@ -340,14 +389,9 @@ namespace OlCoop.Challenge
             if (state == MenuState.PLAY_GAME && GameplayManager.IsChallengeMode && !OlCoop.World.PostLevel.AllowPlay &&
                 MenuManager.m_menu_state == MenuState.CHALLENGE_BRIEFING)
             {
-                // START on the briefing: keep the loadout, tell the host we're ready, wait in the main menu for the level
-                LoadoutChosen = true;
-                OlCoop.World.PostLevel.ManualReady = true;
-                OlCoop.World.PostLevel.HostWaiting = true;
-                CoopLog.Write("CHAL", "joiner: loadout chosen (weapons " + string.Join(",", Array.ConvertAll(ChallengeManager.m_selected_weapons, x => x.ToString())) +
-                    " missiles " + string.Join(",", Array.ConvertAll(ChallengeManager.m_selected_missiles, x => x.ToString())) + "); ready, waiting for the host");
+                // fallback (CH18 normally keeps the joiner on the briefing): ready, wait in the main menu
+                MarkReady("main menu");
                 state = MenuState.MAIN_MENU;
-                OlCoop.World.CoopStatus.Set(0, "READY - WAITING FOR THE HOST TO START THE CHALLENGE");
                 return true;
             }
             if (state == MenuState.CHALLENGE_SELECT || state == MenuState.DIFFICULTY_SELECT && GameplayManager.IsChallengeMode)
@@ -648,6 +692,83 @@ namespace OlCoop.Challenge
                 CoopLog.Write("FLOW", "joiner: automap rebuilt for our networked ship netId=" + __instance.netId.Value + " (whole map=" + (GameplayManager.IsChallengeMode) + ")");
             }
             catch (Exception ex) { CoopLog.Error("CH17", ex); }
+        }
+    }
+
+    /// CH18 (0.7.11, user): READY UP on the challenge briefing keeps the joiner on that screen ("waiting for host" shows there).
+    /// Stock ChallengeBriefingUpdate: selection 0 -> sub-state START (UI destroyed, loadout copied) -> after 0.25 s PLAY_GAME. On a joiner,
+    /// at START: mark ready, rebuild the briefing UI like its INIT (without FauxGiveWeaponsAndMissiles, which would wipe the loadout).
+    [HarmonyPatch(typeof(MenuManager), "ChallengeBriefingUpdate")]
+    static class CH18_JoinerReadyStays
+    {
+        static bool Prefix()
+        {
+            if (!CoopConfig.Active || !CoopConfig.IsJoiner || !Session.CoopClient.ConnectIssued || OlCoop.World.PostLevel.AllowPlay) return true;
+            if (MenuManager.m_menu_sub_state != MenuSubState.START) return true;
+            try
+            {
+                CoopChallenge.MarkReady("briefing");
+                UIManager.CreateUIElement(UIManager.SCREEN_CENTER, 7000, UIElementType.LEVEL_DESCRIPTION);
+                UIManager.SetLevelTexture(GameplayManager.Level);
+                MenuManager.m_menu_sub_state = MenuSubState.ACTIVE;
+                MenuManager.SetDefaultSelection(0);
+                return false;
+            }
+            catch (Exception ex) { CoopLog.Error("CH18", ex); return true; }
+        }
+    }
+
+    /// CH19 (0.7.11): host - remember who destroyed the robot (StartExploding runs AddKill inside it).
+    [HarmonyPatch(typeof(Robot), "StartExploding")]
+    static class CH19_KillerForScore
+    {
+        static void Prefix(DamageInfo di)
+        {
+            if (!CoopConfig.IsHost || !CoopChallenge.InChallenge) return;
+            try
+            {
+                uint k = 0;
+                if (di.owner != null) { var p = di.owner.GetComponent<Player>(); if (p != null) k = p.netId.Value; }
+                CoopChallenge.PendingKiller = k;
+            }
+            catch { CoopChallenge.PendingKiller = 0; }
+        }
+        static void Finalizer() { CoopChallenge.PendingKiller = 0; }
+    }
+
+    /// CH20 (0.7.11): host - credit the kill's points (score value + combo) to that player.
+    [HarmonyPatch(typeof(ChallengeManager), "AddKill")]
+    static class CH20_CreditKill
+    {
+        static void Postfix(int scored, int combo)
+        {
+            if (!CoopConfig.IsHost || !CoopChallenge.InChallenge) return;
+            try { CoopChallenge.CreditKill(scored + combo); } catch (Exception ex) { CoopLog.Error("CH20", ex); }
+        }
+    }
+
+    /// CH21 (0.7.11): host - its HUD and results screen show its own score and kills, not the team totals.
+    [HarmonyPatch]
+    static class CH21_HostOwnScoreDrawn
+    {
+        static IEnumerable<System.Reflection.MethodBase> TargetMethods()
+        {
+            yield return AccessTools.Method(typeof(UIElement), "DrawHUD");
+            yield return AccessTools.Method(typeof(UIElement), "DrawChallengeResults");
+        }
+        struct Saved { public bool on; public int score, kills; }
+        static void Prefix(out Saved __state)
+        {
+            __state = new Saved();
+            int sc, k;
+            if (!CoopChallenge.HostOwnScore(out sc, out k)) return;
+            __state.on = true; __state.score = ChallengeManager.ChallengeScore; __state.kills = ChallengeManager.ChallengeRobotsDestroyed;
+            ChallengeManager.ChallengeScore = sc; ChallengeManager.ChallengeRobotsDestroyed = k;
+        }
+        static void Finalizer(Saved __state)
+        {
+            if (!__state.on) return;
+            ChallengeManager.ChallengeScore = __state.score; ChallengeManager.ChallengeRobotsDestroyed = __state.kills;
         }
     }
 

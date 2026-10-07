@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.11-alpha (2026-10-07) - host quit while spectating, READY UP stays on the loadout screen, own challenge scores, UNTESTED build (all players must run 0.7.11-alpha; protocol 30)
+From the 05:06 run on 0.7.10 (host log + unity.log). User: QUIT TO MAIN MENU on the host made the ship spin wildly and broke the
+game; a joiner's READY UP should keep them on the loadout screen with "waiting for host"; each player needs their own score.
+- Fix: the host was dead and spectating when it quit. Leaving the level didn't switch the spectator camera off or end the death
+  state, so the ship kept spinning behind the main menu. Quitting from the Esc menu now ends spectating, clears the death state and
+  stops the ship first (host and joiners).
+- Change (challenge): READY UP on the loadout screen keeps the joiner on that screen, with "READY - WAITING FOR THE HOST TO START
+  THE CHALLENGE". The loadout can still be changed while waiting; the level starts when the host starts it.
+- New (challenge): each player has their own score and kill count (on the HUD and the results screen). Every kill's points go to
+  the player who destroyed the robot. Kill upgrades still go to everyone and still count the team's kills.
+
 ## 0.7.10-alpha (2026-10-07) - joiner QUIT TO MAIN MENU leaves the session, UNTESTED build (all players must run 0.7.10-alpha; protocol 30)
 - Change (user): a joiner choosing QUIT TO MAIN MENU in the Esc menu now leaves the session, exactly like LEAVE SESSION (the host
   is told and the joiner's slot is freed). Before, the joiner stayed connected in the main menu.

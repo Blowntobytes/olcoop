@@ -1066,6 +1066,20 @@ namespace OlCoop.World
         static void Prefix(GameplayManager.DoneReason reason)
         {
             // 0.7.9: QUIT TO MAIN MENU from the host's Esc menu (not STOP HOSTING): joiners were left in a level nobody ran.
+            if (CoopWorld.Active && reason == GameplayManager.DoneReason.Quit && MenuManager.m_menu_state == MenuState.PAUSE_MENU)
+            {
+                // 0.7.11: 05:10 run - the host quit while dead and spectating ("Esc while spectating"): the spectator camera and the
+                // death state stayed on, so the ship kept spinning behind the main menu. Leave as a living ship with its own camera.
+                try
+                {
+                    OlCoop.Death.Spectate.Stop(null);
+                    PlayerShip.DeathPaused = false;
+                    var me = GameManager.m_player_ship;
+                    if (me != null && ((bool)me.m_dead || (bool)me.m_dying)) { me.m_dead = false; me.m_dying = false; me.m_dead_timer = -1f; CoopLog.Write("FLOW", "quit to the main menu while dead/spectating: death state and spectator camera cleared"); }
+                    if (me != null && me.c_rigidbody != null) { me.c_rigidbody.velocity = Vector3.zero; me.c_rigidbody.angularVelocity = Vector3.zero; }
+                }
+                catch (Exception ex) { CoopLog.Error("F15 quit cleanup", ex); }
+            }
             if (CoopWorld.IsHost && reason == GameplayManager.DoneReason.Quit && MenuManager.m_menu_state == MenuState.PAUSE_MENU && !OlCoop.SteamNet.SessionEnd.Leaving)
             {
                 try { CoopFlow.HostSendStatus(4); } catch (Exception ex) { CoopLog.Error("F15 quit", ex); }
