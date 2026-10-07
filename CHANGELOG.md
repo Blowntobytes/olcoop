@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.16-alpha (2026-10-07) - spectating HUD, message position, host CO-OP screen, map diagnostics, UNTESTED build (all players must run 0.7.16-alpha; protocol 30)
+User: "YOU DIED..." now too far down; the spectating HUD has no weapon / missile names; the campaign map shows everything (should
+show only what was traversed); when hosting, INVITE THROUGH STEAM should be a smaller button on the right with the players on the left.
+- Fix: while dead or spectating, the yellow messages now sit right under "SPECTATING <name>" (0.7.13 moved them 20% down, too far).
+- Fix: the spectating HUD shows the followed player's primary weapon and missile names (e.g. IMPULSE, HUNTER). The game only fills
+  those names in for your own ship.
+- Change: on the CO-OP screen the host sees the players in the session on the left and a smaller INVITE THROUGH STEAM button on
+  the right.
+- Map: not fixed yet. Nothing in the mod or the game's map code explains a fully visible campaign map, so the log now records what
+  the map holds every time it opens (visible pieces, whole-map flag, game type, host or joiner).
+
 ## 0.7.15-alpha (2026-10-07) - installer finds olmod anywhere, CO-OP OPTIONS overlap, UNTESTED build (all players must run 0.7.15-alpha; protocol 30)
 - New (installer): olcoop now installs into your olmod folder (the folder with olmod.exe and GameMod.dll - olmod loads mods from
   its own folder), which no longer has to be the Overload folder. install.bat finds it in the Overload folder (any drive), through

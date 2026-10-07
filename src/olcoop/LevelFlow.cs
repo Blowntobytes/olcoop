@@ -1122,4 +1122,28 @@ namespace OlCoop.World
             return false;
         }
     }
+
+    /// F19 (0.7.16) diagnostics - user: in campaign the whole map was visible (should be only what was traversed). Stock marks
+    /// RuntimeChunk.VisibleOnMap from the local ship's segment every 0.5 s (GameplayManager.MaybeUpdateAutomapVisibility ->
+    /// Automap.MarkChunksAsVisible); show_whole_map is only true for CHALLENGE. Log what the map holds when it opens.
+    [HarmonyPatch(typeof(Automap), "Open")]
+    static class F19_AutomapOpenLog
+    {
+        static readonly System.Reflection.FieldInfo f_whole = AccessTools.Field(typeof(Automap), "m_show_whole_map");
+        static int s_logged;
+        static void Postfix(Automap __instance)
+        {
+            if (!CoopConfig.Active || s_logged++ >= 20) return;
+            try
+            {
+                int vis = 0, total = __instance.RuntimeChunk != null ? __instance.RuntimeChunk.Length : 0;
+                for (int i = 0; i < total; i++) if (__instance.RuntimeChunk[i] != null && __instance.RuntimeChunk[i].VisibleOnMap) vis++;
+                var ship = GameManager.m_player_ship;
+                CoopLog.Write("FLOW", "automap open: " + vis + " of " + total + " map chunks visible, wholeMap=" + (f_whole != null ? f_whole.GetValue(__instance) : "?") +
+                    " gameType=" + GameplayManager.m_game_type + " role=" + (CoopConfig.IsHost ? "host" : "joiner") + " ship seg=" + (ship != null ? ship.SegmentIndex.ToString() : "?") +
+                    " sameAutomap=" + ReferenceEquals(__instance, GameplayManager.m_automap));
+            }
+            catch (Exception ex) { CoopLog.Error("F19", ex); }
+        }
+    }
 }

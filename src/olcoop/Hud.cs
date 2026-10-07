@@ -403,6 +403,10 @@ namespace OlCoop.Hud
                 catch { Write(t.c_player, sv.orig); throw; }
                 if (s_live_logged++ == 0) CoopLog.Write("SPECT", "HUD drawn with netId=" + t.c_player.netId.Value + "'s live values (armor " + st.hp.ToString("F0") + " energy " + st.energy.ToString("F0") + " ammo " + st.ammo + ")");
             }
+            // 0.7.16: the HUD draws Player.CurrentWeaponName / CurrentMissileName, cached strings the game only fills for the local
+            // player (UpdateCurrentWeaponName on its own weapon changes) - empty on a teammate's copy, so the spectator HUD had no
+            // "IMPULSE" / "HUNTER". Fill them from the (live) weapon types.
+            try { t.c_player.UpdateCurrentWeaponName(); t.c_player.UpdateCurrentMissileName(); } catch { }
             RealShip = sv.ship;
             GameManager.m_player_ship = t; GameManager.m_local_player = t.c_player;
             return sv;
@@ -542,7 +546,14 @@ namespace OlCoop.Hud
                 var me = GameManager.m_player_ship;
                 bool dead = OlCoop.Death.Spectate.On || (me != null && ((bool)me.m_dying || (bool)me.m_dead));
                 if (!dead || UIManager.m_quad_index <= __state) return;
-                UIManager.PreviousQuadsOffset(__state, new Vector2(0f, (UIManager.UI_BOTTOM - UIManager.UI_TOP) * 0.2f));
+                // 0.7.16 (user): 20% lower put it out of sight; first message line just under "SPECTATING <name>" (y -250, size 0.6)
+                // Stock draws the newest line at UI_TOP+15 and older ones 25 higher each, so with n lines the top one is at
+                // UI_TOP+15-25(n-1): shift so that top line sits right under the spectating line.
+                int n = 0;
+                for (int i = 0; i < GameplayManager.RecentMessageString.Length; i++)
+                    if (GameplayManager.RecentMessageTimer[i] > 0f && !string.IsNullOrEmpty(GameplayManager.RecentMessageString[i])) n++;
+                float topLine = UIManager.UI_TOP + 15f - 25f * Math.Max(0, n - 1), target = -250f + 32f;
+                if (target > topLine) UIManager.PreviousQuadsOffset(__state, new Vector2(0f, target - topLine));
             }
             catch { }
         }

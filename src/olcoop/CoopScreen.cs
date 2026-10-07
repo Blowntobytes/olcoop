@@ -97,10 +97,23 @@ namespace OlCoop.UI
                 uie.SelectAndDrawItem("PLAY CHALLENGE", pos, ID_CHALLENGE, false, 1f, 0.75f);
                 pos.y += 62f;
             }
-            if (CoopConfig.IsHost && steam && SteamLink.Lobby != CSteamID.Nil)
+            bool hostRow = CoopConfig.IsHost;
+            if (hostRow)
             {
-                uie.SelectAndDrawItem("INVITE THROUGH STEAM", pos, ID_OVERLAY, false, 1f, 0.75f);
-                pos.y += 62f;
+                // 0.7.16 (user): host layout - session players on the left, a smaller INVITE THROUGH STEAM button on the right
+                var roster = OlCoop.Session.CoopLobby.Current();
+                float top = pos.y, left = -460f;
+                uie.DrawStringSmall("IN THIS SESSION (" + roster.Count + "/" + OlCoop.Session.CoopLobby.MaxPlayers + "):", new Vector2(left, top - 14f), 0.42f, StringOffset.LEFT, UIManager.m_col_ui2, 1f, -1f);
+                float y = top + 14f;
+                if (roster.Count == 0) { uie.DrawStringSmall("NOBODY YET", new Vector2(left, y), 0.4f, StringOffset.LEFT, UIManager.m_col_ui1, 1f, -1f); y += 26f; }
+                foreach (var e in roster)
+                {
+                    uie.DrawStringSmall(OlCoop.Session.CoopLobby.Line(e), new Vector2(left, y), 0.4f, StringOffset.LEFT, e.host ? UIManager.m_col_hi4 : UIManager.m_col_ui1, 1f, -1f);
+                    y += 26f;
+                }
+                if (steam && SteamLink.Lobby != CSteamID.Nil)
+                    uie.SelectAndDrawHalfItem("INVITE THROUGH STEAM", new Vector2(330f, top), ID_OVERLAY, false);
+                pos.y = Mathf.Max(top + 62f, y + 20f);
             }
             if (OlCoop.World.PostLevel.ReadyButton)
             {
@@ -118,7 +131,7 @@ namespace OlCoop.UI
                 pos.y += 62f;
             }
 
-            if (CoopConfig.Active)
+            if (CoopConfig.Active && !hostRow)
             {
                 var roster = OlCoop.Session.CoopLobby.Current();
                 uie.DrawStringSmall("IN THIS SESSION (" + roster.Count + "/" + OlCoop.Session.CoopLobby.MaxPlayers + "):", pos + Vector2.up * 4f, 0.45f, StringOffset.CENTER, UIManager.m_col_ui2, 1f, -1f);

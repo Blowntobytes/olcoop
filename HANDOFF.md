@@ -13,8 +13,8 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.7.15 alpha"). Protocol = 30 (in build.sh). Message ids used so far: 160-213 (0.7.6 extended msg 194 ObjMsg; 0.7.9 status code 4 on FNet.Status). Current build folder: build-alpha (USER 2026-10-07: "it is still an alpha" - releases are named -alpha again from 0.7.9; build-challenge holds 0.7.8-challenge, the last "challenge"-named build).
-- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 299 patches, 0 problems, 0.7.15;
+  `VERSION` ("0.7.16 alpha"). Protocol = 30 (in build.sh). Message ids used so far: 160-213 (0.7.6 extended msg 194 ObjMsg; 0.7.9 status code 4 on FNet.Status). Current build folder: build-alpha (USER 2026-10-07: "it is still an alpha" - releases are named -alpha again from 0.7.9; build-challenge holds 0.7.8-challenge, the last "challenge"-named build).
+- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 300 patches, 0 problems, 0.7.16;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-challenge (0.7.0-0.7.8), build-alpha (current again since 0.7.9).
   Bug fixes overwrite the current phase folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
@@ -993,4 +993,18 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   NOT TESTED: PowerShell isn't available in the cloud workspace; run install.bat on the PC (standard layout) to check.
   Not handled: olmod shortcuts with extra arguments (our launchers pass only olcoop's own), OLMODDIR set to another folder.
 - README.md (Install section, my text) + installer/README.txt updated for the olmod folder.
+
+## 0.7.16-alpha status (2026-10-07) - installed, UNTESTED. Protocol 30.
+- Installed SHA1 2fe9cc5c0859de686ca30afc6e4d527e73974646 (336896 bytes), verified in game folder + build-alpha. Tag v0.7.16-alpha. No logs with this report.
+- HU20: messages now placed so the TOP line (stock: newest at UI_TOP+15, older 25 higher each) is at y -218, just under
+  "SPECTATING" (Hud spectate overlay, y -250, size 0.6). Only while dead/spectating.
+- Spectator HUD names: UIElement.DrawHUDPrimaryWeapon/SecondaryWeapon draw LocalPlayer.CurrentWeaponName/CurrentMissileName, cached
+  strings set only by the local player's UpdateCurrentWeaponName/MissileName; SpectateHud.SwapIn now calls both on the followed Player.
+- Host CO-OP screen: host row = roster LEFT at x -460 (StringOffset.LEFT) + SelectAndDrawHalfItem INVITE THROUGH STEAM at x +330;
+  the centered "IN THIS SESSION" block is skipped for the host (joiners unchanged).
+- Map (user: campaign map all visible): not explained. Stock: Automap(show_whole_map = game type CHALLENGE); campaign marks
+  VisibleOnMap from GameManager.m_player_ship.SegmentIndex every 0.5 s (MaybeUpdateAutomapVisibility, skipped while dying) via
+  m_segment_visibility + door blockers; SetRenderForMap hides non-visible chunks. Mod only touches it in CH17 (joiner rebuild, whole
+  = IsChallengeMode, logged "whole map=False" in campaign). F19 logs on Automap.Open: visible/total chunks, m_show_whole_map, game
+  type, role, ship segment, whether it is GameplayManager.m_automap. Need: who saw it (host/joiner), level, and that log.
 
