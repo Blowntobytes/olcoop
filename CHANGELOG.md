@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.7-challenge (2026-10-06) - escape countdown after the level, flicker diagnostics, UNTESTED build (all players must run 0.7.7-challenge; protocol 30)
+Contains 0.7.6 (never tested on its own). User: all three players heard the countdown run to zero after the exit; the waiting text
+flickered on one joiner (not the slow pulse); the challenge missile problem was on JosheM (no log yet).
+- Fix: since 0.6.12 the level keeps running behind menus in co-op. The level results menu turned that on again after the level had
+  ended, so the reactor countdown kept running behind the results and upgrade screens (the host's timer was at -20 s when the next
+  level loaded). Nothing runs behind the menus any more once the level is over.
+- Diagnostics: while the status line ("WAITING FOR THE HOST'S NEXT LEVEL" etc.) is shown, the log reports every 2 s how many frames
+  it was drawn in and the screen fade, menu and gameplay state, to find the flicker.
+
 ## 0.7.6-challenge (2026-10-06) - lockdown regroup, Nova/Devastator bomblets, reactor escape on joiners, UNTESTED build (all players must run 0.7.6-challenge; protocol 30)
 From the 3-player campaign run on 0.7.5 (Titan 07/08, host JosheM + 2 joiners, all three logs). User: one player not teleported
 into a lockdown; Nova blobs not visible to joiner; timer still ran after the reactor escape; waiting text flickered; joiner missiles

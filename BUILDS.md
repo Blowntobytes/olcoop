@@ -75,4 +75,5 @@ Targets unless noted: Overload 1.1.1886, olmod 0.5.14.
 | 0.7.3-challenge | 28 | 10-06 | tested (18:48 run) | no wreck spin at run end; joiner loadout + ship | results screen not shown after team wipe; saved-game doors locked for joiner | tag v0.7.3-challenge, dist/olcoop-0.7.3-challenge.zip |
 | 0.7.4-challenge | 29 | 10-06 | tested (19:05 countdown run) | countdown run, upgrades for both | end screen locked (camera destroyed with spectate rig) | tag v0.7.4-challenge, dist/olcoop-0.7.4-challenge.zip |
 | 0.7.5-challenge | 29 | 10-06 | tested (20:10 3-player campaign run) | 3 players through Titan 07, reactor + exit | joiner stuck outside a lockdown; Nova bomblets missing for the shooter; late reactor escape on one joiner | tag v0.7.5-challenge, dist/olcoop-0.7.5-challenge.zip |
-| 0.7.6-challenge | 30 | 10-06 | untested | - | - | tag v0.7.6-challenge, build-challenge, dist/olcoop-0.7.6-challenge.zip |
+| 0.7.6-challenge | 30 | 10-06 | not tested (replaced by 0.7.7) | - | - | tag v0.7.6-challenge, dist/olcoop-0.7.6-challenge.zip |
+| 0.7.7-challenge | 30 | 10-06 | untested | - | - | tag v0.7.7-challenge, build-challenge, dist/olcoop-0.7.7-challenge.zip |

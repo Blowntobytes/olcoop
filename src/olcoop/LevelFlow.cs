@@ -167,7 +167,7 @@ namespace OlCoop.World
         static bool s_requested, s_exit_sent, s_wait_shown;
         public static bool Waiting { get { return s_wait_shown; } }
 
-        public static void ResetForLevel() { PostLevel.Reset(); CoopObjectives.ResetForLevel(); if (s_wait_shown) { try { UIManager.SetScreenFade(0f); } catch { } } CoopStatus.Clear(); s_lockdowns_done.Clear(); s_last_trigger_ship = null; s_exit_anchor = null; s_pending_pose = null; s_pending_exit = -1; s_dead_wait_until = -1f; s_revive.Clear(); s_revive_anchor = null; s_revive_until = -1f; s_requested = false; s_exit_sent = false; s_wait_shown = false; ApplyingExit = false; ApplyingLog = false; ExitTunnel.Reset(); CoopWorldTick.MenuOpen = false; }
+        public static void ResetForLevel() { PostLevel.Reset(); CoopObjectives.ResetForLevel(); if (s_wait_shown) { try { UIManager.SetScreenFade(0f); } catch { } } CoopStatus.Clear(); s_lockdowns_done.Clear(); s_last_trigger_ship = null; s_exit_anchor = null; s_pending_pose = null; s_pending_exit = -1; s_dead_wait_until = -1f; s_revive.Clear(); s_revive_anchor = null; s_revive_until = -1f; s_requested = false; s_exit_sent = false; s_wait_shown = false; ApplyingExit = false; ApplyingLog = false; ExitTunnel.Reset(); CoopWorldTick.MenuOpen = false; CoopWorldTick.LevelDone = false; }
 
         static bool LocalAlive()
         {
@@ -609,7 +609,7 @@ namespace OlCoop.World
     [HarmonyPatch(typeof(GameplayManager), "PauseGameplay")]
     static class X4_NoPauseInCoop
     {
-        static int s_logged;
+        static int s_logged, s_logged_done;
         public static bool OthersPresent()
         {
             if (!CoopWorld.Active || GameManager.m_game_state != GameManager.GameState.GAMEPLAY) return false;
@@ -622,6 +622,10 @@ namespace OlCoop.World
         static bool Prefix()
         {
             if (!OthersPresent()) return true;
+            // 0.7.6: DoneLevel -> ChangeGameplayState(MENUS) -> here: the level-results menu re-armed the world tick, which ran
+            // EscapeUpdate behind the results/upgrade screens. 20:27 run: everyone heard the countdown to zero after the exit; the host's
+            // EscapeTimer was -20.2 when the next level loaded. Once the level is over, nothing runs behind the menu.
+            if (CoopWorldTick.LevelDone) { if (s_logged_done++ < 5) CoopLog.Write("FLOW", "menu opened after the level ended: no world tick"); return false; }
             CoopWorldTick.MenuOpen = true;
             if (s_logged++ < 5) CoopLog.Write("FLOW", "menu opened in co-op: the level keeps running (no pause)");
             return false;
@@ -635,6 +639,8 @@ namespace OlCoop.World
     public static class CoopWorldTick
     {
         public static bool MenuOpen;
+        /// Set by DoneLevel, cleared by CoopFlow.ResetForLevel (level start).
+        public static bool LevelDone;
         static readonly System.Reflection.MethodInfo m_lock = AccessTools.Method(typeof(GameplayManager), "LockdownUpdate");
         static readonly System.Reflection.MethodInfo m_esc = AccessTools.Method(typeof(GameplayManager), "EscapeUpdate");
         static readonly System.Reflection.MethodInfo m_cryo = AccessTools.Method(typeof(GameplayManager), "CryotubePickupUpdate");
@@ -694,7 +700,7 @@ namespace OlCoop.World
     [HarmonyPatch(typeof(GameplayManager), "DoneLevel")]
     static class X7_LevelDone
     {
-        static void Prefix() { CoopWorldTick.MenuOpen = false; }
+        static void Prefix() { CoopWorldTick.MenuOpen = false; CoopWorldTick.LevelDone = true; }
     }
 
     [HarmonyPatch(typeof(MenuManager), "Update")]
@@ -987,7 +993,27 @@ namespace OlCoop.World
             float pulse = 0.75f + 0.25f * Mathf.Sin(Time.realtimeSinceStartup * 3f);
             uie.DrawStringSmall(s_text, new Vector2(0f, -200f), 0.75f, StringOffset.CENTER, UIManager.m_col_hi5, pulse, -1f);
             if (!s_logged) { s_logged = true; CoopLog.Write("HUD", "drawing status banner"); }
+            s_draws++;
         }
+        // 0.7.6 diagnostics (user: the waiting text flickered, not the slow pulse): per 2 s, frames vs banner draws and the overlay's alpha.
+        static int s_draws, s_frames, s_reports; static float s_next;
+        public static void Tick()
+        {
+            if (s_text == null) { s_draws = s_frames = 0; return; }
+            s_frames++;
+            if (Time.realtimeSinceStartup < s_next) return;
+            s_next = Time.realtimeSinceStartup + 2f;
+            if (s_reports++ < 60)
+                CoopLog.Write("HUD", "status banner: drawn " + s_draws + " of " + s_frames + " frames, fade=" + UIManager.m_overlay_fade.ToString("F2") +
+                    " bgFade=" + UIManager.ui_bg_fade.ToString("F2") + " menu=" + MenuManager.m_menu_state + " gameplay=" + GameplayManager.m_gameplay_state + " elements=" + UIManager.m_num_elements);
+            s_draws = s_frames = 0;
+        }
+    }
+
+    [HarmonyPatch(typeof(GameManager), "Update")]
+    static class F13b_StatusTick
+    {
+        static void Postfix() { try { CoopStatus.Tick(); } catch (Exception ex) { CoopLog.Error("F13b", ex); } }
     }
 
     [HarmonyPatch(typeof(UIElement), "Draw")]

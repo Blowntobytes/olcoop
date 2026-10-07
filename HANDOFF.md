@@ -13,8 +13,8 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.7.6 challenge"). Protocol = 30 (in build.sh). Message ids used so far: 160-213 (0.7.6 extended msg 194 ObjMsg). Current build folder: build-challenge (since 0.7.0; build-alpha holds 0.6.18-alpha, build-online held 0.5.x).
-- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 280 patches, 0 problems, 0.7.6;
+  `VERSION` ("0.7.7 challenge"). Protocol = 30 (in build.sh). Message ids used so far: 160-213 (0.7.6 extended msg 194 ObjMsg). Current build folder: build-challenge (since 0.7.0; build-alpha holds 0.6.18-alpha, build-online held 0.5.x).
+- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 281 patches, 0 problems, 0.7.7;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-alpha, build-challenge (current).
   Bug fixes overwrite the current phase folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
@@ -847,7 +847,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   exceptions in co-op. Watch logs every 0.5 s (elements, ui mesh parent/active/renderer, cam-ui distance, blocker).
 - 0.7.3 lockup (no NRE, camera on _cam_controller) is still unexplained; the watch lines will show it if it recurs.
 
-## 0.7.6-challenge status (2026-10-06) - installed, UNTESTED. Protocol 30 (msg 194 ObjMsg + escape byte/timer).
+## 0.7.6-challenge status (2026-10-06) - installed, never tested (replaced by 0.7.7 the same evening). Protocol 30 (msg 194 ObjMsg + escape byte/timer).
 - Installed SHA1 da079cf3b1876ee7173ae026b26c1f9444fbc501 (324096 bytes), verified in game folder + build-challenge. Tag v0.7.6-challenge.
 - 0.7.5 result: the 19:48-20:05 crashes on the user's PC were TWO Overload instances (pid 12344 + 21560) both hosting on one Steam
   account. Steam P2P has one inbox per account, so packets from JosheM were split between them: truncated UNET messages
@@ -874,3 +874,16 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
     host log (21560, double-instance session) applied JosheM's loadout with missiles=[0..] LOCKED. Asked for the joiner's log.
 - Known: olmod MPTweaksOnLoadoutDataMessage KeyNotFoundException on the host (also in 0.7.3/0.7.4 logs), harmless so far.
 
+
+
+## 0.7.7-challenge status (2026-10-06) - installed, UNTESTED. Protocol 30 (no message change from 0.7.6).
+- Installed SHA1 68d2588d9d098c605ec1300aae23c85715acfa15 (325120 bytes), verified in game folder + build-challenge. Tag v0.7.7-challenge.
+- User answers: all 3 heard the countdown to zero after the exit; flicker on BlownToBits (joiner) and NOT the pulse; challenge missile
+  problem was JosheM's (no log).
+- Countdown: host dump at next level load (23:29:06) escapeTimer=-20.2 (11.4 at DoneLevel). X7 DoneLevel prefix cleared MenuOpen, but
+  DoneLevel -> ChangeGameplayState(MENUS) -> PauseGameplay -> X4 set MenuOpen again ("menu opened in co-op" logged after DoneLevel on
+  all three), so X8 ran CoopWorldTick.Run (EscapeUpdate: cues to 0; below 0 in MENUS it would kill the ship - GameplayManager 1372ff,
+  only EXIT is exempt). Fix: CoopWorldTick.LevelDone (set in X7, cleared in CoopFlow.ResetForLevel); X4 doesn't arm the tick then.
+- Flicker: not diagnosed. Banner set once per state in Blown's log; no death logged. F13b (GameManager.Update postfix) logs every 2 s
+  "status banner: drawn N of M frames, fade, bgFade, menu, gameplay, elements" while a banner is up (max 60 lines). If drawn < frames,
+  the overlay element is being skipped; if equal, something else is drawing over/fading it.
