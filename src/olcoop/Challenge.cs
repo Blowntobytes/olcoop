@@ -66,7 +66,7 @@ namespace OlCoop.Challenge
         }
         static void SendAll(short type, MessageBase m) { foreach (var c in Joiners()) c.Send(type, m); }
 
-        public static void ResetForLevel() { Ending = false; s_end_pending = null; s_next_state = 0f; s_end_alert = false; s_upgrades_sent = 0; }
+        public static void ResetForLevel() { JoinerLoadoutGiven = false; Ending = false; s_end_pending = null; s_next_state = 0f; s_end_alert = false; s_upgrades_sent = 0; }
 
         // ================================================================ host: menus
         static float s_next_info;
@@ -292,6 +292,7 @@ namespace OlCoop.Challenge
         // ================================================================ joiner
         public static ChallengeInfoMsg Pending;      // last settings from the host
         public static bool LoadoutChosen;
+        public static bool JoinerLoadoutGiven;
         static int s_declined = -1;            // the joiner pressed START on the briefing for Pending.level
         static bool s_end_alert;
 
@@ -580,6 +581,50 @@ namespace OlCoop.Challenge
             if (!CoopConfig.IsHost || !CoopConfig.Active) return;
             try { CoopChallenge.HostNewPlayer(msg.conn); } catch (Exception ex) { CoopLog.Error("CH10", ex); }
         }
+    }
+
+    /// CH15 (0.7.7): the joiner's challenge loadout. Stock ChallengeManager.InitChallenge gives the briefing loadout
+    /// (ActuallyGiveWeaponsAndMissiles) to GameManager.m_local_player at level start. On a joiner that is still the temporary
+    /// single-player ship: its networked ship is created ~0.1 s later (04:39 run: StartLevel 27.619, OnStartLocalPlayer netId=25 27.733)
+    /// and started with no weapons, missiles or ammo, which it then sent to the host. Give the loadout to the networked ship.
+    [HarmonyPatch(typeof(Player), "OnStartLocalPlayer")]
+    static class CH15_JoinerLoadout
+    {
+        [HarmonyPriority(Priority.VeryLow)]
+        static void Postfix(Player __instance)
+        {
+            if (!CoopConfig.Active || !CoopConfig.IsJoiner || !GameplayManager.IsChallengeMode || CoopChallenge.JoinerLoadoutGiven) return;
+            try
+            {
+                if (GameplayManager.Level == null || GameplayManager.Level.IsSecret) return;
+                if (ChallengeManager.m_starting_weapons[0] < 0 || ChallengeManager.m_starting_missiles[0] < 0)
+                {
+                    CoopLog.Write("CHAL", "joiner: no starting loadout (weapons " + string.Join(",", Array.ConvertAll(ChallengeManager.m_starting_weapons, x => x.ToString())) +
+                        " missiles " + string.Join(",", Array.ConvertAll(ChallengeManager.m_starting_missiles, x => x.ToString())) + "); ship keeps what it has");
+                    return;
+                }
+                CoopChallenge.JoinerLoadoutGiven = true;
+                ChallengeManager.ActuallyGiveWeaponsAndMissiles(__instance);
+                CoopLog.Write("CHAL", "joiner: briefing loadout given to our networked ship netId=" + __instance.netId.Value + " (weapons " +
+                    string.Join(",", Array.ConvertAll(ChallengeManager.m_starting_weapons, x => x.ToString())) + " missiles " +
+                    string.Join(",", Array.ConvertAll(ChallengeManager.m_starting_missiles, x => x.ToString())) + ", ammo " + (int)__instance.m_ammo + ")");
+                OlCoop.Combat.CoopLoadout.SendSoon();
+            }
+            catch (Exception ex) { CoopLog.Error("CH15", ex); }
+        }
+    }
+
+    /// CH16 (0.7.7): olmod's creeper team colours (MPTeams_Projectile_FixedUpdateDynamic.Postfix) run for every creeper the local player
+    /// owns whenever IsMultiplayerActive - which co-op sets - and throw on co-op creepers (04:40 run: ~1,800-2,000 NREs on both PCs, one per
+    /// creeper per physics frame). The exception aborts UpdateDynamicManager.FixedUpdateDynamicObjects, so every projectile after it in the
+    /// list stopped updating (frozen shots). Co-op has no teams to colour: skip it.
+    [HarmonyPatch]
+    static class CH16_NoOlmodCreeperColors
+    {
+        public const string OlmodTarget = "GameMod.MPTeams_Projectile_FixedUpdateDynamic:Postfix";
+        static bool Prepare() { return AccessTools.TypeByName("GameMod.MPTeams_Projectile_FixedUpdateDynamic") != null; }
+        static System.Reflection.MethodBase TargetMethod() { return AccessTools.Method(AccessTools.TypeByName("GameMod.MPTeams_Projectile_FixedUpdateDynamic"), "Postfix"); }
+        static bool Prefix() { return !CoopConfig.Active || GameplayManager.IsMultiplayer; }
     }
 
     [HarmonyPatch(typeof(GameplayManager), "LoadLevel")]

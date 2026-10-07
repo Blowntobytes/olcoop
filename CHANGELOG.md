@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.8-challenge (2026-10-07) - challenge freeze and joiner loadout, UNTESTED build (all players must run 0.7.8-challenge; protocol 30)
+From the 04:37 challenge run on 0.7.7 (Backfire, BlownToBits host, PeetzaGuest joiner, both logs + both unity logs). User: frames
+froze, and the joiner's missiles still didn't load.
+- Fix (freeze): an olmod feature that colours creeper missiles for multiplayer teams also ran in co-op and failed on every physics
+  frame for each creeper (about 2,000 errors on each PC from 04:40:06, right after a creeper was fired). Each failure stopped the
+  update of every shot after it, so shots froze in the air. It is switched off in co-op (there are no teams to colour).
+- Fix (joiner loadout): the game hands out the briefing loadout when the level starts. On a joiner that happens a moment before its
+  real (network) ship exists, so the weapons and missiles went to a placeholder and the real ship started with nothing (the log shows
+  every weapon and missile at 0 and 0 ammo). The joiner's ship now gets its briefing loadout when it is created, and the host is told.
+
 ## 0.7.7-challenge (2026-10-06) - escape countdown after the level, flicker diagnostics, UNTESTED build (all players must run 0.7.7-challenge; protocol 30)
 Contains 0.7.6 (never tested on its own). User: all three players heard the countdown run to zero after the exit; the waiting text
 flickered on one joiner (not the slow pulse); the challenge missile problem was on JosheM (no log yet).

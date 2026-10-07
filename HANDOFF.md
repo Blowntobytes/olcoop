@@ -13,8 +13,8 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.7.7 challenge"). Protocol = 30 (in build.sh). Message ids used so far: 160-213 (0.7.6 extended msg 194 ObjMsg). Current build folder: build-challenge (since 0.7.0; build-alpha holds 0.6.18-alpha, build-online held 0.5.x).
-- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 281 patches, 0 problems, 0.7.7;
+  `VERSION` ("0.7.8 challenge"). Protocol = 30 (in build.sh). Message ids used so far: 160-213 (0.7.6 extended msg 194 ObjMsg). Current build folder: build-challenge (since 0.7.0; build-alpha holds 0.6.18-alpha, build-online held 0.5.x).
+- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 283 patches, 0 problems, 0.7.8;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-alpha, build-challenge (current).
   Bug fixes overwrite the current phase folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
@@ -887,3 +887,21 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 - Flicker: not diagnosed. Banner set once per state in Blown's log; no death logged. F13b (GameManager.Update postfix) logs every 2 s
   "status banner: drawn N of M frames, fade, bgFade, menu, gameplay, elements" while a banner is up (max 60 lines). If drawn < frames,
   the overlay element is being skipped; if equal, something else is drawing over/fading it.
+
+## 0.7.8-challenge status (2026-10-07) - installed, UNTESTED. Protocol 30.
+- Installed SHA1 4bfea96e9121ab7cb46d200f5dfd505f479c0b2c (326656 bytes), verified in game folder + build-challenge. Tag v0.7.8-challenge.
+- 04:37 run (0.7.7, cm_backfire, Blown host, Peetza joiner; 2 player logs + 2 unity.log). User: frames froze; joiner missiles not loaded.
+  - Freeze: both unity.logs ~1,800/2,000x NRE in GameMod.MPTeams_Projectile_FixedUpdateDynamic.Postfix (from 04:40:06 to the end).
+    olmod runs it when IsMultiplayerActive && mms_creeper_colors && friendly_fire != 1 && missile_creeper owned by the local player;
+    it throws on co-op creepers (m_robot_only_extra_mesh / Light). The throw aborts UpdateDynamicManager.FixedUpdateDynamicObjects
+    for the rest of the list each frame. CH16 prefixes that olmod Postfix (skip in co-op unless a real MP game).
+  - Joiner loadout: chosen on the briefing (weapons 0,2,1 missiles 2,0,-1,-1), TryLoadChallenge kept it, but "local loadout now"
+    was all 0 / ammo 0. GameplayManager.StartLevel -> ChallengeManager.InitChallenge -> ActuallyGiveWeaponsAndMissiles(m_local_player)
+    (only when !IsMultiplayerSceneLoaded) runs on the joiner's temporary SP player; Player.OnStartLocalPlayer (sets m_local_player)
+    for netId=25 came 0.11 s later. CH15 (OnStartLocalPlayer postfix, VeryLow priority, joiner, challenge, not secret, once per level
+    via JoinerLoadoutGiven reset in CH11) calls ActuallyGiveWeaponsAndMissiles(__instance) + CoopLoadout.SendSoon. Log "[CHAL] joiner:
+    briefing loadout given ...". Not verified: the 0.7.2 note "joiner ship + own loadout" was probably never true for weapons.
+  - Also seen (not changed): joiner "steam client receive NRE Robot.AimInstantTarget" x3 at 04:39:25 - robot spawns arriving while the
+    joiner was still loading the scene; the world sync re-sent all 3 at 04:39:27, so no effect.
+  - Flicker diagnostics: the joiner's banner was drawn every frame (243/243) in this run; Blown was host (no banner). Still open.
+
