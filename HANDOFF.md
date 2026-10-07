@@ -13,8 +13,8 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.7.9 alpha"). Protocol = 30 (in build.sh). Message ids used so far: 160-213 (0.7.6 extended msg 194 ObjMsg; 0.7.9 status code 4 on FNet.Status). Current build folder: build-alpha (USER 2026-10-07: "it is still an alpha" - releases are named -alpha again from 0.7.9; build-challenge holds 0.7.8-challenge, the last "challenge"-named build).
-- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 285 patches, 0 problems, 0.7.9;
+  `VERSION` ("0.7.10 alpha"). Protocol = 30 (in build.sh). Message ids used so far: 160-213 (0.7.6 extended msg 194 ObjMsg; 0.7.9 status code 4 on FNet.Status). Current build folder: build-alpha (USER 2026-10-07: "it is still an alpha" - releases are named -alpha again from 0.7.9; build-challenge holds 0.7.8-challenge, the last "challenge"-named build).
+- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 286 patches, 0 problems, 0.7.10;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-challenge (0.7.0-0.7.8), build-alpha (current again since 0.7.9).
   Bug fixes overwrite the current phase folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
@@ -918,4 +918,11 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   offer (status 3) take it from there.
 - Challenge briefing: SK2 now also transpiles UIElement.DrawLevelBriefingCM ("PLAY" -> READY UP for joiners). JoinerRedirect sets
   banner "READY - WAITING FOR THE HOST TO START THE CHALLENGE"; OpenBriefing clears it; level start clears it (CoopFlow.ResetForLevel).
+
+## 0.7.10-alpha status (2026-10-07) - installed, UNTESTED. Protocol 30.
+- Installed SHA1 9b30f63c45e27feb08e4fe6d3784b51b3549430d (328704 bytes), verified in game folder + build-alpha. Tag v0.7.10-alpha. 0.7.9 never tested.
+- User decision: joiner QUIT TO MAIN MENU = LEAVE SESSION. ST8 (DoneLevel prefix captures joiner + Quit + PAUSE_MENU + !SessionEnd.Leaving;
+  postfix: Client.Disconnect -> ST6 SessionEnd.Leave (Steam leave, ClearRole, status) and ST2 sends BYE to the host; not connected ->
+  SessionEnd.Leave directly). Stock pause-menu quit disconnects only in MP scenes, so before this the joiner stayed connected.
+- Host QUIT TO MAIN MENU still keeps hosting (0.7.9 F15 status 4).
 

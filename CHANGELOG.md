@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.10-alpha (2026-10-07) - joiner QUIT TO MAIN MENU leaves the session, UNTESTED build (all players must run 0.7.10-alpha; protocol 30)
+- Change (user): a joiner choosing QUIT TO MAIN MENU in the Esc menu now leaves the session, exactly like LEAVE SESSION (the host
+  is told and the joiner's slot is freed). Before, the joiner stayed connected in the main menu.
+
 ## 0.7.9-alpha (2026-10-07) - host quit to the main menu, challenge READY UP, joiner map, back to the alpha name, UNTESTED build (all players must run 0.7.9-alpha; protocol 30)
 User (after the 04:37 run): the map is drawn wrong; quitting a challenge to the main menu breaks the session; joiners should get
 READY UP on the challenge loadout screen and then a waiting screen; the release is still an alpha, not "challenge".

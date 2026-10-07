@@ -78,4 +78,5 @@ Targets unless noted: Overload 1.1.1886, olmod 0.5.14.
 | 0.7.6-challenge | 30 | 10-06 | not tested (replaced by 0.7.7) | - | - | tag v0.7.6-challenge, dist/olcoop-0.7.6-challenge.zip |
 | 0.7.7-challenge | 30 | 10-07 | tested (04:37 challenge run) | joiner briefing loadout chosen, level start, robots | shots froze (olmod creeper colours); joiner ship started with no weapons/missiles | tag v0.7.7-challenge, dist/olcoop-0.7.7-challenge.zip |
 | 0.7.8-challenge | 30 | 10-07 | not tested (replaced by 0.7.9-alpha) | - | - | tag v0.7.8-challenge, build-challenge, dist/olcoop-0.7.8-challenge.zip |
-| 0.7.9-alpha | 30 | 10-07 | untested | - | - | tag v0.7.9-alpha, build-alpha, dist/olcoop-0.7.9-alpha.zip |
+| 0.7.9-alpha | 30 | 10-07 | not tested (replaced by 0.7.10) | - | - | tag v0.7.9-alpha, dist/olcoop-0.7.9-alpha.zip |
+| 0.7.10-alpha | 30 | 10-07 | untested | - | - | tag v0.7.10-alpha, build-alpha, dist/olcoop-0.7.10-alpha.zip |

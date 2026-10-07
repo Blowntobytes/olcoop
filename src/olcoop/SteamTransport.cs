@@ -696,6 +696,32 @@ namespace OlCoop.SteamNet
         }
     }
 
+    /// ST8 (0.7.9, user): a joiner choosing QUIT TO MAIN MENU in the Esc menu leaves the session, same as LEAVE SESSION. Stock only
+    /// disconnects in multiplayer scenes, so before this the joiner stayed connected in the main menu and was pulled back in.
+    [HarmonyPatch(typeof(GameplayManager), "DoneLevel")]
+    static class ST8_JoinerQuitLeavesSession
+    {
+        static void Prefix(GameplayManager.DoneReason reason, out bool __state)
+        {
+            __state = CoopConfig.IsJoiner && reason == GameplayManager.DoneReason.Quit && SessionEnd.FromPauseMenu && !SessionEnd.Leaving;
+        }
+        static void Postfix(bool __state)
+        {
+            if (!__state) return;
+            CoopLog.Write("ROLE", "joiner: QUIT TO MAIN MENU from the Esc menu - leaving the session (same as LEAVE SESSION)");
+            // Client.Disconnect from the Esc menu runs ST6 (SessionEnd.Leave: Steam lobby/session, role, status) once
+            try
+            {
+                GameplayManager.IsMultiplayerActive = false;
+                if (Client.IsConnected()) Client.Disconnect(); else SessionEnd.Leave("joiner");
+            }
+            catch (Exception ex) { CoopLog.Error("ST8", ex); }
+            if (CoopConfig.IsJoiner) CoopConfig.ClearRole();
+            MenuManager.m_game_paused = false;
+            SteamLink.LastStatus = "LEFT THE SESSION";
+        }
+    }
+
     [HarmonyPatch(typeof(Client), "Disconnect")]
     static class ST6_JoinerQuitLeaves
     {
