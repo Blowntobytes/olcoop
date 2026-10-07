@@ -234,8 +234,11 @@ namespace OlCoop.World
         }
 
         // ---------------------------------------------------------------- shared
+        /// 0.7.12: the team's security level as last heard from the host (joiner); re-applied to our networked ship when it starts.
+        public static int HeardKeys;
         public static void ApplyKeys(int k, bool announce)
         {
+            if (k > HeardKeys) HeardKeys = k;
             int before = GameManager.m_local_player != null ? (int)GameManager.m_local_player.m_unlock_level : 0;
             foreach (var p in Overload.NetworkManager.m_Players) if (p != null && (int)p.m_unlock_level < k) p.m_unlock_level = (DoorLock)k;
             if (GameManager.m_local_player != null && (int)GameManager.m_local_player.m_unlock_level < k) GameManager.m_local_player.m_unlock_level = (DoorLock)k;
@@ -583,5 +586,30 @@ namespace OlCoop.World
             }
             catch (Exception ex) { if (s_logged++ < 10) CoopLog.Error("W7", ex); }
         }
+    }
+
+    /// W8 (0.7.12): 05:37 run - a saved game's keys (team security level 2) arrived with the world catch-up at 05:37:50.603, but the
+    /// joiner's networked ship started at 50.679 with no keys (ApplyKeys had set the temporary ship's m_unlock_level), so the LEVEL2
+    /// door stayed shut for it. Re-apply the team's keys to the networked ship. HeardKeys is cleared at each level load.
+    [HarmonyPatch(typeof(Player), "OnStartLocalPlayer")]
+    static class W8_JoinerKeys
+    {
+        [HarmonyPriority(Priority.VeryLow)]
+        static void Postfix(Player __instance)
+        {
+            if (!CoopConfig.Active || !CoopConfig.IsJoiner || GameplayManager.IsMultiplayer || CoopWorld.HeardKeys <= 0) return;
+            try
+            {
+                CoopWorld.ApplyKeys(CoopWorld.HeardKeys, false);
+                CoopLog.Write("WORLD", "joiner: team security level " + CoopWorld.HeardKeys + " applied to our networked ship netId=" + __instance.netId.Value + " (now " + __instance.m_unlock_level + ")");
+            }
+            catch (Exception ex) { CoopLog.Error("W8", ex); }
+        }
+    }
+
+    [HarmonyPatch(typeof(GameplayManager), "LoadLevel")]
+    static class W9_ResetTeamKeys
+    {
+        static void Prefix() { CoopWorld.HeardKeys = 0; }
     }
 }

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.12-alpha (2026-10-07) - saved-game security access for joiners, UNTESTED build (all players must run 0.7.12-alpha; protocol 30)
+From the 05:31 run on 0.7.11 (both logs). User: a joiner couldn't get through a level 2 security door that was unlocked in the
+host's saved game.
+- Fix: the joiner received the team's security level (2) when it entered the level, but a moment before its real network ship
+  existed, so the access went to the temporary ship and the real ship started without it. The joiner's ship now gets the team's
+  security level when it is created.
+
 ## 0.7.11-alpha (2026-10-07) - host quit while spectating, READY UP stays on the loadout screen, own challenge scores, UNTESTED build (all players must run 0.7.11-alpha; protocol 30)
 From the 05:06 run on 0.7.10 (host log + unity.log). User: QUIT TO MAIN MENU on the host made the ship spin wildly and broke the
 game; a joiner's READY UP should keep them on the loadout screen with "waiting for host"; each player needs their own score.

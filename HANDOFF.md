@@ -13,8 +13,8 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.7.11 alpha"). Protocol = 30 (in build.sh). Message ids used so far: 160-213 (0.7.6 extended msg 194 ObjMsg; 0.7.9 status code 4 on FNet.Status). Current build folder: build-alpha (USER 2026-10-07: "it is still an alpha" - releases are named -alpha again from 0.7.9; build-challenge holds 0.7.8-challenge, the last "challenge"-named build).
-- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 291 patches, 0 problems, 0.7.11;
+  `VERSION` ("0.7.12 alpha"). Protocol = 30 (in build.sh). Message ids used so far: 160-213 (0.7.6 extended msg 194 ObjMsg; 0.7.9 status code 4 on FNet.Status). Current build folder: build-alpha (USER 2026-10-07: "it is still an alpha" - releases are named -alpha again from 0.7.9; build-challenge holds 0.7.8-challenge, the last "challenge"-named build).
+- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 293 patches, 0 problems, 0.7.12;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-challenge (0.7.0-0.7.8), build-alpha (current again since 0.7.9).
   Bug fixes overwrite the current phase folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
@@ -942,4 +942,14 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   score/kills (210/212). CH21 swaps the host's own values into ChallengeScore/ChallengeRobotsDestroyed for UIElement.DrawHUD and
   DrawChallengeResults. Team totals stay in the stock fields (combo, kill upgrades every N team kills). Run-end log lists per-player
   scores. Not covered: the host's local best score (stock save) may still use the team total.
+
+## 0.7.12-alpha status (2026-10-07) - installed, UNTESTED. Protocol 30.
+- Installed SHA1 e44fef2d749e2c77f3cdc948a1cd6152375a94a0 (332800 bytes), verified in game folder + build-alpha. Tag v0.7.12-alpha.
+- 05:31 run (0.7.11; host Blown pid1340, joiner Peetza pid3648): challenge run then saved campaign games (sp_outer_05 keys 3,
+  sp_titan_07, sp_outer_02 keys 2). Joiner sp_outer_02: manifest "catch-up ... keys=2" 05:37:50.603 -> ApplyKeys on the temporary
+  SP player; OnStartLocalPlayer netId=519 at 50.679 (new Player, m_unlock_level 0). Door om_door_02a LockType LEVEL2 (correct), so
+  the joiner's own ship lacked access. Same timing as CH15. W8 (OnStartLocalPlayer postfix, joiner) re-applies CoopWorld.HeardKeys
+  (max level heard via ApplyKeys; cleared by W9 at LoadLevel). Log "[WORLD] joiner: team security level N applied to our networked ship".
+- Also from this run: CH15 worked (joiner challenge loadout CYCLONE/HUNTER, missiles [10,0,8,..]). READY UP on the briefing and
+  per-player scores not visible in these logs.
 
