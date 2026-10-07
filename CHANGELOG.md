@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.7.13-alpha (2026-10-07) - joiner slow after a death, team-wipe restart, menus, UNTESTED build (all players must run 0.7.13-alpha; protocol 30)
+From the 13:38 run on 0.7.12 (host PeetzaGuest, joiner BlownToBits; both logs). User: joiner extremely slow after a death (boost
+didn't help); death message over the spectating text; remove the version line on CO-OP OPTIONS; joiners shouldn't be able to use
+LOAD SAVED GAME / PLAY MISSION / PLAY CHALLENGE MODE / PLAY MULTIPLAYER.
+- Fix attempt (slow joiner): after the 14:02 team-wipe restart the joiner's ship moved at about a fifth of its normal speed (host and
+  joiner logs agree). The game slows time to one sixth while the weapon selection wheel is open - except in real multiplayer maps,
+  which co-op levels aren't - and that state can be left on (it's only cleared at game start). Slow motion from the wheel is now
+  off in co-op (it only ever slowed one player's game), and the wheel state is cleared at each level. The logs now record the
+  game speed every 5 s, so if it happens again the log will show whether this was it.
+- Fix: a team-wipe restart was treated as the host quitting to the main menu (the Esc menu had been used earlier while spectating),
+  so joiners were sent to the main menu first. Only a real QUIT TO MAIN MENU counts now (this also protects a joiner's restart
+  from being taken as leaving the session).
+- Change: while you're dead or spectating, the yellow messages at the top are drawn 20% lower so they don't cover "SPECTATING".
+- Change: CO-OP OPTIONS no longer shows the version line under the title (the hover explanations at the bottom stay).
+- New: in a joiner's main menu, LOAD SAVED GAME, PLAY MISSION, PLAY CHALLENGE MODE and PLAY MULTIPLAYER are greyed out and can't
+  be selected (the host picks the game).
+
 ## 0.7.12-alpha (2026-10-07) - saved-game security access for joiners, UNTESTED build (all players must run 0.7.12-alpha; protocol 30)
 From the 05:31 run on 0.7.11 (both logs). User: a joiner couldn't get through a level 2 security door that was unlocked in the
 host's saved game.

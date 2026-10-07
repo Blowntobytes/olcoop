@@ -657,7 +657,9 @@ namespace OlCoop.SteamNet
     /// the co-op session. Before, a joiner was reconnected to the host straight away and the host kept its lobby.
     public static class SessionEnd
     {
-        public static bool FromPauseMenu { get { return MenuManager.m_menu_state == MenuState.PAUSE_MENU; } }
+        /// 0.7.13: also require the game to be in its menu. MenuManager.m_menu_state keeps PAUSE_MENU after the Esc menu closes, so the
+        /// 14:02 team-wipe restart (host had used Esc while spectating) looked like QUIT TO MAIN MENU: status 4 was sent to the joiner.
+        public static bool FromPauseMenu { get { return MenuManager.m_menu_state == MenuState.PAUSE_MENU && GameManager.m_game_state == GameManager.GameState.MENU; } }
 
         /// Esc menu LEAVE SESSION / STOP HOSTING: end the session and go to the main menu at once.
         /// (0.5.2 forwarded it to the stock QUIT TO MAIN MENU entry, but the mouse re-selects the hovered entry inside PausedUpdate,

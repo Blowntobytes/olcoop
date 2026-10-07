@@ -189,4 +189,28 @@ namespace OlCoop.Session
     {
         static bool Prefix() { return !(CoopConfig.Active && !GameplayManager.IsMultiplayer); }
     }
+
+    /// N20 (0.7.13): no weapon-wheel slow motion in co-op. GameplayManager.Update sets SLOW_MO_AMOUNT 0.16667 while WheelSelectActive
+    /// outside multiplayer scenes (co-op levels are campaign scenes) and GameManager.Update copies it to Time.timeScale - for that one
+    /// player only, so its ship (and the host's copy, driven by its inputs) ran at a sixth of the speed. WheelSelectActive is only
+    /// cleared at game start or by the ship's own wheel code, so a wheel interrupted by death could keep it on into later levels.
+    /// (13:39 run: joiner moved ~9 u in 15 s after a team-wipe restart, boost no help; timeScale wasn't logged, now it is.)
+    [HarmonyPatch(typeof(GameplayManager), "Update")]
+    static class N20_NoWheelSlowMoInCoop
+    {
+        static int s_logged;
+        static void Postfix()
+        {
+            if (!CoopConfig.Active || GameplayManager.IsMultiplayer || GameplayManager.SLOW_MO_TIMER > 0f) return;
+            if (GameplayManager.SLOW_MO_AMOUNT >= 1f) return;
+            if (s_logged++ < 5) CoopLog.Write("NET", "co-op: slow motion " + GameplayManager.SLOW_MO_AMOUNT.ToString("F2") + " (wheel=" + GameplayManager.WheelSelectActive + ") cancelled - the game runs at full speed for everyone");
+            GameplayManager.SLOW_MO_AMOUNT = 1f;
+        }
+    }
+
+    [HarmonyPatch(typeof(GameplayManager), "LoadLevel")]
+    static class N21_ResetWheel
+    {
+        static void Prefix() { if (CoopConfig.Active) GameplayManager.WheelSelectActive = false; }
+    }
 }

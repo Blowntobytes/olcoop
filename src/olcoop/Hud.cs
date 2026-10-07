@@ -527,4 +527,24 @@ namespace OlCoop.Hud
             Client.GetClient().RegisterHandler(SpectateHud.MsgStats, SpectateHud.OnStats);
         }
     }
+
+    /// HU20 (0.7.13, user): while dead/spectating, the yellow HUD messages (UIElement.DrawMessages, top of the screen) covered the
+    /// "SPECTATING <name>" line. Move the message block 20% of the screen height down while the local ship is dead or spectating.
+    [HarmonyPatch(typeof(UIElement), "DrawMessages")]
+    static class HU20_LowerMessagesWhileDead
+    {
+        static void Prefix(out int __state) { __state = UIManager.m_quad_index; }
+        static void Postfix(int __state)
+        {
+            try
+            {
+                if (!CoopConfig.Active || GameplayManager.IsMultiplayer) return;
+                var me = GameManager.m_player_ship;
+                bool dead = OlCoop.Death.Spectate.On || (me != null && ((bool)me.m_dying || (bool)me.m_dead));
+                if (!dead || UIManager.m_quad_index <= __state) return;
+                UIManager.PreviousQuadsOffset(__state, new Vector2(0f, (UIManager.UI_BOTTOM - UIManager.UI_TOP) * 0.2f));
+            }
+            catch { }
+        }
+    }
 }

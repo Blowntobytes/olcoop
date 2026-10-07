@@ -1066,7 +1066,7 @@ namespace OlCoop.World
         static void Prefix(GameplayManager.DoneReason reason)
         {
             // 0.7.9: QUIT TO MAIN MENU from the host's Esc menu (not STOP HOSTING): joiners were left in a level nobody ran.
-            if (CoopWorld.Active && reason == GameplayManager.DoneReason.Quit && MenuManager.m_menu_state == MenuState.PAUSE_MENU)
+            if (CoopWorld.Active && reason == GameplayManager.DoneReason.Quit && OlCoop.SteamNet.SessionEnd.FromPauseMenu)
             {
                 // 0.7.11: 05:10 run - the host quit while dead and spectating ("Esc while spectating"): the spectator camera and the
                 // death state stayed on, so the ship kept spinning behind the main menu. Leave as a living ship with its own camera.
@@ -1080,7 +1080,7 @@ namespace OlCoop.World
                 }
                 catch (Exception ex) { CoopLog.Error("F15 quit cleanup", ex); }
             }
-            if (CoopWorld.IsHost && reason == GameplayManager.DoneReason.Quit && MenuManager.m_menu_state == MenuState.PAUSE_MENU && !OlCoop.SteamNet.SessionEnd.Leaving)
+            if (CoopWorld.IsHost && reason == GameplayManager.DoneReason.Quit && OlCoop.SteamNet.SessionEnd.FromPauseMenu && !OlCoop.SteamNet.SessionEnd.Leaving)
             {
                 try { CoopFlow.HostSendStatus(4); } catch (Exception ex) { CoopLog.Error("F15 quit", ex); }
                 return;

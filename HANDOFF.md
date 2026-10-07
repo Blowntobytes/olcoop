@@ -13,8 +13,8 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.7.12 alpha"). Protocol = 30 (in build.sh). Message ids used so far: 160-213 (0.7.6 extended msg 194 ObjMsg; 0.7.9 status code 4 on FNet.Status). Current build folder: build-alpha (USER 2026-10-07: "it is still an alpha" - releases are named -alpha again from 0.7.9; build-challenge holds 0.7.8-challenge, the last "challenge"-named build).
-- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 293 patches, 0 problems, 0.7.12;
+  `VERSION` ("0.7.13 alpha"). Protocol = 30 (in build.sh). Message ids used so far: 160-213 (0.7.6 extended msg 194 ObjMsg; 0.7.9 status code 4 on FNet.Status). Current build folder: build-alpha (USER 2026-10-07: "it is still an alpha" - releases are named -alpha again from 0.7.9; build-challenge holds 0.7.8-challenge, the last "challenge"-named build).
+- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 299 patches, 0 problems, 0.7.13;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-challenge (0.7.0-0.7.8), build-alpha (current again since 0.7.9).
   Bug fixes overwrite the current phase folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
@@ -952,4 +952,24 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   (max level heard via ApplyKeys; cleared by W9 at LoadLevel). Log "[WORLD] joiner: team security level N applied to our networked ship".
 - Also from this run: CH15 worked (joiner challenge loadout CYCLONE/HUNTER, missiles [10,0,8,..]). READY UP on the briefing and
   per-player scores not visible in these logs.
+
+## 0.7.13-alpha status (2026-10-07) - installed, UNTESTED. Protocol 30.
+- Installed SHA1 75c6d396959d16d4a3656b4146394cbc7c0a917f (335360 bytes), verified in game folder + build-alpha. Tag v0.7.13-alpha.
+- 13:38 run (0.7.12): host PeetzaGuest pid4252 (20f3ce68), joiner BlownToBits pid2692 (be433dc5; log ends 14:03:59). Challenge
+  runs + results OK, campaign sp_outer_03 / sp_outer_02 with Respawn, host respawned 14:01:09, joiner died 14:01:29 (Respawn), host
+  switched to SPECTATE 14:01:52 (joiner kept spectating, correct), team wipe 14:02:12 -> restart.
+- Restart bug: Death DoReset -> DoneLevel(Quit) with MenuManager.m_menu_state still PAUSE_MENU (host used Esc while spectating
+  earlier; m_menu_state isn't reset when the menu closes) -> F15 sent status 4 -> joiner ReturnToMainMenu, then the level arrived 5 s
+  later. SessionEnd.FromPauseMenu now also requires GameManager.m_game_state == MENU; F15 + ST8 use it (ST8 would have made a
+  joiner's restart = LEAVE SESSION). ST6/ST7 use it too.
+- Slow joiner after the restart: joiner pos 14:02:44 (52.9) -> 14:02:59 (43.6), host view the same; before the death ~30 u / 10 s.
+  Not proven (no timeScale in logs). Candidate from code: GameplayManager.Update sets SLOW_MO_AMOUNT 0.16667 while
+  WheelSelectActive && !IsMultiplayerSceneLoaded; GameManager.Update 1027 Time.timeScale = SLOW_MO_AMOUNT; WheelSelectActive only
+  reset in GameplayManager.Initialize and PlayerShip wheel code. N20 (GameplayManager.Update postfix, co-op, SLOW_MO_TIMER <= 0)
+  forces SLOW_MO_AMOUNT 1 (logs "co-op: slow motion ... cancelled"); N21 clears WheelSelectActive at LoadLevel. Timebomb slow-mo
+  (SLOW_MO_TIMER, server-sent) untouched. Dumps now log timeScale, slowMo amount/timer, wheel. If it recurs with timeScale=1,
+  the cause is elsewhere (host-side copy of the joiner: check its speed in the host dump).
+- UI: HU20 (UIElement.DrawMessages prefix/postfix: PreviousQuadsOffset +20% UI height while local ship dying/dead/spectating);
+  CO-OP OPTIONS version line removed (user chose the version line); SM5a/b (SelectAndDrawItem / Outline prefix: fade=true for ids
+  5,0,1,7 on the MAIN_MENU element when IsJoiner) + SM6 (MainMenuUpdate prefix: selection on a blocked id -> OPTIONS 2).
 

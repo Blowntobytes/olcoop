@@ -80,9 +80,7 @@ namespace OlCoop.UI
             UIManager.ui_bg_dark = true;
             uie.DrawMenuBG();
             UIElement.ToolTipActive = false;
-            uie.DrawHeaderMedium(Vector2.up * (UIManager.UI_TOP + 20f), "CO-OP OPTIONS");
-            uie.DrawStringSmall(CoopVersion.Full.ToUpperInvariant() + (CoopConfig.IsHost ? " - HOST" : CoopConfig.IsJoiner ? " - JOINER" : ""),
-                Vector2.up * (UIManager.UI_TOP + 52f), 0.45f, StringOffset.CENTER, UIManager.m_col_ui2, 1f, -1f);
+            uie.DrawHeaderMedium(Vector2.up * (UIManager.UI_TOP + 20f), "CO-OP OPTIONS"); // 0.7.13 (user): no version line under the title
             Vector2 position = uie.m_position;
             position.y -= 248f; // 0.6.8: half a row higher again to fit FLARE COLOR
             bool ro = ReadOnly;

@@ -75,9 +75,10 @@ namespace OlCoop.Instrumentation
 
         public static string ObjectiveSummary()
         {
-            return string.Format("mustEscape={0} escapeTimer={1:F1} cryosLevel={2} cryosMission={3} gameTime={4:F1}",
+            return string.Format("mustEscape={0} escapeTimer={1:F1} cryosLevel={2} cryosMission={3} gameTime={4:F1} timeScale={5:F2} slowMo={6:F2}/{7:F1} wheel={8}",
                 GameplayManager.MustEscape, GameplayManager.EscapeTimer, GameplayManager.m_cryos_picked_up,
-                GameplayManager.m_cryos_picked_up_mission, (float)GameplayManager.m_game_time);
+                GameplayManager.m_cryos_picked_up_mission, (float)GameplayManager.m_game_time,
+                Time.timeScale, GameplayManager.SLOW_MO_AMOUNT, GameplayManager.SLOW_MO_TIMER, GameplayManager.WheelSelectActive);
         }
 
         public static string PlayersSummary()

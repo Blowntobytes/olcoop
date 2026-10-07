@@ -284,6 +284,47 @@ namespace OlCoop.UI
         }
     }
 
+    /// SM5 (0.7.13, user): a joiner's main menu greys out LOAD SAVED GAME (5), PLAY MISSION (0), PLAY CHALLENGE MODE (1) and
+    /// PLAY MULTIPLAYER (7) - the host picks the game. Faded stock items can't be clicked or reached with the controller; SM6 moves a
+    /// selection that still sits on one of them (the stock default is PLAY MISSION) to OPTIONS.
+    public static class JoinerMainMenu
+    {
+        public static bool Locked { get { return CoopConfig.IsJoiner && MenuManager.m_menu_state == MenuState.MAIN_MENU; } }
+        public static bool IsBlocked(int id) { return id == 5 || id == 0 || id == 1 || id == 7; }
+    }
+
+    [HarmonyPatch(typeof(UIElement), "SelectAndDrawItem", new[] { typeof(string), typeof(Vector2), typeof(int), typeof(bool), typeof(float), typeof(float) })]
+    static class SM5a_JoinerGreyItems
+    {
+        static void Prefix(UIElement __instance, int selection, ref bool fade)
+        {
+            if (__instance.m_type == UIElementType.MAIN_MENU && JoinerMainMenu.Locked && JoinerMainMenu.IsBlocked(selection)) fade = true;
+        }
+    }
+
+    [HarmonyPatch(typeof(UIElement), "SelectAndDrawItemOutline")]
+    static class SM5b_JoinerGreyOutlineItems
+    {
+        static void Prefix(UIElement __instance, int selection, ref bool fade)
+        {
+            if (__instance.m_type == UIElementType.MAIN_MENU && JoinerMainMenu.Locked && JoinerMainMenu.IsBlocked(selection)) fade = true;
+        }
+    }
+
+    [HarmonyPatch(typeof(MenuManager), "MainMenuUpdate")]
+    static class SM6_JoinerNoBlockedSelection
+    {
+        static int s_logged;
+        [HarmonyPriority(Priority.First)]
+        static void Prefix()
+        {
+            if (!JoinerMainMenu.Locked || MenuManager.m_menu_sub_state != MenuSubState.ACTIVE) return;
+            if (!JoinerMainMenu.IsBlocked(UIManager.m_menu_selection)) return;
+            if (s_logged++ < 3) CoopLog.Write("UI", "joiner main menu: selection " + UIManager.m_menu_selection + " is greyed out (host picks the game); moved to OPTIONS");
+            UIManager.m_menu_selection = 2;
+        }
+    }
+
     [HarmonyPatch(typeof(MenuManager), "MainMenuUpdate")]
     static class SM2_MainMenuSelect
     {
