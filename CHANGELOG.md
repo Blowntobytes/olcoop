@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.15-alpha (2026-10-07) - installer finds olmod anywhere, CO-OP OPTIONS overlap, UNTESTED build (all players must run 0.7.15-alpha; protocol 30)
+- New (installer): olcoop now installs into your olmod folder (the folder with olmod.exe and GameMod.dll - olmod loads mods from
+  its own folder), which no longer has to be the Overload folder. install.bat finds it in the Overload folder (any drive), through
+  shortcuts to olmod.exe on the Desktop / Start Menu / taskbar, or in the usual folders (Desktop, Documents, Downloads, drive roots),
+  and asks for it otherwise. The olcoop shortcuts start olmod from that folder. uninstall.bat uses the same search.
+- Fix: on CO-OP OPTIONS the version line was drawn over "WHEN A PLAYER DIES ..." (screenshot). It now sits where the removed title was.
+
 ## 0.7.14-alpha (2026-10-07) - CO-OP OPTIONS title, UNTESTED build (all players must run 0.7.14-alpha; protocol 30)
 - Change (user, correcting 0.7.13): the version line is back on CO-OP OPTIONS; the "CO-OP OPTIONS" title line is removed instead.
   Everything else is the same as 0.7.13.

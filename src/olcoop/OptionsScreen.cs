@@ -82,7 +82,7 @@ namespace OlCoop.UI
             UIElement.ToolTipActive = false;
             // 0.7.14 (user): no "CO-OP OPTIONS" title line; the version line stays
             uie.DrawStringSmall(CoopVersion.Full.ToUpperInvariant() + (CoopConfig.IsHost ? " - HOST" : CoopConfig.IsJoiner ? " - JOINER" : ""),
-                Vector2.up * (UIManager.UI_TOP + 52f), 0.45f, StringOffset.CENTER, UIManager.m_col_ui2, 1f, -1f);
+                Vector2.up * (UIManager.UI_TOP + 20f), 0.45f, StringOffset.CENTER, UIManager.m_col_ui2, 1f, -1f); // 0.7.15: where the title was (at +52 it overlapped the WHEN A PLAYER DIES label)
             Vector2 position = uie.m_position;
             position.y -= 248f; // 0.6.8: half a row higher again to fit FLARE COLOR
             bool ro = ReadOnly;

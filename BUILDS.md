@@ -83,4 +83,5 @@ Targets unless noted: Overload 1.1.1886, olmod 0.5.14.
 | 0.7.11-alpha | 30 | 10-07 | tested (05:31 run: challenge + saved campaign levels) | challenge run, joiner loadout, saved-game level loads, door states | joiner lacked the saved game security access | tag v0.7.11-alpha, dist/olcoop-0.7.11-alpha.zip |
 | 0.7.12-alpha | 30 | 10-07 | tested (13:38 run: challenge + campaign) | challenge runs/results, respawn, team-wipe restarts | joiner slow after a restart; restart sent status 4 | tag v0.7.12-alpha, dist/olcoop-0.7.12-alpha.zip |
 | 0.7.13-alpha | 30 | 10-07 | not tested (replaced by 0.7.14) | - | removed the wrong line on CO-OP OPTIONS | tag v0.7.13-alpha, dist/olcoop-0.7.13-alpha.zip |
-| 0.7.14-alpha | 30 | 10-07 | untested | - | - | tag v0.7.14-alpha, build-alpha, dist/olcoop-0.7.14-alpha.zip |
+| 0.7.14-alpha | 30 | 10-07 | seen (screenshot) | title gone, version line back | version line overlapped the WHEN A PLAYER DIES label | tag v0.7.14-alpha, dist/olcoop-0.7.14-alpha.zip |
+| 0.7.15-alpha | 30 | 10-07 | untested | - | - | tag v0.7.15-alpha, build-alpha, dist/olcoop-0.7.15-alpha.zip |

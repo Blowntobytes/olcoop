@@ -13,8 +13,8 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.7.14 alpha"). Protocol = 30 (in build.sh). Message ids used so far: 160-213 (0.7.6 extended msg 194 ObjMsg; 0.7.9 status code 4 on FNet.Status). Current build folder: build-alpha (USER 2026-10-07: "it is still an alpha" - releases are named -alpha again from 0.7.9; build-challenge holds 0.7.8-challenge, the last "challenge"-named build).
-- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 299 patches, 0 problems, 0.7.14;
+  `VERSION` ("0.7.15 alpha"). Protocol = 30 (in build.sh). Message ids used so far: 160-213 (0.7.6 extended msg 194 ObjMsg; 0.7.9 status code 4 on FNet.Status). Current build folder: build-alpha (USER 2026-10-07: "it is still an alpha" - releases are named -alpha again from 0.7.9; build-challenge holds 0.7.8-challenge, the last "challenge"-named build).
+- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 299 patches, 0 problems, 0.7.15;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-challenge (0.7.0-0.7.8), build-alpha (current again since 0.7.9).
   Bug fixes overwrite the current phase folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
@@ -979,4 +979,18 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   UI_TOP + 52). 0.7.13 had removed the version line (my misreading of the AskUserQuestion answer context). Rest = 0.7.13.
 - Open question to the user: how players with olmod outside the Overload folder start it (installer/launcher would need to find
   olmod's folder: olmod loads Mod-*.dll from GameMod.dll's folder or %OLMODDIR%; olcoop logs/settings follow its DLL).
+
+## 0.7.15-alpha status (2026-10-07) - installed, UNTESTED. Protocol 30.
+- Installed SHA1 f2b34489c674c2f92aa2a153779e22f930264eb4 (335360 bytes), verified in game folder + build-alpha. Tag v0.7.15-alpha.
+- User screenshot (0.7.14, joiner): version line at UI_TOP+52 overlapped "WHEN A PLAYER DIES - SET BY THE HOST". Moved to UI_TOP+20
+  (the old title position).
+- User decision: installer finds olmod's folder ("most people start it from that folder or a shortcut created from it").
+  installer/find-overload.ps1 now prints the OLMOD folder (olmod.exe + GameMod.dll): Overload folders (Steam libraries, common
+  folders) -> .lnk files targeting olmod.exe (Desktop, common Desktop, Start Menu x2, taskbar pins, -Depth 3) -> Desktop/Documents/
+  Downloads/USERPROFILE/drive roots/X:\Games and their *olmod* subfolders (-Depth 1). install.bat: target = that folder; requires
+  olmod.exe + GameMod.dll there (not Overload.exe; prints a note if it's outside the Overload folder); prompt text for the olmod
+  folder. uninstall.bat uses the same search (was hard-coded to the default Steam path). Launchers unchanged (cd %~dp0, olmod.exe).
+  NOT TESTED: PowerShell isn't available in the cloud workspace; run install.bat on the PC (standard layout) to check.
+  Not handled: olmod shortcuts with extra arguments (our launchers pass only olcoop's own), OLMODDIR set to another folder.
+- README.md (Install section, my text) + installer/README.txt updated for the olmod folder.
 

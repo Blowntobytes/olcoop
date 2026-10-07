@@ -29,11 +29,11 @@ expect rough edges. Download the latest zip from [Releases](https://github.com/B
 - Over long-distance connections robots lag behind on joiners' screens (they are shown about 0.1 s behind the host plus the ping).
 
 ## Install (players)
-Requirements: Overload on Steam, Steam running, and olmod 0.5.14 in the Overload folder. Every player needs the same olcoop version.
+Requirements: Overload on Steam, Steam running, and olmod 0.5.14 (usually in the Overload folder; another folder works too). Every player needs the same olcoop version.
 1. Download the release zip and unzip it anywhere.
-2. Run `install.bat`. It finds your Overload folder (or asks for it), copies `Mod-olcoop.dll` and `olcoop.bat`, checks the copy,
+2. Run `install.bat`. It finds your olmod folder - the folder with `olmod.exe` and `GameMod.dll`, also through olmod shortcuts - (or asks for it), copies `Mod-olcoop.dll` and `olcoop.bat` there, checks the copy,
    and puts an **olcoop** shortcut (orange and black icon) on your Desktop.
-3. Start the game with the **olcoop** shortcut, or `olcoop.bat` IN THE GAME FOLDER, not the zip folder (not Steam's Play button,
+3. Start the game with the **olcoop** shortcut, or `olcoop.bat` IN THE OLMOD FOLDER (usually the game folder), not the zip folder (not Steam's Play button,
    which starts the vanilla game).
    VR: SteamVR headsets - start SteamVR, then **olcoop SteamVR** (`olcoop-steamvr.bat`, `-vrmode openvr`); Oculus/Meta
    headsets - start the Oculus app, then **olcoop Oculus** (`olcoop-oculus.bat`, `-vrmode oculus`).
