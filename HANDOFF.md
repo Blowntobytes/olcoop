@@ -13,7 +13,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.7.3 challenge"). Protocol = 28 (in build.sh). Message ids used so far: 160-212. Current build folder: build-challenge (since 0.7.0; build-alpha holds 0.6.18-alpha, build-online held 0.5.x).
+  `VERSION` ("0.7.4 challenge"). Protocol = 29 (in build.sh). Message ids used so far: 160-213. Current build folder: build-challenge (since 0.7.0; build-alpha holds 0.6.18-alpha, build-online held 0.5.x).
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 192 patches, 0 problems;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-alpha, build-challenge (current).
@@ -826,3 +826,13 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 - Campaign: HostReady.Remind snapshots host's points on first UPGRADE_MENU in a lobby check for a story level idx>0 (new game started
   later), clears ready marks, sends offers (206) with that scene; joiner OnOffer auto-runs StartUpgrades on a new offer when in menus
   outside post-level screens (also clears ManualReady).
+
+## 0.7.4-challenge status (2026-10-06) - installed, UNTESTED. Protocol 29 (msg 213 door states).
+- Installed SHA1 6cf9cc4239e78b17a733612fc5dae32f85fa15c3 (320512 bytes), verified in game folder + build-challenge. Tag v0.7.4-challenge.
+- 18:48 run (0.7.3): both logs "results screen opened (menu PLAY_GAME, camera on _cam_controller)" (menu change is deferred via
+  m_next_menu_state, so PLAY_GAME there is expected), no exceptions in unity.log, user still saw no menu. Not diagnosed yet. OpenResults
+  now mirrors PlayerShip.DeadUpdate 3115-3135 (m_dying/m_dead false, colliders, HUD destroyed, ui_bg_fade=2, after: bars/fade/AA off,
+  camera parent = m_camera_parent + ResetCameraPosition/Sway). CoopChallenge.ResultsWatch logs game/gameplay/menu state, results UI,
+  DeathPaused, bgFade, timeScale, camera each second for 6 s (from CH8 MenuManager.Update and CH9 GameplayManager.Update postfixes).
+- Doors: CoopDoors (WorldFx.cs): host sends LockType/OpenForever/HasBeenOpened for all DoorBase (sorted by position) after the world
+  manifest when hashes match; joiner applies if counts match. Log "[WORLD] joiner: door states from the host: N of M changed ...".

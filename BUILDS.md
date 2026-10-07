@@ -72,4 +72,5 @@ Targets unless noted: Overload 1.1.1886, olmod 0.5.14.
 | 0.7.0-challenge | 28 | 10-06 | untested (superseded before testing) | - | - | tag v0.7.0-challenge, dist/olcoop-0.7.0-challenge.zip |
 | 0.7.1-challenge | 28 | 10-06 | tested (18:14 run) | host side ran the challenge (spawns, score, run end) | joiner had no ship; briefing not opened from CO-OP screen | tag v0.7.1-challenge, dist/olcoop-0.7.1-challenge.zip |
 | 0.7.2-challenge | 28 | 10-06 | tested (18:33 run) | joiner ship + own loadout in challenge | results screen after team wipe not visible | tag v0.7.2-challenge, dist/olcoop-0.7.2-challenge.zip |
-| 0.7.3-challenge | 28 | 10-06 | untested | - | - | tag v0.7.3-challenge, build-challenge, dist/olcoop-0.7.3-challenge.zip |
+| 0.7.3-challenge | 28 | 10-06 | tested (18:48 run) | no wreck spin at run end; joiner loadout + ship | results screen not shown after team wipe; saved-game doors locked for joiner | tag v0.7.3-challenge, dist/olcoop-0.7.3-challenge.zip |
+| 0.7.4-challenge | 29 | 10-06 | untested | - | - | tag v0.7.4-challenge, build-challenge, dist/olcoop-0.7.4-challenge.zip |

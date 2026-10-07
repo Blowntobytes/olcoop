@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.4-challenge (2026-10-06) - challenge results screen, saved-game doors, UNTESTED build (all players must run 0.7.4-challenge; protocol 29)
+From the 18:48 run on 0.7.3 (both logs) and a campaign saved-game test. User: no more spinning, but after both died the screen still
+had no menu; in a saved campaign game an unlocked security door didn't open for the joiner (half passable).
+- Fix attempt (challenge): the run end now does exactly what the game's own death sequence does around its results screen (ship no
+  longer marked dead, HUD removed, menu background on, camera back on its own mount and reset). 0.7.3 left the ship marked dead and
+  the camera on the wrong mount. Both logs log the screen state for 6 s after the run ends ("results watch"), so if it still sticks
+  the log shows why.
+- Fix (campaign): a saved game restores the host's doors (e.g. doors unlocked earlier), but joiners load the level fresh with those
+  doors still locked. The host now sends every door's lock state when a joiner enters the level. Protocol 29.
+
 ## 0.7.3-challenge (2026-10-06) - challenge results view, upgrade screen on a later campaign start, UNTESTED build (all players must run 0.7.3-challenge; protocol 28)
 From the 18:33 run on 0.7.2 (both logs). Joiner now gets a ship and its own loadout (confirmed in the logs).
 - Fix (challenge): when everyone died the wrecks kept spinning and the screen stayed on them. Both logs show the run ending and the

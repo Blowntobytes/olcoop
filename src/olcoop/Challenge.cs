@@ -81,8 +81,24 @@ namespace OlCoop.Challenge
         }
 
         /// Every menu frame on the host: on the challenge briefing, announce the level (at once, then every 3 s for late joiners).
+        static float s_results_watch = -1f;
+        /// Every menu frame for 6 s after the results screen was asked for: log what the game is doing (once per second).
+        public static void ResultsWatch()
+        {
+            if (s_results_watch < 0f) return;
+            float t = Time.realtimeSinceStartup - s_results_watch;
+            if (t > 6f) { s_results_watch = -1f; return; }
+            if ((int)(t * 10f) % 10 != 0) return;
+            var cam = Camera.main;
+            CoopLog.Write("CHAL", "results watch +" + t.ToString("F1") + "s: game=" + GameManager.m_game_state + " gameplay=" + GameplayManager.m_gameplay_state +
+                " menu=" + MenuManager.m_menu_state + "/" + MenuManager.m_menu_sub_state + " resultsUi=" + UIManager.TypeExists(UIElementType.CHALLENGE_RESULTS) +
+                " deathPaused=" + PlayerShip.DeathPaused + " bgFade=" + UIManager.ui_bg_fade.ToString("F1") + " timeScale=" + Time.timeScale +
+                " cam=" + (cam != null ? (cam.transform.parent != null ? cam.transform.parent.name : "null") + " enabled=" + cam.enabled : "none"));
+        }
+
         public static void HostMenuTick()
         {
+            ResultsWatch();
             if (!CoopConfig.IsHost || !NetworkServer.active) return;
             var ms = MenuManager.m_menu_state;
             bool entered = ms != s_last_menu; s_last_menu = ms;
@@ -175,39 +191,55 @@ namespace OlCoop.Challenge
             try { OlCoop.Hud.CoopHud.ClearRespawn(); } catch { }
             try
             {
-                var ship = GameManager.m_player_ship;
-                if (ship != null && ((bool)ship.m_dying || (bool)ship.m_dead)) OlCoop.World.PostLevel.ClearDeathForMenus(CoopConfig.IsHost ? "host" : "joiner");
+                var ls = GameManager.m_player_ship;
+                if (ls != null && ((bool)ls.m_dying || (bool)ls.m_dead)) OlCoop.World.PostLevel.ClearDeathForMenus(CoopConfig.IsHost ? "host" : "joiner");
             }
             catch (Exception ex) { CoopLog.Error("CHAL results", ex); }
-            // 0.7.3: the dying/dead ship had the camera off on its death path (spinning wreck, results drawn out of view: 18:39 run).
-            // Put camera and UI surface back on the ship's camera mount and stop the wreck before the results screen.
+            // 0.7.4: do what the stock death sequence does right before and after PlayerHasDied (PlayerShip.DeadUpdate, 3115-3135):
+            // ship no longer dying/dead, HUD gone, menu background on; then camera back on its own mount (m_camera_parent) and reset.
+            // 0.7.3 put the camera on the cam controller and left the ship 'dead' - the results screen still didn't show (18:54 run).
+            var ship = GameManager.m_player_ship;
             try
             {
-                var ship = GameManager.m_player_ship;
                 if (ship != null)
                 {
-                    if (ship.c_camera_transform != null && ship.c_cam_controller != null)
-                    {
-                        ship.c_camera_transform.parent = ship.c_cam_controller.transform;
-                        ship.c_camera_transform.localPosition = Vector3.zero; ship.c_camera_transform.localRotation = Quaternion.identity;
-                    }
-                    var ui = ship.c_viewer != null ? ship.c_viewer.c_ui_mesh_transform : null;
-                    if (ui != null && ship.c_cam_controller != null)
-                    {
-                        ui.parent = ship.c_cam_controller.transform; ui.localPosition = Vector3.zero; ui.localRotation = Quaternion.identity;
-                        var mr = ui.GetComponent<MeshRenderer>(); if (mr != null) mr.enabled = true;
-                        ui.gameObject.SetActive(true);
-                    }
-                    if (ship.c_rigidbody != null) { ship.c_rigidbody.angularVelocity = Vector3.zero; ship.c_rigidbody.velocity = Vector3.zero; ship.c_rigidbody.isKinematic = true; }
+                    if (ship.c_level_collider != null) ship.c_level_collider.enabled = true;
+                    if (ship.c_mesh_collider != null) ship.c_mesh_collider.enabled = true;
+                    if (ship.c_rigidbody != null) { ship.c_rigidbody.angularVelocity = Vector3.zero; ship.c_rigidbody.velocity = Vector3.zero; ship.c_rigidbody.drag = 2.5f; ship.c_rigidbody.angularDrag = 5.5f; }
+                    ship.m_death_stats_recorded = false;
+                    ship.m_dying = false; ship.m_dead = false;
+                    try { OlCoop.Death.CoopDeath.HideShip(ship, false); } catch { }
                 }
-                UIManager.ShowCinematicBars(false); UIManager.SetScreenFade(0f);
-                if (Camera.main != null) Camera.main.enabled = true;
+                PlayerShip.DeathPaused = false;
+                UIManager.DestroyType(UIElementType.HUD, true);
+                UIManager.ui_bg_fade = 2f;
             }
-            catch (Exception ex) { CoopLog.Error("CHAL results view", ex); }
+            catch (Exception ex) { CoopLog.Error("CHAL results pre", ex); }
             AllowResults = true;
             try { GameplayManager.PlayerHasDied(); }
             finally { AllowResults = false; }
+            try
+            {
+                UIManager.ShowCinematicBars(false); UIManager.SetScreenFade(0f); UIManager.SetOverlayAntiAlias(false);
+                if (ship != null && ship.c_camera_transform != null)
+                {
+                    ship.c_camera_transform.parent = ship.m_camera_parent;
+                    ship.c_camera_transform.localPosition = Vector3.zero;
+                    ship.ResetCameraPosition();
+                    ship.ResetCameraSway();
+                }
+                var ui = ship != null && ship.c_viewer != null ? ship.c_viewer.c_ui_mesh_transform : null;
+                if (ui != null && ship.c_cam_controller != null)
+                {
+                    ui.parent = ship.c_cam_controller; ui.localPosition = Vector3.zero; ui.localRotation = Quaternion.identity;
+                    var mr = ui.GetComponent<MeshRenderer>(); if (mr != null) mr.enabled = true;
+                    ui.gameObject.SetActive(true);
+                }
+                if (Camera.main != null) Camera.main.enabled = true;
+            }
+            catch (Exception ex) { CoopLog.Error("CHAL results post", ex); }
             OlCoop.World.CoopWorldTick.MenuOpen = false; // results screen, not an Esc menu: nothing keeps running behind it
+            s_results_watch = Time.realtimeSinceStartup;
             CoopLog.Write("CHAL", "results screen opened (menu " + MenuManager.m_menu_state + ", camera on " + (Camera.main != null && Camera.main.transform.parent != null ? Camera.main.transform.parent.name : "null") + ")");
         }
 
@@ -525,7 +557,7 @@ namespace OlCoop.Challenge
         static void Postfix()
         {
             if (!CoopConfig.Active || GameplayManager.IsMultiplayer) return;
-            try { CoopChallenge.HostTick(); } catch (Exception ex) { CoopLog.Error("CH9", ex); }
+            try { CoopChallenge.ResultsWatch(); CoopChallenge.HostTick(); } catch (Exception ex) { CoopLog.Error("CH9", ex); }
         }
     }
 

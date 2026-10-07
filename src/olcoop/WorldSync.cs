@@ -197,6 +197,7 @@ namespace OlCoop.World
                 CoopLog.Write("WORLD", "host: joiner conn " + msg.conn.connectionId + " world hash " + m.hash.ToString("X8") + (ok ? " matches" : " MISMATCH (host " + Hash.ToString("X8") + "); joiner keeps its own level logic") +
                     "; catch-up destroyed=" + s_destroyed.Count + " scripts=" + s_history.Count);
                 msg.conn.Send(WNet.Manifest, new WManifestMsg { hash = Hash, destroyed = s_destroyed.ToArray(), scripts = s_history.ToArray(), keys = Math.Max(0, s_team_keys) });
+                if (ok) OlCoop.World.CoopDoors.SendTo(msg.conn); // 0.7.4: saved-game door locks
             }
             catch (Exception ex) { CoopLog.Error("CoopWorld.OnReady", ex); }
         }

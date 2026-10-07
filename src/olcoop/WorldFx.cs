@@ -208,6 +208,73 @@ namespace OlCoop.World
         }
     }
 
+    /// 0.7.4: door states on join. A saved game restores the host's doors (DoorBase.Deserialize: LockType, OpenForever, HasBeenOpened)
+    /// - e.g. a door unlocked by a script before the save - but a joiner loads the level fresh: its copy stayed LOCKED, wouldn't open and
+    /// the joiner half-slid through the host's open door. The host sends every door's lock state after the world manifest (msg 213).
+    public class DoorStatesMsg : MessageBase
+    {
+        public byte[] data = new byte[0]; // per door (sorted by position): LockType, flags (1 OpenForever, 2 HasBeenOpened)
+        public override void Serialize(NetworkWriter w) { w.WriteBytesAndSize(data, data.Length); }
+        public override void Deserialize(NetworkReader r) { data = r.ReadBytesAndSize() ?? new byte[0]; }
+    }
+
+    public static class CoopDoors
+    {
+        public const short MsgDoors = 213;
+
+        static bool InScene(Component c) { return c != null && c.gameObject.scene.IsValid() && c.gameObject.scene.isLoaded; }
+        static List<DoorBase> Doors()
+        {
+            var l = new List<DoorBase>();
+            foreach (var d in Resources.FindObjectsOfTypeAll<DoorBase>()) if (InScene(d)) l.Add(d);
+            l.Sort((a, b) =>
+            {
+                Vector3 p = a.transform.position, q = b.transform.position;
+                int c = p.x.CompareTo(q.x); if (c != 0) return c;
+                c = p.y.CompareTo(q.y); if (c != 0) return c;
+                return p.z.CompareTo(q.z);
+            });
+            return l;
+        }
+
+        public static void SendTo(NetworkConnection conn)
+        {
+            var doors = Doors();
+            var data = new byte[doors.Count * 2];
+            for (int i = 0; i < doors.Count; i++)
+            {
+                data[i * 2] = (byte)doors[i].LockType;
+                data[i * 2 + 1] = (byte)((doors[i].OpenForever ? 1 : 0) | (doors[i].HasBeenOpened ? 2 : 0));
+            }
+            conn.Send(MsgDoors, new DoorStatesMsg { data = data });
+            CoopLog.Write("WORLD", "host: sent " + doors.Count + " door states to conn " + conn.connectionId);
+        }
+
+        public static void OnDoors(NetworkMessage msg)
+        {
+            try
+            {
+                var m = msg.ReadMessage<DoorStatesMsg>();
+                var doors = Doors();
+                int n = m.data.Length / 2;
+                if (n != doors.Count) { CoopLog.Write("WORLD", "joiner: host has " + n + " doors, we have " + doors.Count + "; door states not applied"); return; }
+                int changed = 0;
+                var sb = new System.Text.StringBuilder();
+                for (int i = 0; i < n; i++)
+                {
+                    var d = doors[i];
+                    var lt = (DoorLock)m.data[i * 2]; bool forever = (m.data[i * 2 + 1] & 1) != 0, opened = (m.data[i * 2 + 1] & 2) != 0;
+                    if (d.LockType == lt && d.OpenForever == forever && d.HasBeenOpened == opened) continue;
+                    if (changed < 8) sb.Append(' ').Append(d.gameObject.name).Append(':').Append(d.LockType).Append("->").Append(lt);
+                    d.LockType = lt; d.OpenForever = forever; d.HasBeenOpened = opened;
+                    changed++;
+                }
+                CoopLog.Write("WORLD", "joiner: door states from the host: " + changed + " of " + n + " changed" + sb);
+            }
+            catch (Exception ex) { CoopLog.Error("CoopDoors.OnDoors", ex); }
+        }
+    }
+
     [HarmonyPatch(typeof(Client), "RegisterHandlers")]
     static class FX5_ClientHandlers
     {
@@ -217,6 +284,7 @@ namespace OlCoop.World
             if (!CoopConfig.IsJoiner || Client.GetClient() == null) return;
             Client.GetClient().RegisterHandler(CoopWorldFx.MsgMatcen, CoopWorldFx.OnMatcen);
             Client.GetClient().RegisterHandler(CoopWorldFx.MsgCryo, CoopWorldFx.OnCryo);
+            Client.GetClient().RegisterHandler(CoopDoors.MsgDoors, CoopDoors.OnDoors);
         }
     }
 }
