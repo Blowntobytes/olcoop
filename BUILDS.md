@@ -67,4 +67,5 @@ Targets unless noted: Overload 1.1.1886, olmod 0.5.14.
 | 0.6.14-alpha | 25 | 10-06 | partly tested (15:54 run: user thinks HUD fixes work; restart froze) | - | - | tag v0.6.14-alpha, build-alpha, dist/olcoop-0.6.14-alpha.zip |
 | 0.6.15-alpha | 25 | 10-06 | partly tested (16:05 run) | team-wipe restart; spectating HUD/timer (user: almost right) | claws/Shredder on joiner | tag v0.6.15-alpha, build-alpha, dist/olcoop-0.6.15-alpha.zip |
 | 0.6.16-alpha | 26 | 10-06 | tested (16:26 run) | - | claw animation glitchy (replayed every update) | tag v0.6.16-alpha, build-alpha, dist/olcoop-0.6.16-alpha.zip |
-| 0.6.17-alpha | 27 | 10-06 | untested | - | - | tag v0.6.17-alpha, build-alpha, dist/olcoop-0.6.17-alpha.zip |
+| 0.6.17-alpha | 27 | 10-06 | tested (16:51 run) | - | Scorpions near joiner stare (host animator culling) | tag v0.6.17-alpha, build-alpha, dist/olcoop-0.6.17-alpha.zip |
+| 0.6.18-alpha | 27 | 10-06 | untested | - | - | tag v0.6.18-alpha, build-alpha, dist/olcoop-0.6.18-alpha.zip |

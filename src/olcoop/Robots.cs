@@ -487,7 +487,7 @@ namespace OlCoop.Robots
             CoopRobots.TxMsgs++; CoopRobots.TxEntries += b.e.Count; CoopRobots.TxBytes += 5 + b.e.Count * 43;
         }
 
-        public static void ResetForLevel() { s_last.Clear(); s_fire.Clear(); s_pending_spawn.Clear(); CoopTargets.Clear(); }
+        public static void ResetForLevel() { s_last.Clear(); s_fire.Clear(); s_pending_spawn.Clear(); CoopTargets.Clear(); HostAnimators.Reset(); }
 
         // ---- handlers
         /// The joiner discards its own robots and rebuilds the host's exact current set (works for saves, mid-level joins, NG+).
@@ -878,7 +878,7 @@ namespace OlCoop.Robots
                 }
                 return false;
             }
-            if (CoopRobots.IsHost && !__instance.m_is_guide_bot) CoopTargets.Push(__instance);
+            if (CoopRobots.IsHost && !__instance.m_is_guide_bot) { CoopTargets.Push(__instance); HostAnimators.Keep(__instance); }
             return true;
         }
         static Exception Finalizer(Robot __instance, Exception __exception)
@@ -886,6 +886,25 @@ namespace OlCoop.Robots
             if (CoopRobots.IsHost) CoopTargets.Pop(__instance);
             return __exception;
         }
+    }
+
+    /// 0.6.18: robot animators are culled when the HOST's camera can't see the robot (prefab culling mode), so their state never advances.
+    /// Claws only change AI state when the current animation finishes (ClawSetAnimationState / MaybePlayQueuedAnimation read
+    /// normalizedTime): a claw near a joiner but out of the host's view stayed in "waking" for minutes and just turned to face him
+    /// (16:51 run: claw id 3 in waking 16:54:35-16:57:17). The host animates every robot regardless of its own view.
+    public static class HostAnimators
+    {
+        static readonly HashSet<int> s_done = new HashSet<int>();
+        static int s_logs;
+        public static void Keep(Robot r)
+        {
+            if (!s_done.Add(r.GetInstanceID())) return;
+            var an = RobotJoinNet.f_anim != null ? RobotJoinNet.f_anim.GetValue(r) as Animator : null;
+            if (an == null || an.cullingMode == AnimatorCullingMode.AlwaysAnimate) return;
+            if (s_logs++ < 5) CoopLog.Write("RSYNC", "host: " + r.robot_type + " animator was " + an.cullingMode + "; now always animates (robots near joiners need it)");
+            an.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+        }
+        public static void Reset() { s_done.Clear(); }
     }
 
     /// P6: joiner never applies damage to robots (host is authoritative). Keep a little hit flash for feedback.

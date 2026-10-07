@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.18-alpha (2026-10-06) - Scorpions near a joiner, UNTESTED build (all players must run 0.6.18-alpha; protocol 27)
+From the 16:51 run on 0.6.17 (both logs, PeetzaGuest hosting). User: Scorpions near the joiner just stare at him unless the host is near.
+- Fix: the host only animated robots its own camera could see. A Scorpion only moves on to its next action when its current
+  animation finishes, so one near the joiner but out of the host's view stayed "waking up" forever and just turned to face him
+  (joiner log: Scorpion 3 stuck in its waking animation from 16:54:35 to 16:57:17). The host now animates every robot.
+
 ## 0.6.17-alpha (2026-10-06) - Scorpion animation fix, UNTESTED build (all players must run 0.6.17-alpha; protocol 27)
 From the 16:26 run on 0.6.16 (both logs). User: Scorpion animation partial and glitchy; still didn't attack with the host far away.
 - Fix: the joiner restarted the same animation every update (joiner log: "animation set from the host" for the same claw every

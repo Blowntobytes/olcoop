@@ -13,7 +13,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.6.17 alpha"). Protocol = 27 (in build.sh). Message ids used so far: 160-208. Current build folder: build-alpha (since 0.6.0-alpha; build-online held 0.5.x).
+  `VERSION` ("0.6.18 alpha"). Protocol = 27 (in build.sh). Message ids used so far: 160-208. Current build folder: build-alpha (since 0.6.0-alpha; build-online held 0.5.x).
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 192 patches, 0 problems;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-alpha (current).
@@ -776,3 +776,10 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   only) + animator speed synced (animSpeed = speed*50).
 - Segment fix confirmed in host log ("segment set to"). Claw hits on the joiner with the host far: 16:27:58 (~23 u), 16:28:20 (~57 u), 16:29:14.
 - Known gap: an animator re-enabled after culling restarts at its default state; not replayed until the host's state changes.
+
+## 0.6.18-alpha status (2026-10-06) - installed, UNTESTED. Protocol 27 (no wire change).
+- Installed SHA1 eef6317da4eb8de1a49cd25e396c4a7204a22b7f (300032 bytes), verified in game folder + build-alpha. Tag v0.6.18-alpha. 265 patches, 0 problems, 0 warnings.
+- 16:51 run (0.6.17): host animators culled out of the host's view (prefab cullingMode), so normalizedTime never advances; claw AI
+  transitions wait on it (ClawSetAnimationState/ClawLegalToSwitchAnimState/MaybePlayQueuedAnimation). Joiner log: claw id 3 in 'waking'
+  (hash -2143358888) 16:54:35 -> 16:57:17. HostAnimators.Keep (from P4 host branch) sets AnimatorCullingMode.AlwaysAnimate once per robot.
+  Log "[RSYNC] host: CLAWBOTA animator was ...; now always animates". Watch host frame rate on big levels.
