@@ -13,7 +13,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.7.0 challenge"). Protocol = 28 (in build.sh). Message ids used so far: 160-212. Current build folder: build-challenge (since 0.7.0; build-alpha holds 0.6.18-alpha, build-online held 0.5.x).
+  `VERSION` ("0.7.1 challenge"). Protocol = 28 (in build.sh). Message ids used so far: 160-212. Current build folder: build-challenge (since 0.7.0; build-alpha holds 0.6.18-alpha, build-online held 0.5.x).
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 192 patches, 0 problems;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-alpha, build-challenge (current).
@@ -800,3 +800,9 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   Session C1: non-story scene name -> TryLoadChallenge (keeps chosen loadout across CreateNewGame; else random stock loadout; drops campaign carry).
 - Reviewed by an independent agent before release; blocker (stale ready marks) and 4 should-fix items fixed.
 - Known gaps: super warning only on host; joiner local best score saved from the team score.
+
+## 0.7.1-challenge status (2026-10-06) - installed, UNTESTED. Protocol 28.
+- Installed SHA1 065e0491714b3cc7f5c0c2ebd24bc55db8fb485f (315392 bytes), verified in game folder + build-challenge. Tag v0.7.1-challenge.
+- User changed the challenge death rules: infinite = spectate until all dead (run ends); countdown = respawn after the cooldown like MP,
+  never ends by death (no TEAM WIPED; if nobody alive, RespawnAt a random LevelData.m_player_spawn_points entry). CoopSettings.Effective
+  (Death.cs) overrides Mode in challenge; used by HostTick/LocalTick/dead state and Hud.TimerWanted. Campaign unchanged.

@@ -69,4 +69,5 @@ Targets unless noted: Overload 1.1.1886, olmod 0.5.14.
 | 0.6.16-alpha | 26 | 10-06 | tested (16:26 run) | - | claw animation glitchy (replayed every update) | tag v0.6.16-alpha, build-alpha, dist/olcoop-0.6.16-alpha.zip |
 | 0.6.17-alpha | 27 | 10-06 | tested (16:51 run) | - | Scorpions near joiner stare (host animator culling) | tag v0.6.17-alpha, build-alpha, dist/olcoop-0.6.17-alpha.zip |
 | 0.6.18-alpha | 27 | 10-06 | partly tested (user: Scorpions near joiner now attack) | Scorpions near joiner attack | - | tag v0.6.18-alpha, build-alpha, dist/olcoop-0.6.18-alpha.zip |
-| 0.7.0-challenge | 28 | 10-06 | untested | - | - | tag v0.7.0-challenge, build-challenge, dist/olcoop-0.7.0-challenge.zip |
+| 0.7.0-challenge | 28 | 10-06 | untested (superseded before testing) | - | - | tag v0.7.0-challenge, dist/olcoop-0.7.0-challenge.zip |
+| 0.7.1-challenge | 28 | 10-06 | untested | - | - | tag v0.7.1-challenge, build-challenge, dist/olcoop-0.7.1-challenge.zip |

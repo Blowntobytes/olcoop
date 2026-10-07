@@ -27,7 +27,7 @@ namespace OlCoop.Hud
         {
             get
             {
-                if (s_respawn_at < 0f || !OlCoop.Death.CoopDeath.Active || OlCoop.Death.CoopSettings.Mode != OlCoop.Death.DeathMode.Respawn) return false;
+                if (s_respawn_at < 0f || !OlCoop.Death.CoopDeath.Active || OlCoop.Death.CoopSettings.Effective != OlCoop.Death.DeathMode.Respawn) return false;
                 var ship = SpectateHud.RealShip ?? GameManager.m_player_ship;
                 return ship != null && ((bool)ship.m_dead || (bool)ship.m_dying) && s_respawn_at - Time.time >= 0f;
             }

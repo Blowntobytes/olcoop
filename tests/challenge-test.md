@@ -7,6 +7,6 @@ Both players on 0.7.0-challenge. Send both logs after the run ([CHAL] lines).
 3. Robots keep spawning near both players; both see the same score, kills, combo and timer.
 4. 25 kills (20 in countdown): both get a weapon/missile upgrade. Host log "kill upgrade"; joiner log "team kill upgrade".
 5. Countdown: at 0:00 both see COUNTDOWN COMPLETE, then both get the results screen with the same score.
-6. Infinite + Respawn: one dies -> respawns; both die -> "CO-OP: TEAM WIPED - RUN OVER" -> results for both.
-7. Hardcore: first death -> run over for both.
+6. Infinite: one dies -> spectates the other; both dead -> "CO-OP: TEAM WIPED - RUN OVER" -> results for both.
+7. Countdown: a dead player respawns after the cooldown; both dead -> both respawn at start points; only the clock ends the run.
 8. From results: host RETRY -> briefing; joiner (main menu) is taken to the briefing again.

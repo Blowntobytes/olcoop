@@ -22,6 +22,16 @@ namespace OlCoop.Death
     public static class CoopSettings
     {
         public static DeathMode Mode = DeathMode.Respawn;
+        /// 0.7.0 (user): challenge mode fixes the death rule - infinite: spectate until everyone is dead; countdown: respawn after the
+        /// cooldown (like multiplayer). Campaign uses the CO-OP OPTIONS choice.
+        public static DeathMode Effective
+        {
+            get
+            {
+                if (!GameplayManager.IsChallengeMode) return Mode;
+                return ChallengeManager.CountdownMode ? DeathMode.Respawn : DeathMode.Spectate;
+            }
+        }
         public static float RespawnDelay = 10f;
         public static bool FriendlyFire = false;
         /// Local preference (not set by the host): pilot names above teammates.
@@ -170,11 +180,13 @@ namespace OlCoop.Death
                 if (!s_death_time.ContainsKey(id))
                 {
                     s_death_time[id] = now;
-                    CoopLog.Write("DEATH", "player netId=" + id + " died; mode=" + CoopSettings.Mode + " alive=" + ships.FindAll(Alive).Count);
-                    if (CoopSettings.Mode == DeathMode.Hardcore) ScheduleReset("HARDCORE - A PLAYER DIED");
+                    CoopLog.Write("DEATH", "player netId=" + id + " died; mode=" + CoopSettings.Effective + " alive=" + ships.FindAll(Alive).Count);
+                    if (CoopSettings.Effective == DeathMode.Hardcore) ScheduleReset("HARDCORE - A PLAYER DIED");
                 }
             }
-            if (s_reset_at < 0f && ships.Count > 0 && alive == 0) ScheduleReset("TEAM WIPED");
+            // 0.7.0: countdown challenge respawns like multiplayer - the clock, not deaths, ends the run
+            bool countdown = GameplayManager.IsChallengeMode && ChallengeManager.CountdownMode;
+            if (s_reset_at < 0f && ships.Count > 0 && alive == 0 && !countdown) ScheduleReset("TEAM WIPED");
 
             if (s_reset_at >= 0f)
             {
@@ -182,7 +194,7 @@ namespace OlCoop.Death
                 return;
             }
 
-            if (CoopSettings.Mode != DeathMode.Respawn) return;
+            if (CoopSettings.Effective != DeathMode.Respawn) return;
             foreach (var s in ships)
             {
                 if (Alive(s)) continue;
@@ -192,7 +204,17 @@ namespace OlCoop.Death
                 if (!s_timer_sent.Contains(id)) { SendTimer(id, left); s_timer_sent.Add(id); }
                 if (left > 0f || !(bool)s.m_dead) continue; // wait for the cooldown and the death animation
                 var anchor = PickAnchor(s);
-                if (anchor == null) continue;
+                if (anchor == null)
+                {
+                    // countdown challenge with nobody alive: back at one of the level's start points
+                    if (countdown && GameManager.m_level_data != null && GameManager.m_level_data.m_player_spawn_points != null && GameManager.m_level_data.m_player_spawn_points.Length > 0)
+                    {
+                        var sps = GameManager.m_level_data.m_player_spawn_points;
+                        var sp0 = sps[UnityEngine.Random.Range(0, sps.Length)];
+                        RespawnAt(s, sp0.position, sp0.orientation, "countdown challenge, nobody alive");
+                    }
+                    continue;
+                }
                 ServerRespawn(s, anchor);
                 s_death_time.Remove(id); s_timer_sent.Remove(id);
             }
@@ -335,7 +357,7 @@ namespace OlCoop.Death
             // Only an alive ship clears the countdown: the host sends it when the ship starts DYING, before m_dead is set.
             if (!(bool)ship.m_dead && !(bool)ship.m_dying) { s_local_respawn_at = -1f; Hud.CoopHud.ClearRespawn(); return; }
             // The countdown itself is the yellow MP-style digits (Hud.CoopHud); only the end needs a message.
-            if (CoopSettings.Mode == DeathMode.Respawn && s_local_respawn_at > 0f && s_last_shown != 0 && Time.time >= s_local_respawn_at)
+            if (CoopSettings.Effective == DeathMode.Respawn && s_local_respawn_at > 0f && s_last_shown != 0 && Time.time >= s_local_respawn_at)
             {
                 s_last_shown = 0;
                 GameplayManager.AddHUDMessage("RESPAWNING NEXT TO A TEAMMATE...", -1, true);
@@ -349,10 +371,10 @@ namespace OlCoop.Death
             PlayerShip.DeathPaused = false; // stock MP death pause (static, survives level loads); co-op never uses it
             UIManager.SetScreenFade(0f);
             UIManager.ShowCinematicBars(false);
-            CoopLog.Write("DEATH", "local dead state reached; mode=" + CoopSettings.Mode);
-            if (CoopSettings.Mode == DeathMode.Hardcore) return;
+            CoopLog.Write("DEATH", "local dead state reached; mode=" + CoopSettings.Effective);
+            if (CoopSettings.Effective == DeathMode.Hardcore) return;
             Spectate.Start(ship);
-            if (CoopSettings.Mode == DeathMode.Spectate)
+            if (CoopSettings.Effective == DeathMode.Spectate)
                 GameplayManager.AddHUDMessage("YOU DIED - SPECTATING UNTIL THE LEVEL ENDS (FIRE TO SWITCH)", -1, true);
         }
 

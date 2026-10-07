@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.1-challenge (2026-10-06) - challenge death rules, UNTESTED build (all players must run 0.7.1-challenge; protocol 28)
+User's revised rules for challenge co-op (replaces 0.7.0's "follow the CO-OP OPTIONS death setting" in challenge mode only):
+- Infinite: dead players spectate; the run ends (results for everyone) when every player is dead.
+- Countdown: dead players respawn after the cooldown, like multiplayer; deaths never end the run, only the clock does. If nobody
+  is alive, players come back at the level's start points.
+- The CO-OP OPTIONS death setting still applies to the campaign.
+
 ## 0.7.0-challenge (2026-10-06) - NEW PHASE: challenge mode in co-op, UNTESTED build (all players must run 0.7.0-challenge; protocol 28)
 New build folder: build-challenge (build-alpha keeps 0.6.18-alpha).
 - New: PLAY CHALLENGE on the host's CO-OP screen opens the stock challenge level select (level, countdown/infinite, difficulty).
