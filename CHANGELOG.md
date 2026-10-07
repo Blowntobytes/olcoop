@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.7.9-alpha (2026-10-07) - host quit to the main menu, challenge READY UP, joiner map, back to the alpha name, UNTESTED build (all players must run 0.7.9-alpha; protocol 30)
+User (after the 04:37 run): the map is drawn wrong; quitting a challenge to the main menu breaks the session; joiners should get
+READY UP on the challenge loadout screen and then a waiting screen; the release is still an alpha, not "challenge".
+- Name: releases are called alpha again (olcoop-0.7.9-alpha.zip, folder build-alpha). 0.7.0-0.7.8 were named "challenge".
+- New: when the host chooses QUIT TO MAIN MENU it stays the host. Joiners leave the level too, stay connected and get READY UP for
+  the host's next level ("THE HOST LEFT THE LEVEL - WAITING FOR THE HOST"). STOP HOSTING / LEAVE SESSION still end the session.
+- New (challenge): a joiner's button on the challenge loadout screen says READY UP. After it, the joiner waits in the main menu with
+  "READY - WAITING FOR THE HOST TO START THE CHALLENGE".
+- Fix (map, joiners): the game builds the map when the level starts, around the joiner's temporary ship, which is replaced a moment
+  later by its real network ship. The joiner's map was therefore working from a ship that no longer existed. It is now rebuilt for
+  the real ship. Note: in challenge mode the game itself always shows the whole map (single-player challenge does the same).
+
 ## 0.7.8-challenge (2026-10-07) - challenge freeze and joiner loadout, UNTESTED build (all players must run 0.7.8-challenge; protocol 30)
 From the 04:37 challenge run on 0.7.7 (Backfire, BlownToBits host, PeetzaGuest joiner, both logs + both unity logs). User: frames
 froze, and the joiner's missiles still didn't load.

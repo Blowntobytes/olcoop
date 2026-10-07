@@ -13,10 +13,10 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.7.8 challenge"). Protocol = 30 (in build.sh). Message ids used so far: 160-213 (0.7.6 extended msg 194 ObjMsg). Current build folder: build-challenge (since 0.7.0; build-alpha holds 0.6.18-alpha, build-online held 0.5.x).
-- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 283 patches, 0 problems, 0.7.8;
+  `VERSION` ("0.7.9 alpha"). Protocol = 30 (in build.sh). Message ids used so far: 160-213 (0.7.6 extended msg 194 ObjMsg; 0.7.9 status code 4 on FNet.Status). Current build folder: build-alpha (USER 2026-10-07: "it is still an alpha" - releases are named -alpha again from 0.7.9; build-challenge holds 0.7.8-challenge, the last "challenge"-named build).
+- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 285 patches, 0 problems, 0.7.9;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
-- ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-alpha, build-challenge (current).
+- ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-challenge (0.7.0-0.7.8), build-alpha (current again since 0.7.9).
   Bug fixes overwrite the current phase folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
 - Also install the DLL directly into the game folder via the device bridge and verify size/mtime (user's install.bat runs proved unreliable).
 - Check the `[INIT] olcoop x.y.z` line of every log before analysing a test — twice the user tested a stale version.
@@ -904,4 +904,18 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   - Also seen (not changed): joiner "steam client receive NRE Robot.AimInstantTarget" x3 at 04:39:25 - robot spawns arriving while the
     joiner was still loading the scene; the world sync re-sent all 3 at 04:39:27, so no effect.
   - Flicker diagnostics: the joiner's banner was drawn every frame (243/243) in this run; Blown was host (no banner). Still open.
+
+## 0.7.9-alpha status (2026-10-07) - installed, UNTESTED. Protocol 30. Phase name back to "alpha" (user), folder build-alpha.
+- Installed SHA1 83ee716534ecc08d92f3831f49cf88cd9b4c9bed (328192 bytes), verified in game folder + build-alpha. Tag v0.7.9-alpha. 0.7.8 never tested.
+- User requests: map wrong ("whole level shown like editing/observer"); host quitting a challenge to the main menu breaks;
+  host should go to the main menu still hosting, joiners to READY UP; challenge briefing READY UP for joiners then a waiting screen.
+- Map: GameplayManager.StartLevel (858) builds m_automap from GameManager.m_player_ship; on joiners that is the temporary SP ship
+  that Player.OnStartLocalPlayer (4105-4112) destroys. CH17 (OnStartLocalPlayer postfix, joiner) rebuilds Automap with the networked
+  ship. Stock: show_whole_map = (game type CHALLENGE), so a whole map in challenge is stock. NOT confirmed which mode the user saw it in.
+- Host quit: stock pause menu micro_state 3 -> DoneLevel(Quit) and, outside MP scenes, no disconnect: host stayed host, joiners got
+  nothing. F15 now sends FNet.Status 4 (host DoneLevel Quit from PAUSE_MENU, not SessionEnd.Leaving = STOP HOSTING/LEAVE SESSION).
+  Joiner OnStatus 4: SteamLink.ReturnToMainMenu (stays connected), ManualReady=false, banner. Existing menu rejoin + host READY UP
+  offer (status 3) take it from there.
+- Challenge briefing: SK2 now also transpiles UIElement.DrawLevelBriefingCM ("PLAY" -> READY UP for joiners). JoinerRedirect sets
+  banner "READY - WAITING FOR THE HOST TO START THE CHALLENGE"; OpenBriefing clears it; level start clears it (CoopFlow.ResetForLevel).
 

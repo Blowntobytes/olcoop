@@ -424,7 +424,7 @@ namespace OlCoop.World
         {
             if (!CoopWorld.IsHost) return;
             SendAll(FNet.Status, new IntegerMessage(code));
-            CoopLog.Write("FLOW", "host: told joiners status " + code + (code == 1 ? " (level summary)" : " (loading next level)"));
+            CoopLog.Write("FLOW", "host: told joiners status " + code + (code == 1 ? " (level summary)" : code == 4 ? " (host quit the level to the main menu)" : " (loading next level)"));
         }
 
         public static void OnStatus(NetworkMessage msg)
@@ -433,6 +433,16 @@ namespace OlCoop.World
             {
                 int code = msg.ReadMessage<IntegerMessage>().value;
                 if (code != 3) CoopLog.Write("FLOW", "joiner: host status " + code);
+                if (code == 4)
+                {
+                    // 0.7.9: the host chose QUIT TO MAIN MENU and keeps hosting. Leave the level too, stay connected; the host's menus
+                    // offer READY UP again (status 3) and the next level is loaded as usual.
+                    OlCoop.SteamNet.SteamLink.ReturnToMainMenu("the host quit to the main menu");
+                    PostLevel.ManualReady = false;
+                    CoopStatus.Set(0, "THE HOST LEFT THE LEVEL - WAITING FOR THE HOST");
+                    GameplayManager.AddHUDMessage("CO-OP: THE HOST QUIT TO THE MAIN MENU", -1, true);
+                    return;
+                }
                 if (code == 3)
                 {
                     if (!PostLevel.HostWaiting) CoopLog.Write("FLOW", "joiner: the host is waiting for players to ready up" + (PostLevel.ReadyButton ? " (READY UP button shown)" : ""));
@@ -1055,6 +1065,12 @@ namespace OlCoop.World
     {
         static void Prefix(GameplayManager.DoneReason reason)
         {
+            // 0.7.9: QUIT TO MAIN MENU from the host's Esc menu (not STOP HOSTING): joiners were left in a level nobody ran.
+            if (CoopWorld.IsHost && reason == GameplayManager.DoneReason.Quit && MenuManager.m_menu_state == MenuState.PAUSE_MENU && !OlCoop.SteamNet.SessionEnd.Leaving)
+            {
+                try { CoopFlow.HostSendStatus(4); } catch (Exception ex) { CoopLog.Error("F15 quit", ex); }
+                return;
+            }
             if (!CoopWorld.IsHost || reason != GameplayManager.DoneReason.Escaped) return;
             try { CoopFlow.HostSendStatus(1); HostReady.Begin(); } catch (Exception ex) { CoopLog.Error("F15", ex); }
         }

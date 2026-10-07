@@ -326,6 +326,7 @@ namespace OlCoop.Challenge
             OlCoop.World.PostLevel.AllowPlay = false;
             OlCoop.World.PostLevel.ManualReady = false; // ready again only after START on this briefing
             s_declined = -1;
+            OlCoop.World.CoopStatus.Clear();
             UIManager.DestroyAll();
             GameplayManager.CreateNewGame(mission, m.level);
             MenuManager.ChangeMenuState(MenuState.CHALLENGE_BRIEFING);
@@ -346,6 +347,7 @@ namespace OlCoop.Challenge
                 CoopLog.Write("CHAL", "joiner: loadout chosen (weapons " + string.Join(",", Array.ConvertAll(ChallengeManager.m_selected_weapons, x => x.ToString())) +
                     " missiles " + string.Join(",", Array.ConvertAll(ChallengeManager.m_selected_missiles, x => x.ToString())) + "); ready, waiting for the host");
                 state = MenuState.MAIN_MENU;
+                OlCoop.World.CoopStatus.Set(0, "READY - WAITING FOR THE HOST TO START THE CHALLENGE");
                 return true;
             }
             if (state == MenuState.CHALLENGE_SELECT || state == MenuState.DIFFICULTY_SELECT && GameplayManager.IsChallengeMode)
@@ -625,6 +627,28 @@ namespace OlCoop.Challenge
         static bool Prepare() { return AccessTools.TypeByName("GameMod.MPTeams_Projectile_FixedUpdateDynamic") != null; }
         static System.Reflection.MethodBase TargetMethod() { return AccessTools.Method(AccessTools.TypeByName("GameMod.MPTeams_Projectile_FixedUpdateDynamic"), "Postfix"); }
         static bool Prefix() { return !CoopConfig.Active || GameplayManager.IsMultiplayer; }
+    }
+
+    /// CH17 (0.7.9): GameplayManager.StartLevel builds the automap around GameManager.m_player_ship (its moving object for the
+    /// visibility search, its flare camera). On a joiner that is the temporary single-player ship, which Player.OnStartLocalPlayer
+    /// destroys ~0.1 s later, so the joiner's map worked from a deleted ship. Rebuild it for the networked ship (all co-op modes).
+    [HarmonyPatch(typeof(Player), "OnStartLocalPlayer")]
+    static class CH17_JoinerAutomap
+    {
+        [HarmonyPriority(Priority.VeryLow)]
+        static void Postfix(Player __instance)
+        {
+            if (!CoopConfig.Active || !CoopConfig.IsJoiner || GameplayManager.IsMultiplayer) return;
+            try
+            {
+                var ship = __instance.c_player_ship;
+                var gm = GameplayManager.m_gm;
+                if (ship == null || gm == null || GameManager.m_level_data == null) return;
+                GameplayManager.m_automap = new Automap(gm.m_automap_portals, ship.m_flare_cam_object, GameplayManager.IsChallengeMode);
+                CoopLog.Write("FLOW", "joiner: automap rebuilt for our networked ship netId=" + __instance.netId.Value + " (whole map=" + (GameplayManager.IsChallengeMode) + ")");
+            }
+            catch (Exception ex) { CoopLog.Error("CH17", ex); }
+        }
     }
 
     [HarmonyPatch(typeof(GameplayManager), "LoadLevel")]

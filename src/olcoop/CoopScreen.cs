@@ -373,9 +373,15 @@ namespace OlCoop.World
     }
 
     /// Level briefing button: READY UP on joiners (PLAY / BEGIN SIMULATION on the host).
-    [HarmonyPatch(typeof(UIElement), "DrawLevelBriefing")]
+    /// 0.7.9: also the challenge briefing (DrawLevelBriefingCM) - a joiner's PLAY there only marks it ready.
+    [HarmonyPatch]
     static class SK2_ReadyUpLabel
     {
+        static IEnumerable<MethodBase> TargetMethods()
+        {
+            yield return AccessTools.Method(typeof(UIElement), "DrawLevelBriefing");
+            yield return AccessTools.Method(typeof(UIElement), "DrawLevelBriefingCM");
+        }
         static readonly MethodInfo m_ls = AccessTools.Method(typeof(Loc), "LS", new[] { typeof(string) });
         static readonly MethodInfo m_label = AccessTools.Method(typeof(SK2_ReadyUpLabel), "Label");
         public static string Label(string s) { return CoopConfig.IsJoiner && !GameplayManager.IsMultiplayer ? "READY UP" : s; }

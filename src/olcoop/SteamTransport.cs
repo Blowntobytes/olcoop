@@ -662,7 +662,14 @@ namespace OlCoop.SteamNet
         /// Esc menu LEAVE SESSION / STOP HOSTING: end the session and go to the main menu at once.
         /// (0.5.2 forwarded it to the stock QUIT TO MAIN MENU entry, but the mouse re-selects the hovered entry inside PausedUpdate,
         /// so a mouse click did nothing - 14:07 run.)
+        /// True while LEAVE SESSION / STOP HOSTING runs (its DoneLevel(Quit) ends the session, unlike QUIT TO MAIN MENU).
+        public static bool Leaving;
         public static void LeaveNow()
+        {
+            Leaving = true;
+            try { LeaveNowInner(); } finally { Leaving = false; }
+        }
+        static void LeaveNowInner()
         {
             bool host = CoopConfig.IsHost;
             CoopLog.Write("ROLE", (host ? "host: STOP HOSTING" : "joiner: LEAVE SESSION") + " from the Esc menu");
