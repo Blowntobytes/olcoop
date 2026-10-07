@@ -179,9 +179,36 @@ namespace OlCoop.Challenge
                 if (ship != null && ((bool)ship.m_dying || (bool)ship.m_dead)) OlCoop.World.PostLevel.ClearDeathForMenus(CoopConfig.IsHost ? "host" : "joiner");
             }
             catch (Exception ex) { CoopLog.Error("CHAL results", ex); }
+            // 0.7.3: the dying/dead ship had the camera off on its death path (spinning wreck, results drawn out of view: 18:39 run).
+            // Put camera and UI surface back on the ship's camera mount and stop the wreck before the results screen.
+            try
+            {
+                var ship = GameManager.m_player_ship;
+                if (ship != null)
+                {
+                    if (ship.c_camera_transform != null && ship.c_cam_controller != null)
+                    {
+                        ship.c_camera_transform.parent = ship.c_cam_controller.transform;
+                        ship.c_camera_transform.localPosition = Vector3.zero; ship.c_camera_transform.localRotation = Quaternion.identity;
+                    }
+                    var ui = ship.c_viewer != null ? ship.c_viewer.c_ui_mesh_transform : null;
+                    if (ui != null && ship.c_cam_controller != null)
+                    {
+                        ui.parent = ship.c_cam_controller.transform; ui.localPosition = Vector3.zero; ui.localRotation = Quaternion.identity;
+                        var mr = ui.GetComponent<MeshRenderer>(); if (mr != null) mr.enabled = true;
+                        ui.gameObject.SetActive(true);
+                    }
+                    if (ship.c_rigidbody != null) { ship.c_rigidbody.angularVelocity = Vector3.zero; ship.c_rigidbody.velocity = Vector3.zero; ship.c_rigidbody.isKinematic = true; }
+                }
+                UIManager.ShowCinematicBars(false); UIManager.SetScreenFade(0f);
+                if (Camera.main != null) Camera.main.enabled = true;
+            }
+            catch (Exception ex) { CoopLog.Error("CHAL results view", ex); }
             AllowResults = true;
             try { GameplayManager.PlayerHasDied(); }
             finally { AllowResults = false; }
+            OlCoop.World.CoopWorldTick.MenuOpen = false; // results screen, not an Esc menu: nothing keeps running behind it
+            CoopLog.Write("CHAL", "results screen opened (menu " + MenuManager.m_menu_state + ", camera on " + (Camera.main != null && Camera.main.transform.parent != null ? Camera.main.transform.parent.name : "null") + ")");
         }
 
         /// Host: spawn placement reads GameManager.m_player_ship; place each new robot around a random living player.

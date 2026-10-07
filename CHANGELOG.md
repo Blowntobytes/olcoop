@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.3-challenge (2026-10-06) - challenge results view, upgrade screen on a later campaign start, UNTESTED build (all players must run 0.7.3-challenge; protocol 28)
+From the 18:33 run on 0.7.2 (both logs). Joiner now gets a ship and its own loadout (confirmed in the logs).
+- Fix (challenge): when everyone died the wrecks kept spinning and the screen stayed on them. Both logs show the run ending and the
+  results screen opening (18:39:52), but the camera was still on the death view, so the results were drawn out of sight. The camera
+  and the screen surface are now put back on the ship's camera mount, the wreck stopped, and nothing keeps running behind the
+  results screen.
+- New (campaign): starting a new game on a later level gives the host the upgrade screen with that level's points; every joiner now
+  gets the same upgrade screen with the same points automatically (also players who already pressed READY UP).
+
 ## 0.7.2-challenge (2026-10-06) - joiner ship in challenge, UNTESTED build (all players must run 0.7.2-challenge; protocol 28)
 From the 18:14 run on 0.7.1 (both logs). User: the joiner could only look around; the loadout screen didn't come up.
 - Fix: the joiner never got a ship. When it asked to spawn, olmod's multiplayer spawn-point chooser crashed in the challenge level

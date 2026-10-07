@@ -41,6 +41,13 @@ namespace OlCoop.World
                 bool first = s_offer_scene != m.scene;
                 s_offer_scene = m.scene; s_offer_p1 = m.points1; s_offer_p2 = m.points2; s_offer_time = Time.realtimeSinceStartup;
                 if (first) CoopLog.Write("FLOW", "joiner: host's next level '" + m.scene + "', upgrade points " + m.points1 + "/" + m.points2);
+                // 0.7.3: open the upgrade screen right away (also for a player who already pressed READY UP) - no extra click
+                if (first && !s_active && (m.points1 > 0 || m.points2 > 0) && GameManager.m_game_state == GameManager.GameState.MENU &&
+                    !s_post_menus.Contains(MenuManager.m_menu_state) && MenuManager.m_menu_state != MenuState.PLAY_GAME)
+                {
+                    ManualReady = false;
+                    if (StartUpgrades()) CoopLog.Write("FLOW", "joiner: opened the upgrade screen for the host's level");
+                }
             }
             catch (Exception ex) { CoopLog.Error("OnOffer", ex); }
         }
@@ -193,6 +200,7 @@ namespace OlCoop.World
         public static bool AfterLevel { get { return s_after_level; } }
 
         static bool s_after_level, s_released;
+        static string s_lobby_offer;
         static int s_points1, s_points2;
         public static void Begin()
         {
@@ -206,7 +214,7 @@ namespace OlCoop.World
         public static void SkipGateForRestart() { End(); s_released = true; CoopLog.Write("FLOW", "host: level restart; no ready check"); }
         /// 0.7.0: forget who was ready (the host picked another challenge level / reopened the briefing).
         public static void ClearMarks() { if (s_ready.Count > 0) CoopLog.Write("FLOW", "host: ready marks cleared (" + s_ready.Count + ")"); s_ready.Clear(); s_shown_ready = -1; s_shown_total = -1; }
-        public static void End() { s_released = false; if (s_on || DeadFinish) { s_on = false; DeadFinish = false; s_ready.Clear(); CoopStatus.Clear(); } }
+        public static void End() { s_released = false; s_lobby_offer = null; if (s_on || DeadFinish) { s_on = false; DeadFinish = false; s_ready.Clear(); CoopStatus.Clear(); } }
 
         static int Joiners()
         {
@@ -254,9 +262,23 @@ namespace OlCoop.World
                 CoopLog.Write("FLOW", "host: " + Joiners() + " joiner(s) connected in the menus; offering READY UP");
             }
             if (s_on && !s_after_level && Joiners() == 0) { CoopLog.Write("FLOW", "host: no joiners left; menu ready check dropped"); End(); return; }
+            // 0.7.3: new campaign started on a later level - the host gets the stock upgrade screen with that level's points; give
+            // joiners the same screen and points (offer). Snapshot the points before the host spends them.
+            if (s_on && !s_after_level && MenuManager.m_menu_state == MenuState.UPGRADE_MENU && !GameplayManager.IsChallengeMode && s_lobby_offer == null)
+            {
+                var li = GameplayManager.Level; var lp = GameManager.m_local_player; var story = GameManager.StoryMission;
+                int idx = li != null && story != null ? story.FindLevelIndex(li.FileName) : -1;
+                if (idx > 0 && lp != null && (lp.m_upgrade_points1 > 0 || lp.m_upgrade_points2 > 0))
+                {
+                    s_lobby_offer = li.FileName; s_points1 = lp.m_upgrade_points1; s_points2 = lp.m_upgrade_points2;
+                    ClearMarks(); // ready players spend their points first
+                    s_next_remind = 0f;
+                    CoopLog.Write("FLOW", "host: new game at '" + li.FileName + "' with upgrade points " + s_points1 + "/" + s_points2 + "; joiners get the upgrade screen too");
+                }
+            }
             if (!s_on || Time.realtimeSinceStartup < s_next_remind) return;
             s_next_remind = Time.realtimeSinceStartup + 3f;
-            string next = s_after_level ? NextScene() : null;
+            string next = s_after_level ? NextScene() : s_lobby_offer;
             foreach (var c in NetworkServer.connections)
                 if (c != null && c.connectionId != 0 && c.isConnected && Session.CoopHost.Verified.Contains(c.connectionId))
                 {

@@ -13,7 +13,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.7.2 challenge"). Protocol = 28 (in build.sh). Message ids used so far: 160-212. Current build folder: build-challenge (since 0.7.0; build-alpha holds 0.6.18-alpha, build-online held 0.5.x).
+  `VERSION` ("0.7.3 challenge"). Protocol = 28 (in build.sh). Message ids used so far: 160-212. Current build folder: build-challenge (since 0.7.0; build-alpha holds 0.6.18-alpha, build-online held 0.5.x).
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 192 patches, 0 problems;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-alpha, build-challenge (current).
@@ -815,3 +815,14 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 - Joiner OnInfo opened the briefing only from MAIN_MENU; joiner was on the CO-OP screen (menu 121). Now any MENU state except
   CHALLENGE_BRIEFING/RESULTS/PLAY_GAME/PAUSE_MENU.
 - Seen, harmless: joiner NRE Robot.AimInstantTarget in SpawnNewRobotNoParent for spawns arriving before its level loaded (world sync re-sent them).
+
+## 0.7.3-challenge status (2026-10-06) - installed, UNTESTED. Protocol 28.
+- Installed SHA1 6ae62e058b0f6f5ed167b2542d9b2639dd0131fe (317440 bytes), verified in game folder + build-challenge. Tag v0.7.3-challenge.
+- 18:33 run (0.7.2): joiner ship spawned (fallback not needed? check), loadout chosen 3,6,2 / 2,1. Team wipe 18:39:48, HostEndRun 18:39:52,
+  both PlayerHasDied -> CHALLENGE_RESULTS (LOBBY shows LEVEL RESULTS for both) but user saw spinning wrecks, locked screen. Not proven:
+  results drawn while the camera was on the death path (PlayerShip.RecoverFromDeathMenu only acts when DeathPaused, which we clear first).
+  OpenResults now reparents c_camera_transform + c_ui_mesh_transform to c_cam_controller, stops the rigidbody, clears bars/fade, and
+  CoopWorldTick.MenuOpen=false after PlayerHasDied (X4 had set it). Log "[CHAL] results screen opened (menu ..., camera on ...)".
+- Campaign: HostReady.Remind snapshots host's points on first UPGRADE_MENU in a lobby check for a story level idx>0 (new game started
+  later), clears ready marks, sends offers (206) with that scene; joiner OnOffer auto-runs StartUpgrades on a new offer when in menus
+  outside post-level screens (also clears ManualReady).
