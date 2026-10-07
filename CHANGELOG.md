@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.7.6-challenge (2026-10-06) - lockdown regroup, Nova/Devastator bomblets, reactor escape on joiners, UNTESTED build (all players must run 0.7.6-challenge; protocol 30)
+From the 3-player campaign run on 0.7.5 (Titan 07/08, host JosheM + 2 joiners, all three logs). User: one player not teleported
+into a lockdown; Nova blobs not visible to joiner; timer still ran after the reactor escape; waiting text flickered; joiner missiles
+didn't load in challenge mode.
+- Fix (lockdown): the regroup rejected every spot next to the player who set off the lockdown as "inside a trigger" - it was the
+  lockdown's own trigger, which had just fired. The fallback put one joiner 12 u away, outside the room, where he stayed stuck
+  until the level ended. The trigger that just fired (and any one-time trigger already used) no longer blocks a spot, and the
+  fallback now prefers places with a clear view of that player.
+- Fix (weapons): Nova and Devastator bomblets are only created on the host, and the host sent them to everyone except the player
+  who fired - so a joiner never saw the bomblets of their own missile. The shooter now gets them too (as the game itself expects).
+- Fix (reactor escape): joiners started the escape only when their own copy of the reactor blew up. For one joiner that happened
+  35 s late, after the exit door had opened: no countdown during the escape, then a fresh 40 s one during the exit flight. The host
+  now starts the escape for every joiner and keeps their timers in step; a late reactor explosion on a joiner no longer restarts
+  it. Protocol 30.
+- Not changed yet: the flickering waiting text and the challenge missiles (more information needed, see the status notes).
+
 ## 0.7.5-challenge (2026-10-06) - challenge end screen, UNTESTED build (all players must run 0.7.5-challenge; protocol 29)
 From the 19:05 countdown run on 0.7.4 (both logs). User: the end screen still locked up.
 - Found: when a player dies while already spectating (countdown respawn), the game remembers the spectator camera holder as the

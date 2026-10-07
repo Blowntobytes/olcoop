@@ -13,8 +13,8 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.7.5 challenge"). Protocol = 29 (in build.sh). Message ids used so far: 160-213. Current build folder: build-challenge (since 0.7.0; build-alpha holds 0.6.18-alpha, build-online held 0.5.x).
-- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 192 patches, 0 problems;
+  `VERSION` ("0.7.6 challenge"). Protocol = 30 (in build.sh). Message ids used so far: 160-213 (0.7.6 extended msg 194 ObjMsg). Current build folder: build-challenge (since 0.7.0; build-alpha holds 0.6.18-alpha, build-online held 0.5.x).
+- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 280 patches, 0 problems, 0.7.6;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-alpha, build-challenge (current).
   Bug fixes overwrite the current phase folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
@@ -846,3 +846,31 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   and at Spectate.Stop (also repairs m_camera_parent for later respawns). CH14 finalizer on UIManager.DrawFullScreenEffects swallows
   exceptions in co-op. Watch logs every 0.5 s (elements, ui mesh parent/active/renderer, cam-ui distance, blocker).
 - 0.7.3 lockup (no NRE, camera on _cam_controller) is still unexplained; the watch lines will show it if it recurs.
+
+## 0.7.6-challenge status (2026-10-06) - installed, UNTESTED. Protocol 30 (msg 194 ObjMsg + escape byte/timer).
+- Installed SHA1 da079cf3b1876ee7173ae026b26c1f9444fbc501 (324096 bytes), verified in game folder + build-challenge. Tag v0.7.6-challenge.
+- 0.7.5 result: the 19:48-20:05 crashes on the user's PC were TWO Overload instances (pid 12344 + 21560) both hosting on one Steam
+  account. Steam P2P has one inbox per account, so packets from JosheM were split between them: truncated UNET messages
+  (ReadByte out of range in PlayerInputMessage / PlayerStateToClientMessage, sz:3), "Unknown message ID 63/64/71", then NaN local
+  ship -> "Screen position out of view frustum" -> Unity Crash!!! on the joiner instance. None of these errors in single-instance
+  0.7.3/0.7.4 logs. Proposed, NOT done (waiting on the user): single-instance named mutex; SteamLink drops packets from peers that
+  are not this instance's host/joiners.
+- 20:10 3-player campaign run (JosheM host 23:00 clock, PeetzaGuest + BlownToBits joiners; sp_titan_07/08):
+  - Lockdown 20:23:20: anchor netId=148; all 12 TryAround offsets rejected (no room / "inside trigger entity_trigger_box" = the
+    lockdown's own trigger: TriggerBase.OnTrigger sets m_has_triggered only AFTER ActivateScriptLink) -> TrySegments seg 609,
+    3 portals, 12.3 u; Peetza's pos stayed (-13.0,-102.0,44.0) for 4 min. Fix: CoopHost.FiredScript (set by HostLockdown) +
+    spent one-time triggers ignored in InTrigger; TrySegments prefers segment centres with Linecast LOS to the anchor (log
+    "in view" / "NOT in view of the anchor").
+  - Nova: Projectile.Explode creates missile_smart_mini / missile_devastator_mini only if Server.IsActive(); W7 skipped the shooter.
+    Stock Client.OnFireProjectileToClient fires these two for the local player. W7 now sends them to the shooter too.
+  - Escape: host + Blown EscapeStart 20:27:06 (timer 40 -> frozen 11.4/11.3 in EXIT). Peetza: no EscapeStart until 20:27:41 (his
+    reactor copy died late, during the exit flight). OB5 (ReactorDestroyed): host notes reactor (1/2 long); ObjMsg carries
+    escape+timer at 1 Hz/on change; joiner in PLAYING without MustEscape calls ReactorDestroyed(long) (HostStarted), corrects timer
+    when off by >1 s; joiner's own later/duplicate ReactorDestroyed is skipped. No log shows any timer reaching 0 - user's report
+    ("timer went down to zero after we were out of the tube") not explained yet; asked which player and what was seen.
+  - Waiting text flicker: banner set once per state (CoopStatus.Draw alpha pulses 0.5-1.0, sin 3 rad/s ~2 s period). Asked whether
+    that pulse is what was seen. Not changed.
+  - Challenge joiner missiles not loaded: no challenge log from this session (all three logs are campaign). The only 0.7.5 challenge
+    host log (21560, double-instance session) applied JosheM's loadout with missiles=[0..] LOCKED. Asked for the joiner's log.
+- Known: olmod MPTweaksOnLoadoutDataMessage KeyNotFoundException on the host (also in 0.7.3/0.7.4 logs), harmless so far.
+

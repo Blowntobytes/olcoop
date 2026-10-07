@@ -550,7 +550,7 @@ namespace OlCoop.World
     static class W7_ShareShots
     {
         static ConstructorInfo s_ctor;
-        static int s_logged;
+        static int s_logged, s_logged_own;
 
         static void Postfix(object[] __args)
         {
@@ -563,11 +563,18 @@ namespace OlCoop.World
                 if (shooter == null) return; // robots, turrets etc.
                 if (s_ctor == null) s_ctor = typeof(FireProjectileToClientMessage).GetConstructors().FirstOrDefault(c => c.GetParameters().Length == 7);
                 if (s_ctor == null) return;
+                // 0.7.6: Nova and Devastator bomblets are created only where the server runs (Projectile.Explode: Server.IsActive()),
+                // so a joiner who fired them never saw them. Stock Client.OnFireProjectileToClient expects these two types for its
+                // own ship too, and fires them for the local player.
+                var type = (ProjPrefab)__args[0];
+                bool serverOnly = type == ProjPrefab.missile_smart_mini || type == ProjPrefab.missile_devastator_mini;
                 var msg = (MessageBase)s_ctor.Invoke(new object[] { shooter.netId, __args[0], __args[1], __args[2], __args[6], __args[7], -1 });
                 int sent = 0;
                 foreach (var p in Overload.NetworkManager.m_Players)
                 {
-                    if (p == null || p.isLocalPlayer || p.m_spectator || p == shooter || p.connectionToClient == null) continue;
+                    if (p == null || p.isLocalPlayer || p.m_spectator || p.connectionToClient == null) continue;
+                    if (p == shooter && !serverOnly) continue;
+                    if (p == shooter && s_logged_own++ < 5) CoopLog.Write("WORLD", "host: sent " + type + " to its shooter netId=" + shooter.netId.Value + " (made only on the host)");
                     if (!Session.CoopHost.Verified.Contains(p.connectionToClient.connectionId)) continue;
                     p.connectionToClient.SendByChannel(70, msg, 2);
                     sent++;

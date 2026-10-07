@@ -24,6 +24,7 @@ expect rough edges. Download the latest zip from [Releases](https://github.com/B
   through olmod): right-click a friend > Invite to Game. The INVITE button next to each friend on the CO-OP screen works in-game.
 - Every player must run the same olcoop version; the game refuses to connect otherwise.
 - Improper disconnections can cause game freezing. Either 'leave session' or 'stop hosting' for proper disconnect.
+- Run only one copy of the game per Steam account. A second copy (even one left in the menus) takes part of the network traffic and causes errors and crashes.
 - Challenge co-op: infinite mode = dead players spectate until everyone is dead; countdown = respawn after the cooldown. The "INCOMING SUPER AUTO-OP" warning only shows for the host. Co-op challenge scores are not sent to the Steam leaderboards.
 - Over long-distance connections robots lag behind on joiners' screens (they are shown about 0.1 s behind the host plus the ping).
 

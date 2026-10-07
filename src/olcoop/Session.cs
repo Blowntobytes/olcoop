@@ -135,10 +135,24 @@ namespace OlCoop.Session
             {
                 var c = s_overlap[i];
                 if (c == null || !c.isTrigger) continue;
-                if (c.GetComponentInParent<TriggerBase>() != null || c.GetComponentInParent<DoorExit>() != null || c.GetComponentInParent<AlienWarp>() != null)
+                var tb = c.GetComponentInParent<TriggerBase>();
+                // 0.7.6: a one-time trigger that already fired can't fire again (TriggerBase.OnTrigger returns early). The 20:23 lockdown
+                // regroup rejected every spot next to the anchor as "inside trigger entity_trigger_box" - the lockdown's own, spent
+                // trigger - and fell back to a segment 12 u away, where a joiner sat stuck outside the room for the whole lockdown.
+                if (tb != null && ((tb.m_one_time && Spent(tb)) || (FiredScript != null && tb.c_go_link != null && tb.c_go_link.Contains(FiredScript)))) continue;
+                if (tb != null || c.GetComponentInParent<DoorExit>() != null || c.GetComponentInParent<AlienWarp>() != null)
                 { why = "inside trigger " + c.gameObject.name; return true; }
             }
             why = null; return false;
+        }
+
+        /// Set while a lockdown regroup runs: the script that just fired. Its trigger sets m_has_triggered only after the script
+        /// returns (TriggerBase.OnTrigger), so during the regroup it still looks live.
+        public static GameObject FiredScript;
+        static readonly FieldInfo f_has_triggered = AccessTools.Field(typeof(TriggerBase), "m_has_triggered");
+        static bool Spent(TriggerBase tb)
+        {
+            try { return f_has_triggered != null && (bool)f_has_triggered.GetValue(tb); } catch { return false; }
         }
 
         // ---------------------------------------------------------------- exit lane (0.4.11)
@@ -258,7 +272,7 @@ namespace OlCoop.Session
             if (seg0 < 0 || segs == null || seg0 >= segs.Length) { CoopLog.Write("HOST", "  segment search near " + label + ": anchor not in a segment"); return false; }
             var depth = new Dictionary<int, int> { { seg0, 0 } };
             var queue = new Queue<int>(); queue.Enqueue(seg0);
-            var found = new List<int>(); var loose = new List<int>(); string occ;
+            var clear = new List<int>(); var found = new List<int>(); var loose = new List<int>(); string occ;
             while (queue.Count > 0 && depth.Count < 64)
             {
                 int s = queue.Dequeue(); int d = depth[s];
@@ -266,7 +280,12 @@ namespace OlCoop.Session
                 if (sd != null && RobotManager.FindSegmentContainingWorldPosition(sd.Center, -1, false) >= 0 && !Occupied(sd.Center, out occ)
                     && !(AvoidTriggers && InTrigger(sd.Center, out occ)))
                 {
-                    if (!Physics.CheckSphere(sd.Center, 1.6f, GEOM_MASK, QueryTriggerInteraction.Ignore)) found.Add(s);
+                    bool roomy = !Physics.CheckSphere(sd.Center, 1.6f, GEOM_MASK, QueryTriggerInteraction.Ignore);
+                    // 0.7.6: segments that are linked by portals can still be walled off (the 20:23 lockdown put a joiner 3 portals
+                    // and 12 u away, stuck in place for 4 minutes). Prefer spots with a clear line to the anchor.
+                    bool seen = !Physics.Linecast(sd.Center, anchor, GEOM_MASK, QueryTriggerInteraction.Ignore);
+                    if (roomy && seen) clear.Add(s);
+                    else if (roomy) found.Add(s);
                     else if (!Physics.CheckSphere(sd.Center, 1.0f, GEOM_MASK, QueryTriggerInteraction.Ignore)) loose.Add(s); // tight but open
                 }
                 if (d >= 4 || sd == null || sd.Portals == null) continue;
@@ -280,14 +299,17 @@ namespace OlCoop.Session
                     depth[n] = d + 1; queue.Enqueue(n);
                 }
             }
-            if (found.Count == 0) found = loose;
+            string kind = "in view";
+            if (clear.Count > 0) found = clear;
+            else if (found.Count > 0) kind = "NOT in view of the anchor";
+            else { found = loose; kind = "tight, NOT in view of the anchor"; }
             if (found.Count == 0) { CoopLog.Write("HOST", "  segment search near " + label + ": no free open segment within 4 steps of seg " + seg0); return false; }
             found.Sort((x, y) => (segs[x].Center - anchor).sqrMagnitude.CompareTo((segs[y].Center - anchor).sqrMagnitude));
             int pick = found[start % Math.Min(found.Count, 3)];
             Vector3 p = segs[pick].Center; Reserve(p);
             Quaternion r = Quaternion.LookRotation((anchor - p).sqrMagnitude > 0.01f ? (anchor - p).normalized : rot * Vector3.forward, rot * Vector3.up);
             result = new LevelData.SpawnPoint(p, r, 0);
-            CoopLog.Write("HOST", "joiner spawn at " + p.ToString("F1") + " (centre of seg " + pick + ", " + depth[pick] + " step(s) from seg " + seg0 + ", " + (p - anchor).magnitude.ToString("F1") + "u) near " + label);
+            CoopLog.Write("HOST", "joiner spawn at " + p.ToString("F1") + " (centre of seg " + pick + ", " + depth[pick] + " step(s) from seg " + seg0 + ", " + (p - anchor).magnitude.ToString("F1") + "u, " + kind + ") near " + label);
             return true;
         }
 

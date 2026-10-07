@@ -145,7 +145,9 @@ namespace OlCoop.World
             }
             if (anchor == null) { CoopLog.Write("FLOW", "host: lockdown " + s.GetType().Name + " but no living player to regroup at"); return; }
             CoopLog.Write("FLOW", "host: lockdown " + s.GetType().Name + " '" + s.gameObject.name + "' triggered near netId=" + anchor.c_player.netId.Value + "; regrouping");
-            Regroup(anchor, FNet.Teleport, 0, 0f, "lockdown");
+            Session.CoopHost.FiredScript = s.gameObject;
+            try { Regroup(anchor, FNet.Teleport, 0, 0f, "lockdown"); }
+            finally { Session.CoopHost.FiredScript = null; }
         }
 
         public static void OnTeleport(NetworkMessage msg)
@@ -165,7 +167,7 @@ namespace OlCoop.World
         static bool s_requested, s_exit_sent, s_wait_shown;
         public static bool Waiting { get { return s_wait_shown; } }
 
-        public static void ResetForLevel() { PostLevel.Reset(); if (s_wait_shown) { try { UIManager.SetScreenFade(0f); } catch { } } CoopStatus.Clear(); s_lockdowns_done.Clear(); s_last_trigger_ship = null; s_exit_anchor = null; s_pending_pose = null; s_pending_exit = -1; s_dead_wait_until = -1f; s_revive.Clear(); s_revive_anchor = null; s_revive_until = -1f; s_requested = false; s_exit_sent = false; s_wait_shown = false; ApplyingExit = false; ApplyingLog = false; ExitTunnel.Reset(); CoopWorldTick.MenuOpen = false; }
+        public static void ResetForLevel() { PostLevel.Reset(); CoopObjectives.ResetForLevel(); if (s_wait_shown) { try { UIManager.SetScreenFade(0f); } catch { } } CoopStatus.Clear(); s_lockdowns_done.Clear(); s_last_trigger_ship = null; s_exit_anchor = null; s_pending_pose = null; s_pending_exit = -1; s_dead_wait_until = -1f; s_revive.Clear(); s_revive_anchor = null; s_revive_until = -1f; s_requested = false; s_exit_sent = false; s_wait_shown = false; ApplyingExit = false; ApplyingLog = false; ExitTunnel.Reset(); CoopWorldTick.MenuOpen = false; }
 
         static bool LocalAlive()
         {
