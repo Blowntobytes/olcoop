@@ -13,8 +13,8 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.7.13 alpha"). Protocol = 30 (in build.sh). Message ids used so far: 160-213 (0.7.6 extended msg 194 ObjMsg; 0.7.9 status code 4 on FNet.Status). Current build folder: build-alpha (USER 2026-10-07: "it is still an alpha" - releases are named -alpha again from 0.7.9; build-challenge holds 0.7.8-challenge, the last "challenge"-named build).
-- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 299 patches, 0 problems, 0.7.13;
+  `VERSION` ("0.7.14 alpha"). Protocol = 30 (in build.sh). Message ids used so far: 160-213 (0.7.6 extended msg 194 ObjMsg; 0.7.9 status code 4 on FNet.Status). Current build folder: build-alpha (USER 2026-10-07: "it is still an alpha" - releases are named -alpha again from 0.7.9; build-challenge holds 0.7.8-challenge, the last "challenge"-named build).
+- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 299 patches, 0 problems, 0.7.14;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-challenge (0.7.0-0.7.8), build-alpha (current again since 0.7.9).
   Bug fixes overwrite the current phase folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
@@ -972,4 +972,11 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 - UI: HU20 (UIElement.DrawMessages prefix/postfix: PreviousQuadsOffset +20% UI height while local ship dying/dead/spectating);
   CO-OP OPTIONS version line removed (user chose the version line); SM5a/b (SelectAndDrawItem / Outline prefix: fade=true for ids
   5,0,1,7 on the MAIN_MENU element when IsJoiner) + SM6 (MainMenuUpdate prefix: selection on a blocked id -> OPTIONS 2).
+
+## 0.7.14-alpha status (2026-10-07) - installed, UNTESTED. Protocol 30.
+- Installed SHA1 e20cd5a8a8090573bfba1cdc3b16bad10f1932da (335360 bytes), verified in game folder + build-alpha. Tag v0.7.14-alpha.
+- User correction: on CO-OP OPTIONS remove the "CO-OP OPTIONS" title (DrawHeaderMedium), keep the version line (restored at
+  UI_TOP + 52). 0.7.13 had removed the version line (my misreading of the AskUserQuestion answer context). Rest = 0.7.13.
+- Open question to the user: how players with olmod outside the Overload folder start it (installer/launcher would need to find
+  olmod's folder: olmod loads Mod-*.dll from GameMod.dll's folder or %OLMODDIR%; olcoop logs/settings follow its DLL).
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.14-alpha (2026-10-07) - CO-OP OPTIONS title, UNTESTED build (all players must run 0.7.14-alpha; protocol 30)
+- Change (user, correcting 0.7.13): the version line is back on CO-OP OPTIONS; the "CO-OP OPTIONS" title line is removed instead.
+  Everything else is the same as 0.7.13.
+
 ## 0.7.13-alpha (2026-10-07) - joiner slow after a death, team-wipe restart, menus, UNTESTED build (all players must run 0.7.13-alpha; protocol 30)
 From the 13:38 run on 0.7.12 (host PeetzaGuest, joiner BlownToBits; both logs). User: joiner extremely slow after a death (boost
 didn't help); death message over the spectating text; remove the version line on CO-OP OPTIONS; joiners shouldn't be able to use
@@ -13,7 +17,7 @@ LOAD SAVED GAME / PLAY MISSION / PLAY CHALLENGE MODE / PLAY MULTIPLAYER.
   so joiners were sent to the main menu first. Only a real QUIT TO MAIN MENU counts now (this also protects a joiner's restart
   from being taken as leaving the session).
 - Change: while you're dead or spectating, the yellow messages at the top are drawn 20% lower so they don't cover "SPECTATING".
-- Change: CO-OP OPTIONS no longer shows the version line under the title (the hover explanations at the bottom stay).
+- Change: CO-OP OPTIONS no longer shows the version line under the title (the hover explanations at the bottom stay). (Wrong line - corrected in 0.7.14.)
 - New: in a joiner's main menu, LOAD SAVED GAME, PLAY MISSION, PLAY CHALLENGE MODE and PLAY MULTIPLAYER are greyed out and can't
   be selected (the host picks the game).
 
