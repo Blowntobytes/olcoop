@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.7.19-alpha (2026-10-08) - CO-OP screen layout, UNTESTED build (all players must run 0.7.19-alpha; protocol 30)
+- Change (user): NEXT > and INVITE THROUGH STEAM another 5% to the right, < PREV another 5% to the left.
+
 ## 0.7.18-alpha (2026-10-08) - CO-OP screen layout, UNTESTED build (all players must run 0.7.18-alpha; protocol 30)
 - Change (user): NEXT > and INVITE THROUGH STEAM another 5% to the right, < PREV another 5% to the left, the session players
   further left (stopped at the left edge of the screen area).

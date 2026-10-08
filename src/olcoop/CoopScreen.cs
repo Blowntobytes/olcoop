@@ -112,7 +112,7 @@ namespace OlCoop.UI
                     y += 26f;
                 }
                 if (steam && SteamLink.Lobby != CSteamID.Nil)
-                    uie.SelectAndDrawHalfItem("INVITE THROUGH STEAM", new Vector2(399f, top), ID_OVERLAY, false); // 0.7.18: 5% further right (was 380)
+                    uie.SelectAndDrawHalfItem("INVITE THROUGH STEAM", new Vector2(419f, top), ID_OVERLAY, false); // 0.7.19: 5% further right (was 399)
                 pos.y = Mathf.Max(top + 62f, y + 20f);
             }
             if (OlCoop.World.PostLevel.ReadyButton)
@@ -182,8 +182,8 @@ namespace OlCoop.UI
                 if (pages > 1)
                 {
                     uie.DrawStringSmall("PAGE " + (s_page + 1) + " / " + pages + "  (" + rows.Count + " ONLINE)", pos + Vector2.up * 2f, 0.4f, StringOffset.CENTER, UIManager.m_col_ui2, 1f, -1f);
-                    uie.SelectAndDrawHalfItem("< PREV", pos + Vector2.right * -399f, ID_PREV, false); // 0.7.18: 5% further left (was -380)
-                    uie.SelectAndDrawHalfItem("NEXT >", pos + Vector2.right * 399f, ID_NEXT, false); // 0.7.18: 5% further right (was 380)
+                    uie.SelectAndDrawHalfItem("< PREV", pos + Vector2.right * -419f, ID_PREV, false); // 0.7.19: 5% further left (was -399)
+                    uie.SelectAndDrawHalfItem("NEXT >", pos + Vector2.right * 419f, ID_NEXT, false); // 0.7.19: 5% further right (was 399)
                     pos.y += 50f;
                 }
             }
