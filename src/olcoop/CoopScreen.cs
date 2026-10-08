@@ -102,7 +102,7 @@ namespace OlCoop.UI
             {
                 // 0.7.16 (user): host layout - session players on the left, a smaller INVITE THROUGH STEAM button on the right
                 var roster = OlCoop.Session.CoopLobby.Current();
-                float top = pos.y, left = -460f;
+                float top = pos.y, left = -598f; // 0.7.17 (user): 30% further left (was -460)
                 uie.DrawStringSmall("IN THIS SESSION (" + roster.Count + "/" + OlCoop.Session.CoopLobby.MaxPlayers + "):", new Vector2(left, top - 14f), 0.42f, StringOffset.LEFT, UIManager.m_col_ui2, 1f, -1f);
                 float y = top + 14f;
                 if (roster.Count == 0) { uie.DrawStringSmall("NOBODY YET", new Vector2(left, y), 0.4f, StringOffset.LEFT, UIManager.m_col_ui1, 1f, -1f); y += 26f; }
@@ -112,7 +112,7 @@ namespace OlCoop.UI
                     y += 26f;
                 }
                 if (steam && SteamLink.Lobby != CSteamID.Nil)
-                    uie.SelectAndDrawHalfItem("INVITE THROUGH STEAM", new Vector2(330f, top), ID_OVERLAY, false);
+                    uie.SelectAndDrawHalfItem("INVITE THROUGH STEAM", new Vector2(380f, top), ID_OVERLAY, false); // 0.7.17: 15% further right (was 330)
                 pos.y = Mathf.Max(top + 62f, y + 20f);
             }
             if (OlCoop.World.PostLevel.ReadyButton)
@@ -182,8 +182,8 @@ namespace OlCoop.UI
                 if (pages > 1)
                 {
                     uie.DrawStringSmall("PAGE " + (s_page + 1) + " / " + pages + "  (" + rows.Count + " ONLINE)", pos + Vector2.up * 2f, 0.4f, StringOffset.CENTER, UIManager.m_col_ui2, 1f, -1f);
-                    uie.SelectAndDrawHalfItem("< PREV", pos + Vector2.right * -330f, ID_PREV, false);
-                    uie.SelectAndDrawHalfItem("NEXT >", pos + Vector2.right * 330f, ID_NEXT, false);
+                    uie.SelectAndDrawHalfItem("< PREV", pos + Vector2.right * -380f, ID_PREV, false); // 0.7.17: 15% further left (was -330)
+                    uie.SelectAndDrawHalfItem("NEXT >", pos + Vector2.right * 380f, ID_NEXT, false); // 0.7.17: 15% further right (was 330)
                     pos.y += 50f;
                 }
             }

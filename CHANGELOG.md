@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.17-alpha (2026-10-08) - CO-OP screen layout, UNTESTED build (all players must run 0.7.17-alpha; protocol 30)
+- Change (user): on the CO-OP screen NEXT > and INVITE THROUGH STEAM moved 15% further right, < PREV 15% further left, and the
+  host's list of session players 30% further left.
+
 ## 0.7.16-alpha (2026-10-07) - spectating HUD, message position, host CO-OP screen, map diagnostics, UNTESTED build (all players must run 0.7.16-alpha; protocol 30)
 User: "YOU DIED..." now too far down; the spectating HUD has no weapon / missile names; the campaign map shows everything (should
 show only what was traversed); when hosting, INVITE THROUGH STEAM should be a smaller button on the right with the players on the left.
