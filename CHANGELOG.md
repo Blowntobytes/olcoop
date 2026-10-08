@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.18-alpha (2026-10-08) - CO-OP screen layout, UNTESTED build (all players must run 0.7.18-alpha; protocol 30)
+- Change (user): NEXT > and INVITE THROUGH STEAM another 5% to the right, < PREV another 5% to the left, the session players
+  further left (stopped at the left edge of the screen area).
+
 ## 0.7.17-alpha (2026-10-08) - CO-OP screen layout, UNTESTED build (all players must run 0.7.17-alpha; protocol 30)
 - Change (user): on the CO-OP screen NEXT > and INVITE THROUGH STEAM moved 15% further right, < PREV 15% further left, and the
   host's list of session players 30% further left.

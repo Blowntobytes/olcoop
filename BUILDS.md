@@ -86,4 +86,5 @@ Targets unless noted: Overload 1.1.1886, olmod 0.5.14.
 | 0.7.14-alpha | 30 | 10-07 | seen (screenshot) | title gone, version line back | version line overlapped the WHEN A PLAYER DIES label | tag v0.7.14-alpha, dist/olcoop-0.7.14-alpha.zip |
 | 0.7.15-alpha | 30 | 10-07 | tested (user report) | - | messages too low while spectating; no weapon names in spectator HUD; campaign map all visible | tag v0.7.15-alpha, dist/olcoop-0.7.15-alpha.zip |
 | 0.7.16-alpha | 30 | 10-07 | seen (user) | host CO-OP layout | buttons/names wanted further out | tag v0.7.16-alpha, dist/olcoop-0.7.16-alpha.zip |
-| 0.7.17-alpha | 30 | 10-08 | untested | - | - | tag v0.7.17-alpha, build-alpha, dist/olcoop-0.7.17-alpha.zip |
+| 0.7.17-alpha | 30 | 10-08 | seen (user) | CO-OP layout | wanted a bit further out | tag v0.7.17-alpha, dist/olcoop-0.7.17-alpha.zip |
+| 0.7.18-alpha | 30 | 10-08 | untested | - | - | tag v0.7.18-alpha, build-alpha, dist/olcoop-0.7.18-alpha.zip |
