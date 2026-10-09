@@ -112,7 +112,7 @@ namespace OlCoop.UI
                     y += 26f;
                 }
                 if (steam && SteamLink.Lobby != CSteamID.Nil)
-                    uie.SelectAndDrawHalfItem("INVITE THROUGH STEAM", new Vector2(419f, top), ID_OVERLAY, false); // 0.7.19: 5% further right (was 399)
+                    uie.SelectAndDrawHalfItem("INVITE THROUGH STEAM", new Vector2(440f, top), ID_OVERLAY, false); // 0.7.20: 5% further right (was 419)
                 pos.y = Mathf.Max(top + 62f, y + 20f);
             }
             if (OlCoop.World.PostLevel.ReadyButton)
@@ -165,15 +165,17 @@ namespace OlCoop.UI
                 // 0.6.12: pages - as many rows as fit above BACK (minus one row for the page buttons), PREV/NEXT to scroll
                 float room = (UIManager.UI_BOTTOM - 95f) - pos.y;
                 int fit = Mathf.Max(1, (int)(room / 50f) + 1);
-                s_per_page = rows.Count > fit ? Mathf.Max(1, fit - 1) : fit;
+                s_per_page = fit; // 0.7.20: PREV/NEXT sit beside the last friend row now (no row of their own) - one more friend per page
                 s_per_page = Mathf.Min(s_per_page, MAX_FRIENDS);
                 int pages = Mathf.Max(1, (rows.Count + s_per_page - 1) / s_per_page);
                 if (s_page >= pages) s_page = pages - 1;
                 if (s_page < 0) s_page = 0;
+                float lastRow = pos.y;
                 for (int k = 0; k < s_per_page; k++)
                 {
                     int i = s_page * s_per_page + k;
                     if (i >= rows.Count) break;
+                    lastRow = pos.y;
                     var f = rows[i];
                     string tag = CoopConfig.IsHost ? (f.InOverload ? "INVITE  (IN OVERLOAD)" : "INVITE") : "JOIN";
                     uie.SelectAndDrawItem(Clip(f.Name) + "  -  " + tag, pos, ID_FRIEND0 + k, false, 1f, 0.6f);
@@ -181,10 +183,11 @@ namespace OlCoop.UI
                 }
                 if (pages > 1)
                 {
-                    uie.DrawStringSmall("PAGE " + (s_page + 1) + " / " + pages + "  (" + rows.Count + " ONLINE)", pos + Vector2.up * 2f, 0.4f, StringOffset.CENTER, UIManager.m_col_ui2, 1f, -1f);
-                    uie.SelectAndDrawHalfItem("< PREV", pos + Vector2.right * -419f, ID_PREV, false); // 0.7.19: 5% further left (was -399)
-                    uie.SelectAndDrawHalfItem("NEXT >", pos + Vector2.right * 419f, ID_NEXT, false); // 0.7.19: 5% further right (was 399)
-                    pos.y += 50f;
+                    // 0.7.20 (user): buttons another 5% out (+-440), beside the last friend row; the page line just under that row
+                    var rowPos = new Vector2(0f, lastRow);
+                    uie.SelectAndDrawHalfItem("< PREV", rowPos + Vector2.right * -440f, ID_PREV, false);
+                    uie.SelectAndDrawHalfItem("NEXT >", rowPos + Vector2.right * 440f, ID_NEXT, false);
+                    uie.DrawStringSmall("PAGE " + (s_page + 1) + " / " + pages + "  (" + rows.Count + " ONLINE)", rowPos + Vector2.up * 34f, 0.35f, StringOffset.CENTER, UIManager.m_col_ui2, 1f, -1f);
                 }
             }
             pos.y = UIManager.UI_BOTTOM - 30f;

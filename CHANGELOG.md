@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.20-alpha (2026-10-09) - CO-OP screen: one more friend per page, UNTESTED build (all players must run 0.7.20-alpha; protocol 30)
+- Change (user): NEXT > and INVITE THROUGH STEAM another 5% to the right, < PREV another 5% to the left. PREV / NEXT now sit beside
+  the last friend on the page instead of on a row of their own, with the page count just under it, so each page shows one more
+  friend.
+
 ## 0.7.19-alpha (2026-10-08) - CO-OP screen layout, UNTESTED build (all players must run 0.7.19-alpha; protocol 30)
 - Change (user): NEXT > and INVITE THROUGH STEAM another 5% to the right, < PREV another 5% to the left.
 

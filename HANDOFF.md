@@ -13,8 +13,8 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.7.19 alpha"). Protocol = 30 (in build.sh). Message ids used so far: 160-213 (0.7.6 extended msg 194 ObjMsg; 0.7.9 status code 4 on FNet.Status). Current build folder: build-alpha (USER 2026-10-07: "it is still an alpha" - releases are named -alpha again from 0.7.9; build-challenge holds 0.7.8-challenge, the last "challenge"-named build).
-- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 300 patches, 0 problems, 0.7.19;
+  `VERSION` ("0.7.20 alpha"). Protocol = 30 (in build.sh). Message ids used so far: 160-213 (0.7.6 extended msg 194 ObjMsg; 0.7.9 status code 4 on FNet.Status). Current build folder: build-alpha (USER 2026-10-07: "it is still an alpha" - releases are named -alpha again from 0.7.9; build-challenge holds 0.7.8-challenge, the last "challenge"-named build).
+- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 300 patches, 0 problems, 0.7.20;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-challenge (0.7.0-0.7.8), build-alpha (current again since 0.7.9).
   Bug fixes overwrite the current phase folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
@@ -1022,4 +1022,10 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 ## 0.7.19-alpha status (2026-10-08) - installed, UNTESTED. Protocol 30.
 - Installed SHA1 e6f8cb2f7fe18e7dabab64766343d23b0d10b21b (336896 bytes), verified in game folder + build-alpha. Tag v0.7.19-alpha.
 - User: buttons another 5% out. Half items (INVITE THROUGH STEAM, NEXT, PREV) +-399 -> +-419. Roster stays at -630.
+
+## 0.7.20-alpha status (2026-10-09) - installed, UNTESTED. Protocol 30.
+- Installed SHA1 4b593b4a175bc2a3089c464d04445cb6191a7638 (336896 bytes), verified in game folder + build-alpha. Tag v0.7.20-alpha.
+- User: buttons another 5% out and "room for one more friend than 4". Half items +-419 -> +-440. Friend pages: s_per_page = fit (was
+  fit - 1 when paged); PREV/NEXT drawn on the LAST friend row's y (beside the 500-wide row: row edge +-272, half items at +-440), page
+  line at that row + 34 (above BACK at UI_BOTTOM-30). Note: +y is DOWN in UI coordinates (Vector2.up * n moves down).
 

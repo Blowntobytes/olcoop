@@ -88,4 +88,5 @@ Targets unless noted: Overload 1.1.1886, olmod 0.5.14.
 | 0.7.16-alpha | 30 | 10-07 | seen (user) | host CO-OP layout | buttons/names wanted further out | tag v0.7.16-alpha, dist/olcoop-0.7.16-alpha.zip |
 | 0.7.17-alpha | 30 | 10-08 | seen (user) | CO-OP layout | wanted a bit further out | tag v0.7.17-alpha, dist/olcoop-0.7.17-alpha.zip |
 | 0.7.18-alpha | 30 | 10-08 | seen (user) | CO-OP layout | buttons wanted a bit further out | tag v0.7.18-alpha, dist/olcoop-0.7.18-alpha.zip |
-| 0.7.19-alpha | 30 | 10-08 | untested | - | - | tag v0.7.19-alpha, build-alpha, dist/olcoop-0.7.19-alpha.zip |
+| 0.7.19-alpha | 30 | 10-08 | seen (user) | CO-OP layout | wanted buttons further out, one more friend row | tag v0.7.19-alpha, dist/olcoop-0.7.19-alpha.zip |
+| 0.7.20-alpha | 30 | 10-09 | untested | - | - | tag v0.7.20-alpha, build-alpha, dist/olcoop-0.7.20-alpha.zip |
