@@ -99,6 +99,49 @@ namespace OlCoop
                 " robots=" + (RobotPredict ? "predict(max " + (int)(RobotLeadMax * 1000f) + " ms)" : "interp") +
                 " coop=" + (IsHost ? "HOST" : IsJoiner ? "JOIN " + JoinTarget : "off (choose HOST or JOIN on the CO-OP screen)") + " port=" + Port);
             if (IsHost && IsJoiner) { CoopLog.Write("INIT", "both -coophost and -coopjoin given; acting as joiner only"); IsHost = false; }
+            OlmodCheck.Run();
+        }
+    }
+
+    /// <summary>
+    /// 0.8.0: olcoop ships its own olmod 0.5.14 (Overload\olcoop\). Checks that the GameMod.dll actually loaded is that exact
+    /// build (SHA1 of the official olmod-0.5.14.zip) and lists any other Mod-*.dll olmod loaded from the same folder.
+    /// A mismatch is logged ("[INIT] olmod MISMATCH") and shown on the main menu and CO-OP screen. Never throws.
+    /// </summary>
+    public static class OlmodCheck
+    {
+        public const string KnownSha1 = "1071d138dc29d03a70fe282b2daf1f29563c963e"; // GameMod.dll from olmod-0.5.14.zip
+        public static bool Mismatch;
+        public static string Warning = "";
+
+        public static void Run()
+        {
+            try
+            {
+                string path = null;
+                foreach (Assembly a in AppDomain.CurrentDomain.GetAssemblies())
+                    if (a.GetName().Name == "GameMod") { try { path = a.Location; } catch { } break; }
+                string dir = Environment.GetEnvironmentVariable("OLMODDIR");
+                if (string.IsNullOrEmpty(path) && !string.IsNullOrEmpty(dir)) path = Path.Combine(dir, "GameMod.dll");
+                string sha = "unknown";
+                if (!string.IsNullOrEmpty(path) && File.Exists(path))
+                    using (var h = System.Security.Cryptography.SHA1.Create())
+                    using (var f = File.OpenRead(path))
+                        sha = BitConverter.ToString(h.ComputeHash(f)).Replace("-", "").ToLowerInvariant();
+                string ours = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+                string others = "";
+                if (!string.IsNullOrEmpty(ours))
+                    foreach (string m in Directory.GetFiles(ours, "Mod-*.dll"))
+                        if (!Path.GetFileName(m).Equals("Mod-olcoop.dll", StringComparison.OrdinalIgnoreCase)) others += " " + Path.GetFileName(m);
+                bool bundled = !string.IsNullOrEmpty(ours) && Path.GetFileName(ours).Equals("olcoop", StringComparison.OrdinalIgnoreCase);
+                Mismatch = sha != KnownSha1;
+                CoopLog.Write("INIT", "olmod " + (Mismatch ? "MISMATCH" : "OK (bundled 0.5.14)") + " sha1=" + sha + " GameMod=" + path +
+                    " OLMODDIR=" + dir + " folder=" + (bundled ? "olcoop (standalone)" : ours + " (NOT the standalone olcoop folder)") +
+                    " otherMods=" + (others == "" ? "none" : others.Trim()));
+                if (Mismatch) Warning = "WARNING: OLMOD IS NOT THE BUNDLED 0.5.14 - START THE GAME WITH THE OLCOOP SHORTCUT";
+                else if (others != "") Warning = "WARNING: OTHER MODS LOADED:" + others.ToUpperInvariant();
+            }
+            catch (Exception ex) { CoopLog.Error("OlmodCheck", ex); }
         }
     }
 

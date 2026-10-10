@@ -4,8 +4,10 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Where things are
 - Repo copy (source of truth): `C:\Users\atyou\Desktop\AI crap\olmodcoop` (src, docs, tests, tools, build.sh, VERSION, lib\0Harmony.dll).
-- Game: `C:\Program Files (x86)\Steam\steamapps\common\Overload` (olmod 0.5.14, `olmod.exe -modded`). Logs: `olcoop_logs\` there
-  (`olcoop-<date>-pid<pid>.log` per process, plus `unity-host.log` / `unity-join.log`).
+- Game: `C:\Program Files (x86)\Steam\steamapps\common\Overload`. Since 0.8.0 olcoop is STANDALONE: it runs its own bundled olmod
+  0.5.14 from `Overload\olcoop\` (olmod.exe, GameMod.dll, 0Harmony.dll, Mod-olcoop.dll, launchers). Logs: `Overload\olcoop\olcoop_logs\`
+  (`olcoop-<date>-pid<pid>.log` per process, plus `unity.log`); 0.7.x logs were in `Overload\olcoop_logs\`.
+  The bundled olmod lives in `third_party/olmod-0.5.14/` (official zip, unmodified, MIT, SHA1SUMS; committed on purpose).
 - Decompiled game source (`refs/`) is NOT on the PC (game code, not redistributed). Regenerate it in the cloud workspace:
   `bash tools/decompile/build-and-run.sh` (apt-get install dotnet-sdk-8.0; builds ILSpy's decompiler engine v8.2 from GitHub
   source, since NuGet is blocked) -> readable C# in refs/cs-game, cs-firstpass, cs-unet, cs-olmod. `tools/ildump.py` (IL only)
@@ -13,12 +15,12 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.7.20 alpha"). Protocol = 30 (in build.sh). Message ids used so far: 160-213 (0.7.6 extended msg 194 ObjMsg; 0.7.9 status code 4 on FNet.Status). Current build folder: build-alpha (USER 2026-10-07: "it is still an alpha" - releases are named -alpha again from 0.7.9; build-challenge holds 0.7.8-challenge, the last "challenge"-named build).
-- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 300 patches, 0 problems, 0.7.20;
+  `VERSION` ("0.8.0 alpha"). Protocol = 30 (in build.sh). Message ids used so far: 160-213 (0.7.6 extended msg 194 ObjMsg; 0.7.9 status code 4 on FNet.Status). Current build folder: build-standalone (since 0.8.0; build-alpha holds 0.7.9-0.7.20) (USER 2026-10-07: "it is still an alpha" - releases are named -alpha again from 0.7.9; build-challenge holds 0.7.8-challenge, the last "challenge"-named build).
+- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 300 patches, 0 problems, 0.8.0;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
-- ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-challenge (0.7.0-0.7.8), build-alpha (current again since 0.7.9).
+- ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-challenge (0.7.0-0.7.8), build-alpha (0.7.9-0.7.20), build-standalone (current, 0.8.0+).
   Bug fixes overwrite the current phase folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
-- Also install the DLL directly into the game folder via the device bridge and verify size/mtime (user's install.bat runs proved unreliable).
+- Also install the DLL directly into the game folder (since 0.8.0: `Overload\olcoop\`) via the device bridge and verify size/mtime (user's install.bat runs proved unreliable).
 - Check the `[INIT] olcoop x.y.z` line of every log before analysing a test — twice the user tested a stale version.
 - Never claim success without an in-game test; mark untested builds as untested.
 
@@ -1029,3 +1031,20 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   fit - 1 when paged); PREV/NEXT drawn on the LAST friend row's y (beside the 500-wide row: row edge +-272, half items at +-440), page
   line at that row + 34 (above BACK at UI_BOTTOM-30). Note: +y is DOWN in UI coordinates (Vector2.up * n moves down).
 
+
+## 0.8.0-alpha status (2026-10-10) - NEW PHASE build-standalone, UNTESTED. Protocol 30 (no network change).
+- User: a modified olmod 0.5.14 breaks co-op -> olcoop ships the official olmod 0.5.14 (verified byte-identical to
+  github.com/arbruijn/olmod releases v0.5.14 olmod-0.5.14.zip and to the user's installed copy: olmod.exe 3c591b23..., GameMod.dll
+  1071d138..., 0Harmony.dll 9f7abd4d...). olmod is MIT (c) 2019 Arne de Bruijn: olmod-LICENSE.txt ships with it.
+- Why it works without a launcher (olmod/olmod.cpp v0.5.14): olmod.exe loads 0Harmony.dll + GameMod.dll from ITS OWN folder, sets
+  OLMODDIR = its own folder (GameMod reads Mod-*.dll and olmodsettings.json only from there), and finds the game via -gamedir, the
+  current folder, the PARENT folder, then the Steam/GOG registry. Overload\olcoop\olmod.exe started from that folder -> parent =
+  game. olmod then switches the current folder to the game folder, so -logFile must be absolute (launchers use %~dp0).
+- Zip layout: install.bat, uninstall.bat, find-overload.ps1 (now finds Overload.exe + UnityPlayer.dll), README.txt, olcoop\ (payload).
+  install.bat copies olcoop\*.* to Overload\olcoop, fc-verifies every file, deletes the 0.7.x root files (Mod-olcoop.dll, olcoop*.bat,
+  .ico, .lnk) and moves olcoop-settings.txt; shortcuts point at Overload\olcoop\*.bat.
+- OlmodCheck (CoopCore.cs): "[INIT] olmod OK/MISMATCH sha1=... GameMod=... OLMODDIR=... folder=... otherMods=..."; red warning
+  under the main-menu version line and on the CO-OP screen on mismatch or extra Mod-*.dll. No host/joiner hash exchange yet
+  (would need a protocol bump) - offered as a follow-up.
+- On the user's PC: payload delivered to Overload\olcoop\ by the bridge; the 0.7.20 root install and the old Desktop shortcuts
+  stay until the user runs install.bat from build-standalone (that run is also the installer test).

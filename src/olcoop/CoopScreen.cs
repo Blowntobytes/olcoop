@@ -75,6 +75,7 @@ namespace OlCoop.UI
             uie.DrawMenuBG();
             uie.DrawHeaderMedium(Vector2.up * (UIManager.UI_TOP + 20f), "CO-OP", 1f);
             uie.DrawStringSmall(CoopVersion.Full.ToUpperInvariant(), Vector2.up * (UIManager.UI_TOP + 52f), 0.45f, StringOffset.CENTER, UIManager.m_col_ui2, 1f, -1f);
+            if (OlmodCheck.Warning != "") uie.DrawStringSmall(OlmodCheck.Warning, Vector2.up * (UIManager.UI_TOP + 70f), 0.4f, StringOffset.CENTER, UIManager.m_col_damage, 1f, -1f);
             Vector2 pos = uie.m_position;
             pos.y -= 230f;
             uie.DrawStringSmall(RoleLine(), pos - Vector2.up * 75f, 0.45f, StringOffset.CENTER, UIManager.m_col_hi4, 1f, -1f);

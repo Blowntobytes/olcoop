@@ -1,0 +1,610 @@
+v0.5.14 - 2025-10-18
+
+- Adds a client-side physics mode that skips control replay on the server to minimize the effects of network conditions on ship handling. Also cleans up several points where client/server desync was possible in the right circumstances. (Fireball)
+- Reduces the server-side ship state buffers from 3 frames to 2 to mitigate some of the invisible movement delay it causes. (Fireball)
+- Adds a loadout weapon filter in the round options (derhass)
+- Optional fix for a longstanding bug from stock that caused the joy/key rollspeed modifier not to apply if the mouse was moving. (Fireball)
+- Fixes for extreme widescreen setups, VR log garbage, and audio taunt exceptions. (luponix)
+- Optional toggle for the Overdrive powerup's turn boost. (Fireball)
+- Option to hide score numbers (but not names) from the scoreboard. (Fireball)
+- Optional motion sim telemetry output. (luponix / fresh_ch / drowhunter)
+- Optional unique kill sound for your own kills. (Fireball)
+- Additional lag compensation modes that allow the predictions to take rotation into account in various ways. (Fireball)
+
+v0.5.13 - 2024-03-31
+
+- Rewrote the projdata reader that was handling Cyclone spinup. Linux line endings were still breaking it. (derhass/Fireball)
+- Joystick curve editor has received enhancements. (luponix)
+- Thunderbolt shake in single player no correctly respects the framerate of the game. (luponix)
+- General fixes to the interaction between server processes and pilot files. (luponix)
+- 0.5.12's new fire packet is now getting sent to observers correctly. (Fireball)
+
+v0.5.12 - 2024-03-17
+
+- Fixed a bug with Cylone spinup on Linux servers. The config file changes were causing exceptions at round start due to the the way line endings were being interpreted. (roncli)
+- Reduce error logging when failing to save pilot files due to missing write permissions. (luponix)
+- Fixed an audio taunt menu exception when no controllers had been registered with Overload. (luponix)
+- Projectiles use a new server->client fire packet which now includes the weapon charge level (which affects both size and speed, previously omitted) and more accurate position information. (Fireball)
+- Fixed a bug with mouse sliding which allowed players to completely ignore movement speed and acceleration limits. (Fireball)
+- Charging a Thunderbolt will now cancel spawn invulnerability in the same way firing other weapons will. (Fireball)
+- Spawnpoints can now be injected into existing levels without rebuilding them. See https://github.com/overload-development-community/olmod/wiki/Spawnpoint-Injection for details. (Fireball)
+
+v0.5.11 - 2023-09-27
+
+- Cyclone spin up now starts at step 4 out of 8 by default, getting to full speed faster.  This is modifyable using the m_spinup_starting_time variable in projdata under the proj_vortex section, acceptable values are integers between 0 and 8. (Thanks, Tobias!)
+- Multiplayer options are now shown in the lobby. (Thanks, by Fireball!)
+- Servers now post stats to the server listed in the olmodsettings.json "trackerBaseUrl" key. (Thanks, Tobias!)
+- Bug fixes to the controller curves, and cases where controllers are connected and disconnected while the game is running. (Thanks, luponix!)
+- C# project now forces C# language version 7.0 for best Mono compatibility.
+
+v0.5.10 - 2023-08-21
+
+- /START and /EXTEND chat commands now inform the tracker, so the tracker remains in sync. (Thanks, derhass!)
+- You can now mute/unmute individual players audio taunts from the console. (Thanks, luponix!)
+- You can delete keybinds and taunts by hovering over the selection and pressing the delete key. (Thanks, luponix!)
+- You can type a letter while in the audio taunt selection to jump to audio taunts beginning with that letter. (Thanks, luponix!)
+- You can bind audio taunts to the joystick. (Thanks, luponix!)
+- A new reload button has been added to the audio taunts screen that will re-read your audio taunts, so you don't have to restart the game after adding more. (Thanks, luponix!)
+- Audio taunts no longer play if you type a keybind while chatting. (Thanks, luponix!)
+- Audio taunt visual indicator now shows when dead. (Thanks, luponix!)
+- Numerous bug fixes to audio taunts. (Thanks, luponix!)
+- Fixes for multiple controllers/joysticks. (Thanks, luponix!)
+- /STATUS will now also respond to /INFO and /I. (Thanks, derhass!)
+- Invalid names are now replaced with <INVALID NAME>. (Thanks, derhass!)
+- Name collision with more than 2 players is now handled by incrementing the number in parenthesis, not adding another number in parenthesis. (Thanks, derhass!)
+- Creeper glow bugs have been fixed. (Thanks, Fireball!)
+
+v0.5.9 - 2023-04-10
+
+- Audio taunts have been added to multiplayer!  It can be turned off when setting up a game.  See https://github.com/overload-development-community/olmod/wiki/Audio-taunts for details. (Thanks, luponix!)
+- Packet loss is now visible in multiplayer games. (Thanks, Fireball!)
+- Creepers are now color coded in team games.  Your own creepers will also pulse to indicate that they are yours, and will do damage to you when they time out. (Thanks, Fireball!)
+- In weapon autoselect, you can now exclude weapons from previous/next cycling. (Thanks, Fireball!)
+- There is now extremely simple filtering on the map list for multiplayer maps.  On the map selection screen, start typing the name of the map, and the list will be filtered.  (Thanks, derhass!)
+- There is an option when creating a new game to use low poly mesh colliders. (Thanks, Fireball!)
+- Graphics options now include a frame limiter.  Set to 0 for unlimited.  Only works when vsync is off. (Thanks, luponix!)
+- Many fixes have been made in Capture the Flag when Join in Progess is enabled. (Thanks, Fireball!)
+- Reinitializing audio no longer resets volumes to 100%.
+- Options for the reflex cannon and reflex cannon spawns are removed in games where the reflex sidearm is enabled. (Thanks, Fireball!)
+- Boost is now properly updated when energy is gained as normal.
+- Ammo is once again given when you force custom loadouts that are ammo only.
+- The tracker should report the correct weapon on unassisted suicides (suicides that actually count as a suicide).
+- The join timeout has been reduced from 60 seconds to 5 seconds. (Thanks, derhass!)
+- A transpiling fix has been made for Linux builds. (Thanks, derhass!)
+- The left arrow for the axis of controllers now works. (Thanks, Tobias!)
+
+v0.5.8 - 2022-10-30
+
+- Restore functionality of Armor Toughness, Move Speed, and Energy Efficiency mods that were broken as of v0.5.6.
+- New multiplayer option under "General" for loadout hotkeys.  (Thanks, Fireball!)
+- New multiplayer option under "Team" for damage numbers.  Yes, we know it doesn't belong there, it'll move to a better spot when we do a menu overhaul, we just wanted to get something in quick for this version.
+- Additional sound occlusion optimizations, especially in energy centers.  (Thanks, Fireball!)
+- Improved performance around lag compensation's "Limit Ships Diving Into Walls" option.  (Thanks, derhass!)
+- Improved performance around client physics resimulations that were done every frame.  (Thanks, derhass!)
+- Removed creepers and time bombs from the homing fix, should help smooth them out in game play.
+
+v0.5.7 - 2022-10-24
+
+- Thunderbolt Penetration and Damage Numbers settings are now read from presets.  Public games have damage numbers on by default!
+- New public team game option.  (Thanks, Tobias!)
+- Extra logging for auto downloader.  (Thanks, Sirius!)
+- Loadouts are now synchronized with other players on spawn.  (Thanks, Fireball!)
+
+v0.5.6 - 2022-10-14
+
+- There are now 4 loadouts available, all of them are customizable, and all 4 are available in the game at all times.  You can use the hot keys to select the 4 sets of primary weapons (by default, keys are 1, 2, 3, and 4) to select the loadout to use.  (Thanks, Tobias!)
+- The reflex is given for free for all loadouts.  Note that this is an experimental feature, and may change in the future depending on feedback.  (Thanks, Tobias!)
+- New multiplayer option for team health bars.
+- New match option for thunderbolt ship penetration.  (Thanks, luponix!)
+- New match option for floating damage numbers.  Currently damage numbers are before tank mods are applied.  (Note, we will also add this as a multiplayer option in the future, similar to rear view.)
+- New audio options for audio occlusion.  This means sounds that have to go through a wall to reach you can be made to sound muffled.  (Thanks, Fireball!)
+- Homing alerts are now in stereo.  (Thanks, Fireball!)
+- New vr_scale console command.  Use it when outside of a game to change the vr_scale of the world.  Think of it as adjusting the size of the camera, 10 makes the camera really big and things seem tiny, 0.1 makes it really small and things seem huge.
+- New matcen HP cap calculation.  Does not affect existing campaigns, only maps that take advantage of a parameter from the editor. (Thanks, kevin!)
+- Multiplayer chat command updates: (Thanks, derhass!)
+  - Admin commands.
+    - /EXTEND <seconds> - Extend the match time by the specified amount of seconds.
+  - Commands anyone can do.
+    - /SWITCHTEAM - Switches you to the next team.
+- Fix for missing levels from .zip files when downloading maps. (Thanks, Sirius!)
+- Fix for reporting incorrect damage to the tracker when the target is using tank mods and the damage would have killed them without the tank mods but did not actually kill them.  Does not change the actual damage done in game.
+- Fix for in-game FPS measure. (Thanks, derhass!)
+- Boss 2B is now useable in single player campaigns. (Thanks, kevin!)
+- Ships no longer disappear during the cutscene exit. (Thanks, kevin!)
+- Opponent cockpits are no longer rendered. (Thanks, derhass!)
+- Load screen for single player is back.
+- Gamelift pings are now disabled.  You'll still see them in the log as all 0 or -1.
+- Allow Rear View Camera menu navigation is now fixed. (Thanks, Tobias!)
+- Harmony updated to v2.2.2.
+
+v0.5.5 - 2022-08-23
+
+- Multiplayer chat commands.  For a detailed explanation, see https://github.com/overload-development-community/olmod/blob/master/ServerCommands.md (Thanks, derhass!)
+  - Admin commands are commands that the match creator and trusted admins ALWAYS has access to.
+    - /AUTH <password> - Authorize yourself as an admin on this server.
+    - /GIVEPERM <player> - Give a player permissions for these commands.
+    - /REVOKEPERM <player> - Remove a player's permissions for these commands.
+    - /KICK <player> - Removes a player from a game.
+    - /BAN <player> - Bans a player.  Does not also /KICK, you must use /KICKBAN for that.
+    - /KICKBAN <player> - Removes a player from a game, and also bans that player.
+    - /ANNOY <player> - Force a player into observer mode.  Also applies /BLOCKCHAT.
+    - /BLOCKCHAT <player> - Stops a player from sending or receiving chat messages.
+    - /UNBAN <player> - Unbans a player from the server.
+    - /UNANNOY <player> - Prevents a player from being annoyed in future games.
+    - /UNBLOCKCHAT <player> - Allows a player to send or receive chat messages.
+    - /END - Forces a match in progress to end.
+    - /START - Forces a match in the lobby to start, even if everyone hasn't readied up.
+  - Commands anyone can do.
+    - /STATUS - Shows who the creator is, whether you are authorized, and how many bans, annoys, chat blocks, authorized players, and trusted players there are currently on the server.
+    - /SAY <message> - Sends your message to unblocked players.
+    - /TEST <player> - Tests player name selection.
+  - Command line arguments related to multiplayer chat commands:
+    - -chatCommandPassword <password> - Sets the password users must use to /AUTH.
+    - -disableChatCommands - Never allow ANY chat commands on this server.
+    - -trustedPlayerIds <comma-separated list of player IDs> - A list of players who, when joining a game, are automatically authorized to use admin chat commands.  You can find your own player ID in your player log by searching for the text `Setting my player id`.
+
+- Client-side homing fix is now applied to homing projectiles other than just hunters and missile pods.  This should make creeper and time bomb sync slightly more smoother.  Oh, and watch out for nova blobs!
+- Sniper packets will no longer burst from pilots with bad connections or malintent.
+- Corpses now have proper hit detection.  Previously, a ship's hit box for weapons detection would desync with the ship's visible model upon death, and the hit box would not move after dying even though the physical model.  Now that desync no longer happens, which resolves two bugs: 1) Shots will no longer go through corpses 2) Shots won't fizzle out at where a ship died even if its corpse is no longer there. (Thanks, Tobias!)
+- Option to disable the ****ing profanity filter. (Thanks, luponix!)
+- Added a warning message for clients not using olmod when joining a game in progress that uses a custom map. (Thanks, derhass!)
+- Added options to view ship velocity and frame rate on the HUD. (Thanks, Tobias!)
+- You can now join by hostname on LAN, ie: server is not required to have dots in it anymore. (Thanks, derhass!)
+- Armor, energy, and ammo no longer despawn after 5 minutes in race mode. (Thanks, Tobias!)
+- Non-CM spawn items in multiplayer are now considered spew.  Translation: Those shield orbs in Ascent's basement will actually work as they're supposed to, and go away for everyone after picked up. (Thanks, Tobias!)
+- Objects teleported by warpers are now oriented as expected. (Thanks, kevin!)
+- CM scores in olmod are now saved to local leaderboards. (Thanks, luponix!)
+- Improvements to the individual player colors in anarchy. (Thanks, luponix!)
+- Fixed black screen on joining an unreachable server. (Thanks, derhass!)
+- Fixed bugs related to joystick curves resetting. (Thanks, luponix!)
+- Fixed CTF flags appearing in single player when loading saved games. (Thanks, Arne!)
+
+v0.5.4 - 2022-01-09
+
+- The Thunderbolt has been rebalanced:
+  - Self overcharge damage +300% (4 per second instead of 1 per second).  Note only servers using this version or later will have this nerf.
+  - Self overcharge now has a warning noise when damage begins.
+  - Thunderbolt projectiles are now closer together by 28.5% (0.4 units, or 1/10 of a standard cube).  Note only clients using this version or later will have this buff.
+- You can now switch teams in team games that are join in progress.  Use the escape menu to change teams.
+- Respawn invulnerability no longer decays with ship speed.  The only way to lose invulnerability on spawn is by firing, or letting the full timer run out.
+- In anarchy, you can increase the size of the names and give each player a separate color.  You can find this in Options -> Multiplayer Options -> Individual Player Colors.
+- You can now use the `-missionpath` parameter to specify where to find missions.  It defaults to `-missionpath c:\ProgramData\Revival\Overload` on Windows.
+- Scoreboard colors have been fixed for CTF and Monsterball.
+- When creating a multiplayer match, if a preset specifies a team count, it will be honored.
+- For tracker compatibility, team names are always sent as English to the tracker, regardles of the server's chosen language.
+- Per-mission and per-level projdata and robotdata files are now possible.
+  - First a level will look for `<level name>-projdata.txt` and `<level name>-robotdata.txt`.
+  - If not found, it will look for `<mission name>-projdata.txt` and `<mission name>-robotdata.txt`.
+  - If not found, it will look for `projdata.txt` and `robotdata.txt` in your olmod directory.
+  - If none of these are found, it will use the stock versions of the files.
+- Fixed an audio issue that would cause ambient sounds not to be played after the first time the level was loaded.
+- Fixed a bug with the server browser showing up empty when old version of olmod connect to it.
+- Fixed a bug that prevented olmod from starting on Linux with glib 2.34 or newer.
+- Fixed a bug that prevented olmod from starting on Windows with modern CPUs due to an OpenSSL issue.
+- Fixed a bug that sometimes caused olmod to crash while loading a level.
+- Upgrade to Harmony 2.2.
+
+v0.5.3 - 2021-10-08
+
+- Lag Compensation now has a "dive-in limiter" that lets you control how far ships can dive into walls when being lag compensated. (Thanks, derhass!)
+- For team anarchy, the teammate bonus given to spawn points is no longer given if an enemy is within 32 units.
+- Server browser now shows the olmod version the server is running.
+- Fix for CTF/Monsterball scoreboards. (Thanks, Tobias!)
+
+v0.5.2 - 2021-09-30
+
+- Update to balance settings for multiplayer games only: (Thanks to zero for coordinating, and all the pilots who tested this!)
+  - Cyclone damage -7.4%
+  - Cyclone projectile speed -20%
+  - Crusher damage -12.8%
+  - Crusher muzzle flash, added the driller muzzle flash
+  - Crusher trails, changed from crusher trails to driller trails for more visibility
+    - As a result, crusher has been removed from being weapon lag compensated so you can actually see them
+  - Hunter homing strength +5.6% (this restores half of what was taken away in v0.4.0)
+- Option for reduced ship explosion effects for multiplayer, find in Options -> Multiplayer Options, defaults to Full. (Thanks, Tobias!)
+- Server browser doesn't reset to page 1 every time it refreshes.
+- Binding for Roll Left 90° no longer brings up an empty curve editor. (Thanks, luponix!)
+- Erroneous weapon swap message on spawn has been removed. (Thanks, luponix!)
+
+v0.5.1 - 2021-09-26
+
+- Fix CPU usage bug with large maps.
+- Don't consider doors to break line of sight for purposes of spawn algorithm.
+
+v0.5.0 - 2021-09-25
+
+- Upgrade to Harmony 2.  The main side effect of this will be faster load times for olmod. (Thanks, Tobias!)
+- A new option for controller users under Controls -> Advanced Options for Max Turn Ramp Mode.  Choose either the Default implementation, or the Linear implementation.  The Linear option removes the default "curve" controllers were forced on and allows you to get to max ramping speed immediately.  If you use linear, be sure to play with ramping strength and the controller curve editor.  This requires 0.5.0 servers, it will fallback to Default behavior otherwise. (Thanks, luponix!)
+- Ship jitteriness due to network position/rotation error compensation has been eliminated. (Thanks, derhass!)
+- Death in multiplayer now brings up a death summary, showing all damage you took on that life.  It is divided into 4 categories: Killer, Assister, Self/Miscellanous (like lava), and Other.  Note that the damage listed is cumulative for your entire life, and due to rounding won't always add to 100 or however much armor you had on that life.  Also, the Assister box will only show if someone got credited with an assist, and shows all of the damage done by the assister, not just the damage that counted for the assist.  By default, it will show the Killer damage, and you have to toggle the rest of the boxes with the Boost button.  In Options -> Multiplayer, you can find the sticky death summary option to change its behavior to turn off entirely but with the ability to toggle it on with the Boost botton. (Thanks, Tobias!)
+- In multiplayer, lancers will no longer drop from players, you can only get them from item spawn points.
+- In multiplayer, falcons, missile pods, creepers, and hunters that drop from players will be at loadout quantity instead of normal pickup quantity.  Supers and normal pickup quantities from item spawn points are unchanged.
+- Progress in single player can now be saved using olmod. (Thanks, Arne!)
+- Ships joining in progress should no longer be invisible under certain circumstances. (Thanks, derhass!)
+- Anarchy and Team Anarchy spawning bug introduced in v0.4.1 where cubes marked as "No Pathfinding" was being applied when spawning has been resolved.  Notable maps that were particularly bad with this bug include Blizzard and Burning Indika.
+- Anarchy and Team Anarchy spawn algorithm now checks to see if enemy is in direct line of sight before deciding whether to diminish the score of a spawn point if that enemy is in a cone in front of it (or the spawn is in the cone of the enemy's line of sight).  As such, the spread of the cone has increased from 15 to 60 degrees since it now considers walls.
+- Team Anarchy spawn algorithm now makes a spawn point slightly more favorable if a teammate is in line of sight of it and an enemy is not.
+- UI opacity while cloaked increased from 20% to 60%. (Thanks, Tobias!)
+- In Options -> Audio, there is a new option to reset the audio engine.  Use this when your output audio device changes mid-game. (Thanks, Tobias!)
+- New console command `toggle_debugging` which will display in the world where all of the segments and spawn points are.  It degrades performance, so it's only intended for debugging.
+- New console command `dump_segments` which will dump the segment information into the player log.
+- CTF and Monsterball now have mode-specific scoreboards. (Thanks, Tobias!)
+- Observers will now see 1v1 scoring instead of anarchy scoring when observing 1v1 games. (Thanks, Tobias!)
+- Ships will now be able to move in postgame again.  (Thanks, derhass!)
+- When enabled, the rear view no longer appears as spinning debris after your ship explodes.
+- The fix for Gsync players no longer causes uncapped frames in menus.
+
+v0.4.4 - 2021-07-26
+
+- Fix to v0.4.3's server audio patch that prevented network audio sounds from playing more than once, such as refueling from an energy center.
+
+v0.4.3 - 2021-07-25
+
+- Update to player spawn algorithm to only consider the worst cases, not an average of all the cases.
+- Increase timer of initial primary spawn by 4x, timer between primary spawns by 8x.  This is intended to reverse a side effect caused by the primary spawn algorithm changes from v0.3.5 that made primaries far more common.
+- Invulnerability from red powerups now work properly in race mode. (Thanks, Tobias!)
+- Servers no longer play audio at 0 volume... now they just don't play audio. (Thanks, derhass!)
+- Minor fix to using arrow keys in new advanced multiplayer settings screen. (Thanks, Tobias!)
+
+v0.4.2 - 2021-07-07
+
+- New options under Options -> Multiplayer Options to change the default team colors.  This is a per-pilot setting, which, when set to Custom, will allow you to change the color of your team and of your opponent's team in Team Anarchy, CTF, and Monsterball.  This also affects the CTF flags and related effects, but does NOT affect team-colored lighting in maps. (Thanks, Tobias!)
+- Names are shown in their team color in the kill feed and in chat. (Thanks, Tobias!)
+- When creating a game, multiplayer team options have moved to Advanced Settings -> Team Settings.  You will find Friendly Fire, Team Count, and Scale Respawn to Team Size on that menu. (Thanks, Tobias!)
+- When assists are off, they will not display to observers.
+- Fix bug with spawns in Anarchy/Team Anarchy games on CTF/Monsterball maps.
+- Second minor fix to the Linux build that was broken in 0.4.0. (Thanks, derhass!)
+
+v0.4.1 - 2021-06-30
+
+- In team anarchy, players now glow with their team color when taking damage. (Thanks, Tobias!)
+- Improvement to respawn algorithm, now the server will try to respawn you in such a way that makes it so that you are out of line of sight of opponents and opponents are out of line of sight of you.  Not perfect, especially on smaller maps.
+- New joystick curve editor. (Thanks, luponix!)
+- Autoselect improvements.
+  - Autoselect is now an option under Controls -> Advanced Controls instead of a multiplayer option. (Thanks, luponix!)
+  - Each pilot now has their own autoselect configuration. (Thanks, luponix!)
+  - All pilots, existing and new, will import their autoselect configuration from the current pre-0.4.1 autoselect configuration until you delete the file AutoSelect-Config.txt from your Overload data directory.
+  - You can now reset autoselect options to their default.
+- Custom doors now work on the automap. (Thanks, Arne!)
+- New advanced multiplayer game setting to turn off anarchy assist scoring (ie: only kills count).  (Thanks, Sirius!)
+- Now sends full version string to the tracker.
+- Minor fix to the Linux build that was broken in 0.4.0. (Thanks, Arne!)
+
+v0.4.0 - 2021-05-10
+
+Features: 
+
+- Change default balance settings for multiplayer games only: (Thanks to zero for coordinating, and all the pilots who tested this!)
+  - Driller direct damage -24.18% (Translates to about -17% driller damage overall)
+  - Crusher damage -20%
+  - Flak direct damage -20% (Translates to about -16% flak damage overall)
+  - Cyclone damage -5%
+  - Reflex damage +15%
+  - Hunter direct damage -47.5% (Translates to about -21% hunter damage overall)
+  - Hunter homing strength -10%
+  - Hunter speed -12.5% (this is not a recent change, but it's listed to make clear that it's still slower than vanilla Overload)
+- Reduced shader cloak is now at 30% opacity to improve it and bring it closer to normal shader cloak. (Thanks, Tobias!)
+- New settings to change damage blur and damage color intensity. (Thanks, Tobias!)
+- Improved respawn algorithm for anarchy and team anarchy, it no longer disapproves of respawn points more than 80 units away, and now considers walls if the map isn't using inverted cubes.
+- Multiplayer match time limit is now configurable from 0 to 20 minutes in one minute increments. (Thanks, Tobias!)
+- Observer mode health bars and damage indicators for pilots. (Thanks, Tobias!)
+- Notification on main screen when there is a new version of olmod available. (Thanks, marlowe!)
+
+Bug fixes:
+
+- robotdata.txt is now properly read in custom map .zip files. (Thanks, Tobias!)
+- Windows will no longer crash on client/server LAN support activation when more than 2 DNS servers are configured. (Thanks, Arne!)
+
+v0.3.9 - 2020-03-31
+
+- Fix for runaway debugging in logs.
+- 2% to 8% improvement in FPS from collision mesh not being rendered. (Thanks, derhass!)
+
+v0.3.8 - 2020-03-26
+
+Features:
+
+- New "Always Cloaked" option for multiplayer games.
+- projdata.txt files - files that can be used to tweak the balance of the game - can now be loaded for multiplayer games.  Put any file starting with "projdata-" and ending with ".txt" in the same directory as olmod, and when you start a multiplayer game you can load that projdata into your game without other players needing the projdata file themselves.
+- For single player and challenge mode, map authors can now put projdata.txt files and robotdata.txt files - files that can be used to tweak the balance of the robots - inside their level .zip files, and they will be honored.
+- The preset for public anarchy games will now have the default setting for picture-in-picture rear view to be on.  You can still turn this setting off in advanced settings.
+- Smashmouth Overload!
+
+Bug fixes:
+
+- Internationalization fix for controller users who don't use decimal points to represent floating point numbers.
+- Double the allotted time for a player to enter a map at the beginning of the match from 30s to 60s (should help slow-loading maps on slow computers with synchronized starting)
+- Further improvements to lag compensation on bad connections. (Thanks, derhass!)
+- Server-side input accelleration is no longer held back when a variable gets desynced.  You'll no longer see ships flying a full second behind where they're firing from.
+
+v0.3.7 - 2021-03-10
+
+Bug fixes:
+
+- Fixed disconnected pilots leaving behind "ghost ships" that appeared to be eating shots. (Thanks, Tobias!)
+- Fixed a number of CTF flag duplication issues.
+- Fix to prevent powerups from being picked up by 2 players simultaneously.
+- Fixed minor bug with lag compensation implementation. (Thanks, derhass!)
+
+v0.3.6 - 2021-03-08
+
+Features:
+
+- New lag compensation mods.  In short, on default settings, you should be able to more clearly hit ships and more clearly dodge incoming fire at the expense of ships jumping around somewhat when they change trajectories.  Settings to fine tune your experience - or turn this off - are found in Options > Multiplayer Options.
+- Automap in multiplayer.  This uses the quick save key bind from single player as opposed to the existing automap key to avoid confusing with the automap key's purpose in multiplayer.
+- Additional autoselect options exist to determine what to do when you pick up a weapon higher than what you're holding but you are holding the fire button down.
+- Parts of the player snapshot have been uncompressed to fix ship position quantization in maps that don't stay near the origin.
+- Controller Axis Settings are now numerical sliders for more fine tuning.
+- You will now clearly see if you are **MODDED** on the main menu.
+
+Bug fixes:
+
+- Potentially seizure-inducing flashing in VR fixed.  (I'm not kidding, it really was THAT bad.)
+- Swapping to a higher primary won't eat your thunderbolt charge, you'll get to fire it first.
+- CTF flag pickup text should make more sense.
+- CTF Boost and Classic Spawn are now correctly implemented for match preset JSON files.
+- Team anarchy no longer uses the 3*K+A formula to sort players, it now sorts on kills, breaking ties with assists first, then least deaths.
+- Minor tweak to new primary spawns to help ensure extra weapons do not unexpectedly spawn.
+- Exceptions with creeper sync have been resolved.
+- Crusher/Lancer anti-cheat was relaxed somewhat to address issues from players that keep the button held down, then quick released and re-pressed the button, which would falsely trigger the anti-cheat code.
+- .sh files pulled from the repo on Windows and then ported to Linux will now have proper LF line endings.  You may need to remove and reset your .sh files for this to take effect.
+
+v0.3.5 - 2021-01-03
+
+Modding (using DLLs that start with Mod-) is now disabled by default.  To enable modding, you must pass the "-modded" command line switch to olmod.  You will know this works and your mod is enabled by seeing the word "**MODDED**" as part of your version number.  Works for servers as well, modded servers can be seen in the multiplayer lobby (the width of the text for the server version has been expanded for this purpose).
+
+The default method of primary weapon spawning in multiplayer maps has been changed.  For players, all you need to know is that you will see more consistent primary loadouts in levels, and that the Lancer will start spawning in JIP games when certain player thresholds are met (this threshold varies by level, which is 5 for Backfire and maps that don't set these values such as Burning Indika v1.1).  For map designers, here is what you need to know about the multiplayer mode file:
+
+- The "percent" field - which wasn't really a "percent" - on fields such as $weapon;IMPULSE;2.0 is now a weight.  This means that something like giving Imuplse a weight of 2.0 and Driller a weight of 1.0 is no different from giving the Impulse 50 and Driller 25, or Impulse 0.2 and Driller 0.1.  Previously, the higher the number, the *more* of that weapon would spawn, and numbers too high would potentially put a primary's spawn rate at 100%.
+- Previously, the game capped the number of available primary spawns at whatever was in the weapon count 8 field, regardless if there were more players than 8 in the game.  This cap has been lifted.  For instance, if you have $weapon_count2;2 and $weapon_count8;8, today 10 players would give you a maximum of 8 primaries spawned in at once.  Now, you will get 10.
+- Whether or not the Lancer spawn is controlled by three things.  First, if you set $weapon;LANCER;0, you will never see a Lancer.  Second, if you set the new command $lancer_players;4, you will not get a Lancer until there are 4 players in the game.  The number 4 is adjustable, if you want there to be 8 players before a Lancer is spawned, you set $lancer_players;8.  Lastly, if you do not specify $lancer_players, olmod will fallback on old behavior.  I'm not going to go into the formula to what this behavior here is, because it's complex and isn't exactly the greatest piece of code in Overload.  Generally, the lower the weight of the Lancer is ranked among the other primaries, the more players that will be required for it to spawn.
+- Finally, the max number of players is re-evaluated every time a weapon spawn happens.  That means as more players join via Join in Progress, more primaries may be available if the map maker allows for it.  This also means that if you fall below the player threshold for the Lancer to spawn, it will stop spawning until the player threshold is met.
+
+Autoselect is now available for multiplayer games.  To enable, you must go to Control Options -> Advanced Options and set Primary Auto-Select to Never.  You modify autoselect settings on the same screen you modify your loadout, ship graphics, and modifiers, the Multiplayer -> Customize menu.  Order the weapons you wish starting with the weapon you want to select always on top.  You can "X" out a weapon to make sure it never gets selected.  Also, never miss a devastator autoselect with the alert option.  Autoselect can be enabled for primaries, secondaries, both, or neither.  For Classic Spawns mode, Impulse+ (dual Impulse) is treated as being below everything in the list.  If you don't want a weapon to be selected above Impulse+, simply "X" it out.  Note that this will affect what weapon is selected in your loadouts.  For instance, if you have a loadout with Impulse, Thunderbolt, and Hunters, and you have Thunderbolt higher than Impulse in autoselect, you will now start with Thunderbolt selected, and NOT Impulse.  Works for missiles, too.
+
+New advanced settings are available for multiplayer games:
+
+- Allow Rear View Camera (defaults off).  This option allows players to use the rear view camera.  Note the cheat code has been removed.  You can now turn on rear view in Cockpit & HUD options.
+- Scale Respawn To Team Size (defaults off, only available in team games).  This option will scale a player's respawn time after death to be equal to the number of players on their team.
+- Classic Spawns (defaults to off).  In this mode, you do not get loadouts, but rather you start with Impulse+ (dual Impulse) and Falcons, and must collect the primaries you wish to use.  When you pick up an Impulse, you will be rewarded with the Impulse++ Q upgrade which gives quad Impulse.  Further, you are unable to pick up copies of weapons you already have, and spewed primaries from destroyed ships will disappear after 30 seconds if not collected to prevent level clutter.
+- CTF Carrier Boosting (defaults to off, only available in CTF).  This option will prevent flag carriers from using boost in CTF.  It will be shown in the UI by your boost always being in an overheat state.  Note that this is a change in defaults.  In 0.3.4 and prior it was always on.
+- Loadout Settings -> Allowed Modifiers (defaults to all modifiers allowed) - Allows you to fine tune which modifiers are allowed in the game.  If a player comes in with modifiers that are not allowed, they will be prevented from readying up, and will have to select one of the allowed modifiers before playing.  They will be forcefully removed from the game when it starts up, and will not be allowed in a join in progress game with the wrong modifiers.
+
+An attempt has been made to work around the known issue of ships being invisible when you join a multiplayer game in progress.
+
+The multiplayer level selection screen now properly shows map descriptions.
+
+entity_trigger_box_lava_alien and entity_trigger_box_lava_normal entities from the editor are now enabled in game.
+
+Shenanigans, methinks.
+
+v0.3.4 - 2020-09-07
+
+- Bug fix for silent thunderbolt.
+
+v0.3.3 - 2020-09-07
+
+- VSync options no longer assume 60 Hz, and the left arrow now works for it.
+- Sniper packet projectiles are now seen correctly by other clients for all primaries except thunderbolt.  Thunderbolt and all secondaries were already being seen correctly by all clients.  This should make receiving damage from most primaries feel more consistent.
+- Major JIP fixes, including preserving player scores, making players inactive until they spawn, and correctly-synchronized weapons.
+- Creeper sync has been expanded to include time bombs.
+- Projectiles are no longer able to be seen coming through walls on maps with multiple chunks.  These projectiles would not cause damage, but were confusing to players.
+- Thunderbolt charge and cyclone fire rate will no longer hold over after a death if you're holding the primary button down when you die and when you spawn.
+- CTF flag duplication should no longer occur.
+- 10 FPS floor for client-side ticks removed from multiplayer games.
+- Race mode times are now displayed in m:ss.fff format.
+- Servers should no longer crash when maps have missing resources, it should just bounce clients back to the lobby and continue functioning normally.
+- Console now accepts left key input.
+- Attempt to make GSync dnSpy fix more consistent.
+
+v0.3.2 - 2020-08-09
+
+- Client-side handling of games that use maps with missing resources.  Clients will now be booted to the lobby in this case.  Servers still crash, and is being tracked in issue #33.
+- Match Presets left arrow now works.
+- Sniper packets mod is now on by default, and no longer has an option to be turned off.  The only time a v0.3.2 server should start a game without the sniper packets mod is when the client that starts it does not have the sniper packets mod.
+- Clients without the sniper packets mod can now join games with the sniper packets mod, but won't have the benefit of sniper packets enabled for them.
+
+v0.3.2-beta.2 - 2020-08-02
+
+- Potential bug fix to other players' devastators remaining in the game as a broken physics object after being manually detonated.  Devastators will still exhibit some strange client-side behavior, and is being tracked in issue #29.
+- olmod.sh can now be ran from any directory if you provide the -gamedir argument for the path to the Overload executable.
+
+v0.3.2-beta.1 - 2020-07-28
+
+- Added sniper packets as an option in multiplayer.  Option defaults to off.  If on, all clients playing must be using this version or later.  Net code from roncli, UI from Tobias.
+- Added better synchronization for energy, ammo, weapon selection, missile counts, and devastator fire/triggering.  From roncli.
+- Removed logging errors related to Tobii eye tracker.  From roncli.
+- Due to bugs, picture in picture rear view is now disabled in multiplayer.  A setting will be added in the future to re-enable this.
+
+v0.3.1.3 - 2020-07-13
+
+- Fix to observer mode.
+
+v0.3.1.2 - 2020-07-13
+
+- Add view player option to observer mode, by roncli
+- Fix for observer joining in progress match
+
+v0.3.1.1 - 2020-07-06
+
+- Fixed creeper sync server controlled explosions
+
+v0.3.1 - 2020-07-06
+
+- Add creeper sync support
+- Join-In-Progress: Better support for joining while match starts/ends
+
+v0.3.0.1 - 2020-06-17
+
+- Fixes for server browser
+
+v0.3.0 - 2020-06-17
+
+- Added server browser by Tobias
+- Fix boost reset on spawn fix
+
+v0.2.9.4 - 2020-05-31
+
+- Fixes for upcoming Overload version
+
+v0.2.9.3 - 2020-05-30
+
+- Support for upcoming Overload version
+
+v0.2.9.2 - 2020-05-26
+
+- Fix partial team mode for race mode
+
+v0.2.9.1 - 2020-05-23
+
+- Better support for no lap limit
+- Changed lap limit setting increments
+- Fixed scoreboard sorting
+- Default to instant respawn for race mode
+- Fixed bumping sound after leaving match
+- Fixed 3 or more team matches
+
+v0.2.9 - 2020-05-21
+
+- Added Race mode by Tobias
+- Support for mac
+- Show current team score when joining in progress match
+- Reset boost heat on respawn
+- Mod loading speedup
+
+v0.2.8.2 - 2020-03-25
+
+- Added fire macro/mouse wheel prevention by roncli
+- Added sudden death option for MB/CTF matches by roncli
+- CTF: Score on touching flag instead of goal
+- CTF: Fix scoring when flag is returned
+- CTF: Disable flag pickup when dying
+
+v0.2.8.1 - 2020-03-08
+
+- Added O1L match preset
+- Preserve LD_PRELOAD on linux by derhass
+
+v0.2.8 - 2020-02-16
+
+- Added MP Presets by Tobias
+- Less strict item pickup for inverted segment MP levels, originally by terminal
+- CTF: Added lost flag return timer
+- Show HUD messages and flag status on MP death screen
+- Added long MP password support by Tobias
+- Increased simultaneous sounds to 512 (formerly mod-moreaudio)
+- Disable super spawn when no spawnable items specified
+- Support for internet server ping
+
+v0.2.7.2 - 2020-01-06
+
+- Fix Impulse in Warrior loadout when used with Bomber (serverside)
+- Disable super alarm in levels without super spawn (serverside)
+
+v0.2.7.1 - 2019-12-26
+
+- Always make all MP loadouts available and use Impulse instead of Reflex for Warrior
+  (with help from terminal)
+- Fix for missing teleporters in MP levels
+
+v0.2.7 - 2019-11-12
+-  MP server support for new tracker (by roncli)
+-  MP hunter speed reduced (for updated client & server)
+-  Client side homing tracking improved (by terminal)
+-  Prevent power-ups moving through ceiling in outdoor levels (by terminal)
+-  Added Join/Create again after match
+-  Fixed JIP team balancing
+-  Added internet server (without olproxy)
+-  MP damage log includes weapon lava explosions
+
+v0.2.6.1 - 2019-10-24
+-  CTF: possible fix for persistent halo
+-  CTF: pickup sound changed to be less similar to super sound (by terminal)
+-  MP teams: added red enemy arrow to name in hud (by terminal)
+
+v0.2.6 - 2019-09-03
+-  Added MP Capture The Flag (CTF) mode
+-  Observer mode visibility fixes by roncli
+-  MP Prev weapon switch fix byTobias
+-  Added "Create open match" to enable JIP more easily
+-  Disabled door opening when nearby in MP (with updated server)
+-  Fix for MP door visibility in some levels (with help from terminal)
+-  Added support for crystals and more fans/monitors in custom levels (with help from kevin)
+
+v0.2.5 - 2019-07-05
+-  Adds MP level select screen
+-  Adds game stats tracking, by roncli
+-  Hopefully fixes team imbalance with JIP
+-  Fixes already exists with new level version on level download
+-  Disables weapon speed/lifetime randomization in MP
+
+v0.2.4 - 2019-06-10
+-  Support for multiple level versions in level download
+-  Observer: double movement speed, show thunderbolt/missiles (server side fix), skip more level deactivation
+-  Join in progress: auto level download, fix for 0ms ping
+
+v0.2.3 - 2019-06-02
+-  Sorts MP level list by name (by Tobias)
+-  Adds custom mod loading, add mod-xxx.dll assembly to olmod directory
+-  Adds -frametime command line option
+
+v0.2.2 - 2019-05-28
+-  Allows spawn data for custom MP levels
+-  Allows custom music in custom levels
+-  Adds Internet match option with built in olproxy
+-  New server stat log with JSON output (by luponix)
+-  Experimental client side MP level download
+-  MP fixes: assist calculation (by roncli), no extra new weapon pickup sound, show olmod server version
+-  JIP fixes: match time no longer resets, shows joined player, fix for join in lobby
+
+v0.2.1 - 2019-05-13
+-  join-in-progress fixes: join as observer, loadout data, preserve kda/time in match, start 1 player match
+-  console: option to enable console key `
+-  console commands: xp, reload_missions, mipmap_bias, ui_color
+-  -gamedir option
+
+v0.2.0 - 2019-05-05
+-  Join in progress support
+-  Shoot to open doors in MP (by terminal)
+-  Paste in MP password field with Ctrl+V
+
+v0.1.9 - 2019-05-02
+-  Monsterball: fix linux support, better weapon balance, use thunderbolt charge, only score with ball, support wind tunnels, no score after game ends (by terminal)
+-  Fix empty anarchy lobby bug
+
+v0.1.8 - 2019-04-27
+-  Fixes for more than 8 players: joining, lobby UI, assist finding
+-  More monsterball tweaks: drag, speed cap, thunderbolt (by terminal)
+-  Removes log spam on windows server
+
+v0.1.7 - 2019-04-25
+-  Added MP homing fix by terminal
+-  Added monsterball tweaks by terminal (weapons now hit monsterball, no more suicide penalty)
+-  Fix for CM/SP no damage bug, reported by sLLiK
+-  Hide empty teams, suggested by Yoshimitsu
+
+v0.1.6 - 2019-04-23
+-  Observer & more teams fixes
+-  Added game stats log (by luponix)
+
+v0.1.5 - 2019-04-22
+-  Added support for up to 8 teams
+
+v0.1.4 - 2019-04-07
+-  More 16 player tweaks, it appears to work now
+
+v0.1.3 - 2019-04-05
+-  Added frametime non-cheat code and rearview cheat code
+
+v0.1.2 - 2019-04-03
+-  Customize robot / projectile (weapon) data
+-  Stability fix for observer mode
+-  A few stability fixes for the Windows loader
+
+v0.1.1 - 2019-03-27
+-  Added MP observer mode
+-  Attempt at MP 16 player support, not working currently
+-  linux support
+
+v0.1.0 - 2019-03-16
+-  Initial version

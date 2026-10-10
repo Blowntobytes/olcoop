@@ -20,6 +20,7 @@ expect rough edges. Download the latest zip from [Releases](https://github.com/B
 
 ## Known issues
 - Pickups don't always show up for everyone(WIP).
+- If the main menu shows a red "WARNING: OLMOD IS NOT THE BUNDLED 0.5.14", the game was started through another olmod: use the olcoop shortcut. Upgrading from 0.7.x: old logs stay in `Overload\olcoop_logs`, new ones go to `Overload\olcoop\olcoop_logs`.
 - INVITE THROUGH STEAM opens the Steam friends list on your desktop (the Steam overlay isn't available when the game runs
   through olmod): right-click a friend > Invite to Game. The INVITE button next to each friend on the CO-OP screen works in-game.
 - Every player must run the same olcoop version; the game refuses to connect otherwise.
@@ -29,29 +30,33 @@ expect rough edges. Download the latest zip from [Releases](https://github.com/B
 - Over long-distance connections robots lag behind on joiners' screens (they are shown about 0.1 s behind the host plus the ping).
 
 ## Install (players)
-Requirements: Overload on Steam, Steam running, and olmod 0.5.14 (usually in the Overload folder; another folder works too). Every player needs the same olcoop version.
+Requirements: Overload on Steam and Steam running. Every player needs the same olcoop version.
+olcoop is standalone (0.8.0+): it brings its own unmodified copy of olmod 0.5.14, so you don't need olmod installed, and a
+modified olmod can't break co-op. Your own olmod, if you have one, is left alone and keeps working for normal multiplayer.
 1. Download the release zip and unzip it anywhere.
-2. Run `install.bat`. It finds your olmod folder - the folder with `olmod.exe` and `GameMod.dll`, also through olmod shortcuts - (or asks for it), copies `Mod-olcoop.dll` and `olcoop.bat` there, checks the copy,
+2. Run `install.bat`. It finds your Overload folder (or asks for it), installs olcoop and its olmod into `Overload\olcoop`,
+   checks every file, removes an older olcoop (0.7.x) from the Overload folder,
    and puts an **olcoop** shortcut (orange and black icon) on your Desktop.
-3. Start the game with the **olcoop** shortcut, or `olcoop.bat` IN THE OLMOD FOLDER (usually the game folder), not the zip folder (not Steam's Play button,
-   which starts the vanilla game).
+3. Start the game with the **olcoop** shortcut, or `olcoop.bat` in `Overload\olcoop`, not the zip folder (not Steam's Play button,
+   which starts the vanilla game, and not your regular olmod shortcut, which doesn't load olcoop).
    VR: SteamVR headsets - start SteamVR, then **olcoop SteamVR** (`olcoop-steamvr.bat`, `-vrmode openvr`); Oculus/Meta
    headsets - start the Oculus app, then **olcoop Oculus** (`olcoop-oculus.bat`, `-vrmode oculus`).
 4. Main menu, bottom right: **CO-OP: HOST / JOIN**.
    - Host: HOST A CO-OP GAME, invite friends from the list, then BACK and start or continue the campaign.
    - Friend: accept the host's Steam invite while the game is running, or open CO-OP and pick the friend who is hosting.
-5. To remove it, run `uninstall.bat`. olmod and the game files are never modified.
+5. To remove it, run `uninstall.bat`. Your own olmod and the game files are never modified.
 
 Same-PC testing (developers): `installer/olcoop-host.bat` and `installer/olcoop-join.bat [ip]` start a host and joiners that
 connect over UDP port 7777.
 Options: `-coopnolog` turns logging off, `-coopdump <sec>` sets the state-dump interval, `-cooprobots interp` / `-cooprobotlead <ms>`
-change how joiners display robots. Logs: `Overload\olcoop_logs\`.
+change how joiners display robots. Logs: `Overload\olcoop\olcoop_logs\` (0.7.x and older: `Overload\olcoop_logs\`).
 
 ## Build (developers)
 - Needs Mono `mcs`. The build references the game's own managed DLLs and the installed olmod `GameMod.dll`; neither is
   committed or redistributed.
 - `GAME_MANAGED=…/Overload_Data/Managed OLMOD_DLL=…/GameMod.dll ./build.sh` writes `build/Mod-olcoop.dll`;
-  `./package.sh` then writes the player zip `dist/olcoop-<version>.zip` (mod DLL + `installer/` files).
+  `./package.sh` then writes the player zip `dist/olcoop-<version>.zip` (`installer/` files + an `olcoop\` folder with the mod DLL,
+  launchers and the bundled olmod 0.5.14 from `third_party/olmod-0.5.14/`, checked against its `SHA1SUMS`).
 - `tools/VerifyPatches.cs` checks offline that every Harmony patch target and parameter name exists in the game.
 - `refs/` holds the local decompilation (`tools/ildump.py`) and is git-ignored. Never commit it.
 
@@ -88,7 +93,8 @@ change how joiners display robots. Logs: `Overload\olcoop_logs\`.
 
 ## Credits
 - The olmod team and contributors at the [Overload Development Community](https://github.com/overload-development-community/olmod):
-  olcoop is built on olmod and would not exist without it.
+  olcoop is built on olmod and would not exist without it. olcoop ships an unmodified copy of olmod 0.5.14
+  (© 2019 Arne de Bruijn and the olmod contributors, MIT licence; see `olmod-LICENSE.txt`).
 - olcoop maintained by Blowntobytes ([github.com/Blowntobytes](https://github.com/Blowntobytes)).
 
 Licence: MIT, like olmod. The mod contains no Overload code or assets.

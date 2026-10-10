@@ -1,0 +1,5 @@
+olmod 0.5.14, unmodified, from the official release:
+  https://github.com/arbruijn/olmod/releases/download/v0.5.14/olmod-0.5.14.zip  (tag v0.5.14, commit b31017900cbd)
+olmod is (c) 2019 Arne de Bruijn and the olmod contributors, MIT licence (olmod-LICENSE.txt).
+olcoop bundles it so every player runs the same, known-good olmod; SHA1SUMS must match the official zip.
+OlmodCheck.KnownSha1 in src/olcoop/CoopCore.cs is the GameMod.dll hash.

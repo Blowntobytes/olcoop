@@ -6,12 +6,14 @@ releases/
 src/olcoop/Generated/
 *.log
 
-# never commit game or olmod files, or decompiled game code
+# never commit game files or decompiled game code
 refs/
 lib/game/
 Assembly-CSharp*.dll
 UnityEngine*.dll
 GameMod.dll
+# ...except the bundled, unmodified olmod 0.5.14 (MIT, shipped since 0.8.0; must match its SHA1SUMS)
+!third_party/olmod-0.5.14/GameMod.dll
 
 # local publishing helpers
 publish/

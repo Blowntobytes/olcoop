@@ -274,6 +274,9 @@ namespace OlCoop.UI
             {
                 __instance.DrawStringSmall(CoopVersion.Full.ToUpperInvariant() + (CoopConfig.IsHost ? " - HOST" : CoopConfig.IsJoiner ? " - JOINER" : ""),
                     new Vector2(UIManager.UI_LEFT + 12f + (UIManager.UI_RIGHT - UIManager.UI_LEFT) * 0.4f, UIManager.UI_TOP + 14f + (UIManager.UI_BOTTOM - UIManager.UI_TOP) * 0.2f), 0.4f, StringOffset.LEFT, UIManager.m_col_ui2, __instance.m_alpha, -1f);
+                if (OlmodCheck.Warning != "") // 0.8.0: wrong olmod / extra mods - under the version line
+                    __instance.DrawStringSmall(OlmodCheck.Warning, new Vector2(UIManager.UI_LEFT + 12f + (UIManager.UI_RIGHT - UIManager.UI_LEFT) * 0.4f,
+                        UIManager.UI_TOP + 32f + (UIManager.UI_BOTTOM - UIManager.UI_TOP) * 0.2f), 0.4f, StringOffset.LEFT, UIManager.m_col_damage, __instance.m_alpha, -1f);
             }
             catch (Exception ex) { CoopLog.Error("M5", ex); }
         }

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.8.0-alpha (2026-10-10) - standalone: olcoop brings its own olmod 0.5.14, UNTESTED build (all players must run 0.8.0-alpha; protocol 30)
+User: a modified olmod 0.5.14 can break co-op; make olcoop a standalone mod that includes the working olmod 0.5.14.
+- Change: the release zip now contains an unmodified copy of olmod 0.5.14 (olmod.exe, GameMod.dll, 0Harmony.dll, licence,
+  readme, changes - byte-identical to the official olmod-0.5.14.zip, MIT licence). install.bat puts it with Mod-olcoop.dll and the
+  launchers into Overload\olcoop. That olmod loads only the mods in Overload\olcoop, so another olmod version or other mods
+  can't interfere. Your own olmod and its shortcuts are not touched.
+- Change: install.bat now only needs the Overload folder (Steam/GOG install records, every Steam library, shortcuts). It removes
+  the 0.7.x olcoop from the Overload folder (so the regular olmod no longer loads it), moves olcoop-settings.txt along, checks
+  every installed file, and points the olcoop / SteamVR / Oculus shortcuts at Overload\olcoop. uninstall.bat removes both layouts.
+- New: at startup the log shows "[INIT] olmod OK (bundled 0.5.14)" or "[INIT] olmod MISMATCH" with the GameMod.dll SHA1, the olmod
+  folder and any other Mod-*.dll loaded. On a mismatch (or other mods) a red warning shows on the main menu and the CO-OP screen.
+- Logs move to Overload\olcoop\olcoop_logs (the Unity log too: the launchers now give it an absolute path).
+
 ## 0.7.20-alpha (2026-10-09) - CO-OP screen: one more friend per page, UNTESTED build (all players must run 0.7.20-alpha; protocol 30)
 - Change (user): NEXT > and INVITE THROUGH STEAM another 5% to the right, < PREV another 5% to the left. PREV / NEXT now sit beside
   the last friend on the page instead of on a row of their own, with the page count just under it, so each page shows one more
