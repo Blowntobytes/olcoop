@@ -90,4 +90,5 @@ Targets unless noted: Overload 1.1.1886, olmod 0.5.14.
 | 0.7.18-alpha | 30 | 10-08 | seen (user) | CO-OP layout | buttons wanted a bit further out | tag v0.7.18-alpha, dist/olcoop-0.7.18-alpha.zip |
 | 0.7.19-alpha | 30 | 10-08 | seen (user) | CO-OP layout | wanted buttons further out, one more friend row | tag v0.7.19-alpha, dist/olcoop-0.7.19-alpha.zip |
 | 0.7.20-alpha | 30 | 10-09 | not tested (replaced by 0.8.0) | - | - | tag v0.7.20-alpha, dist/olcoop-0.7.20-alpha.zip |
-| 0.8.0-alpha | 30 | 10-10 | untested | - | - | NEW PHASE: standalone (bundled olmod 0.5.14, installs to Overload\olcoop); tag v0.8.0-alpha, build-standalone, dist/olcoop-0.8.0-alpha.zip |
+| 0.8.0-alpha | 30 | 10-10 | tested (user: "that worked") | - | - | NEW PHASE: standalone (bundled olmod 0.5.14, installs to Overload\olcoop); tag v0.8.0-alpha, build-standalone, dist/olcoop-0.8.0-alpha.zip |
+| 0.8.1-alpha | 30 | 10-10 | untested | - | - | CONNECT BY IP / JOIN BY IP; tag v0.8.1-alpha, build-standalone, dist/olcoop-0.8.1-alpha.zip |

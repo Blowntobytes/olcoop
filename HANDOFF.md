@@ -15,8 +15,8 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.8.0 alpha"). Protocol = 30 (in build.sh). Message ids used so far: 160-213 (0.7.6 extended msg 194 ObjMsg; 0.7.9 status code 4 on FNet.Status). Current build folder: build-standalone (since 0.8.0; build-alpha holds 0.7.9-0.7.20) (USER 2026-10-07: "it is still an alpha" - releases are named -alpha again from 0.7.9; build-challenge holds 0.7.8-challenge, the last "challenge"-named build).
-- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 300 patches, 0 problems, 0.8.0;
+  `VERSION` ("0.8.1 alpha"). Protocol = 30 (in build.sh). Message ids used so far: 160-213 (0.7.6 extended msg 194 ObjMsg; 0.7.9 status code 4 on FNet.Status). Current build folder: build-standalone (since 0.8.0; build-alpha holds 0.7.9-0.7.20) (USER 2026-10-07: "it is still an alpha" - releases are named -alpha again from 0.7.9; build-challenge holds 0.7.8-challenge, the last "challenge"-named build).
+- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 300 patches, 0 problems, 0.8.1;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-challenge (0.7.0-0.7.8), build-alpha (0.7.9-0.7.20), build-standalone (current, 0.8.0+).
   Bug fixes overwrite the current phase folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
@@ -1048,3 +1048,15 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   (would need a protocol bump) - offered as a follow-up.
 - On the user's PC: payload delivered to Overload\olcoop\ by the bridge; the 0.7.20 root install and the old Desktop shortcuts
   stay until the user runs install.bat from build-standalone (that run is also the installer test).
+
+## 0.8.1-alpha status (2026-10-10) - build-standalone, UNTESTED. Protocol 30 (no network change).
+- 0.8.0 tested by the user: "That worked" (standalone install).
+- User: connect by IP using port forwarding, button directly under INVITE THROUGH STEAM. IpConnect.cs (IpLink):
+  host half item CONNECT BY IP at (440, INVITE y + 50) [ID 2] toggles an info panel in place of the friend list (internet IP from
+  http://api.ipify.org on a background thread, LAN IP via a UDP socket "connect" to 8.8.8.8 (no packet), UDP port, firewall note).
+  Idle player: full item JOIN BY IP under HOST A CO-OP GAME [ID 2] -> DrawTextEntryLabeled field [ID 7] + CONNECT [ID 30];
+  typing copies MenuManager.ProcessInputField rules (Input.inputString, Controls.m_disable_menu_letter_keys while the field is
+  selected, Ctrl+V). Connect: host[:port] (DNS -> IPv4), CoopConfig.Port = port, SetJoinIp -> CoopClient.MenuTick Client.Connect.
+- The host side needed no change: H1_ServerListen already makes the host listen on UDP CoopConfig.Port next to Steam.
+- Untested: whether the UNET UDP listen accepts internet joiners through a forwarded port (only same-PC/LAN IP joins were
+  ever tested, in phases 1-2). Ask for host + joiner logs ([IP], [JOIN], [HOST] lines).

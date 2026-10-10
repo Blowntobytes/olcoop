@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.8.1-alpha (2026-10-10) - CONNECT BY IP (port forwarding), UNTESTED build (all players must run 0.8.1-alpha; protocol 30)
+User: add a connect-by-IP system that uses port forwarding; the button directly under INVITE THROUGH STEAM.
+- New (host): CONNECT BY IP, directly under INVITE THROUGH STEAM on the CO-OP screen. It shows the address to give friends
+  (internet IP, looked up once from api.ipify.org), the PC's LAN address to forward UDP port 7777 to, the firewall note, and
+  the LAN address for players in the same house. The host already listened on UDP 7777 next to Steam; nothing changes there.
+- New (joiner): JOIN BY IP under HOST A CO-OP GAME. Type or paste (Ctrl+V) `1.2.3.4` or `1.2.3.4:7777` (a host name works too),
+  then CONNECT or Enter. It joins exactly like a Steam join (same version check, retries, READY UP). The last address is remembered
+  (olcoop-lastip.txt). Also works when Steam isn't running.
+- Log lines: [IP] host address info / join by IP.
+
 ## 0.8.0-alpha (2026-10-10) - standalone: olcoop brings its own olmod 0.5.14, UNTESTED build (all players must run 0.8.0-alpha; protocol 30)
 User: a modified olmod 0.5.14 can break co-op; make olcoop a standalone mod that includes the working olmod 0.5.14.
 - Change: the release zip now contains an unmodified copy of olmod 0.5.14 (olmod.exe, GameMod.dll, 0Harmony.dll, licence,

@@ -21,7 +21,7 @@ namespace OlCoop.UI
         public static readonly MenuState msCoop = (MenuState)121;
         public static readonly UIElementType uiCoop = (UIElementType)123;
         public const int MainMenuItemId = 40;
-        const int ID_HOST = 0, ID_OVERLAY = 1, ID_LEAVE = 3, ID_READY = 4, ID_CAMPAIGN = 5, ID_CHALLENGE = 6, ID_PREV = 8, ID_NEXT = 9, ID_FRIEND0 = 10, MAX_FRIENDS = 20, ID_BACK = 100;
+        const int ID_HOST = 0, ID_OVERLAY = 1, ID_LEAVE = 3, ID_READY = 4, ID_CAMPAIGN = 5, ID_CHALLENGE = 6, ID_PREV = 8, ID_NEXT = 9, ID_IP = 2, ID_IPFIELD = 7, ID_IPGO = 30, ID_FRIEND0 = 10, MAX_FRIENDS = 20, ID_BACK = 100;
         static int s_page, s_per_page = 1;
         static readonly MethodInfo s_goBack = AccessTools.Method(typeof(MenuManager), "GoBack");
 
@@ -88,6 +88,12 @@ namespace OlCoop.UI
             {
                 uie.SelectAndDrawItem(CoopConfig.IsHost ? "STOP HOSTING" : "HOST A CO-OP GAME", pos, ID_HOST, false, 1f, 0.75f);
                 pos.y += 62f;
+                if (!CoopConfig.IsHost)
+                {
+                    // 0.8.1: join a host by IP address (the host forwards UDP 7777)
+                    uie.SelectAndDrawItem(IpLink.Panel ? "JOIN BY IP - CLOSE" : "JOIN BY IP", pos, ID_IP, false, 1f, 0.75f);
+                    pos.y += 62f;
+                }
             }
             if (CoopConfig.IsHost)
             {
@@ -112,9 +118,15 @@ namespace OlCoop.UI
                     uie.DrawStringSmall(OlCoop.Session.CoopLobby.Line(e), new Vector2(left, y), 0.4f, StringOffset.LEFT, e.host ? UIManager.m_col_hi4 : UIManager.m_col_ui1, 1f, -1f);
                     y += 26f;
                 }
+                float right = top;
                 if (steam && SteamLink.Lobby != CSteamID.Nil)
+                {
                     uie.SelectAndDrawHalfItem("INVITE THROUGH STEAM", new Vector2(440f, top), ID_OVERLAY, false); // 0.7.20: 5% further right (was 419)
-                pos.y = Mathf.Max(top + 62f, y + 20f);
+                    right += 50f;
+                }
+                // 0.8.1 (user): CONNECT BY IP directly under INVITE THROUGH STEAM - shows the address / port forwarding info
+                uie.SelectAndDrawHalfItem(IpLink.Panel ? "HIDE IP INFO" : "CONNECT BY IP", new Vector2(440f, right), ID_IP, false);
+                pos.y = Mathf.Max(right + 62f, y + 20f);
             }
             if (OlCoop.World.PostLevel.ReadyButton)
             {
@@ -150,9 +162,13 @@ namespace OlCoop.UI
                 pos.y += 16f;
             }
 
-            if (!steam)
+            if (IpLink.Panel && !CoopConfig.IsJoiner)
             {
-                uie.DrawStringSmall("STEAM IS NOT AVAILABLE - START STEAM AND RESTART THE GAME TO PLAY WITH FRIENDS", pos + Vector2.up * 10f, 0.4f, StringOffset.CENTER, UIManager.m_col_ui2, 1f, -1f);
+                IpLink.Draw(uie, pos, ID_IPFIELD, ID_IPGO);
+            }
+            else if (!steam)
+            {
+                uie.DrawStringSmall("STEAM IS NOT AVAILABLE - USE JOIN BY IP, OR START STEAM AND RESTART THE GAME", pos + Vector2.up * 10f, 0.4f, StringOffset.CENTER, UIManager.m_col_ui2, 1f, -1f);
             }
             else if (!CoopConfig.IsJoiner)
             {
@@ -217,11 +233,16 @@ namespace OlCoop.UI
                     }
                     break;
                 case MenuSubState.ACTIVE:
+                    // 0.8.1: typing in the JOIN BY IP field (letters must not move the menu selection)
+                    bool typing = IpLink.Panel && !CoopConfig.Active && UIManager.m_menu_selection == ID_IPFIELD;
+                    Controls.m_disable_menu_letter_keys = typing;
+                    if (typing && IpLink.ProcessInput()) { IpLink.Connect(); MenuManager.PlaySelectSound(); MenuManager.SetDefaultSelection(ID_LEAVE); break; }
                     UIManager.ControllerMenu();
                     if (!UIManager.PushedSelect(-1)) break;
                     int sel = UIManager.m_menu_selection;
                     if (sel == ID_BACK)
                     {
+                        IpLink.Panel = false; Controls.m_disable_menu_letter_keys = false;
                         s_goBack.Invoke(null, null);
                         UIManager.DestroyAll();
                         MenuManager.PlaySelectSound();
@@ -232,6 +253,13 @@ namespace OlCoop.UI
                         else { CoopConfig.SetHost(); if (SteamLink.Available) SteamLink.CreateLobby(); else SteamLink.LastStatus = "HOSTING (LAN / IP ONLY - STEAM NOT AVAILABLE)"; }
                         MenuManager.PlaySelectSound();
                     }
+                    else if (sel == ID_IP)
+                    {
+                        if (IpLink.Panel) IpLink.Panel = false; else IpLink.Open();
+                        if (IpLink.Panel && !CoopConfig.IsHost) MenuManager.SetDefaultSelection(ID_IPFIELD);
+                        MenuManager.PlaySelectSound();
+                    }
+                    else if (sel == ID_IPGO) { IpLink.Connect(); MenuManager.PlaySelectSound(); if (CoopConfig.IsJoiner) MenuManager.SetDefaultSelection(ID_LEAVE); }
                     else if (sel == ID_OVERLAY) { SteamLink.OpenInviteOverlay(); MenuManager.PlaySelectSound(); }
                     else if (sel == ID_READY) { if (OlCoop.World.PostLevel.ReadyButton) OlCoop.World.PostLevel.PressReady(); MenuManager.PlaySelectSound(); MenuManager.SetDefaultSelection(ID_LEAVE); }
                     else if (sel == ID_LEAVE)

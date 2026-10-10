@@ -44,6 +44,8 @@ modified olmod can't break co-op. Your own olmod, if you have one, is left alone
 4. Main menu, bottom right: **CO-OP: HOST / JOIN**.
    - Host: HOST A CO-OP GAME, invite friends from the list, then BACK and start or continue the campaign.
    - Friend: accept the host's Steam invite while the game is running, or open CO-OP and pick the friend who is hosting.
+   - Without Steam friends: the host forwards UDP port 7777 in their router to their PC and gives you the address shown under
+     CO-OP > CONNECT BY IP; you choose JOIN BY IP and type it. Only share your IP with people you trust.
 5. To remove it, run `uninstall.bat`. Your own olmod and the game files are never modified.
 
 Same-PC testing (developers): `installer/olcoop-host.bat` and `installer/olcoop-join.bat [ip]` start a host and joiners that
