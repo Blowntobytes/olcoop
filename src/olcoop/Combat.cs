@@ -1,5 +1,8 @@
 // Combat parity between host and joiners.
 //  - Melee robots (claw/blade "Shredder", detonator, charger) damage the ship they actually hit, not always the host.
+//  - Incoming robot fire (0.8.2): a joiner judges on its own screen whether a robot shot or its splash hit the joiner's ship
+//    and reports the damage; the host owns the hp ledger and the death decision. A shot you visibly dodged can no longer hit
+//    you through the host's half-a-ping-stale copy of your ship. Melee stays host-judged (no robot AI runs on a joiner).
 //  - Joiner loadout (weapons, upgrade levels, ammo, missiles, energy) is applied to the host's copy of that joiner, so the host
 //    stops refusing the joiner's ammo-weapon and missile shots.
 using System;
@@ -31,6 +34,12 @@ namespace OlCoop.Combat
         static readonly FieldInfo f_target_rb = AccessTools.Field(typeof(Robot), "target_rigidbody");
         static readonly MethodInfo m_victim = AccessTools.Method(typeof(M1_MeleeVictim), nameof(MeleeVictim));
         static int s_logged;
+
+        /// True while one of the three melee methods runs. Melee damage carries the same owner fields as robot splash, and
+        /// H1 must keep it host-judged (a joiner runs no robot AI, so it could never judge a swing locally).
+        public static bool Swinging;
+        static void Prefix() { Swinging = true; }
+        static void Finalizer() { Swinging = false; }
 
         static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase __originalMethod)
         {
@@ -64,6 +73,89 @@ namespace OlCoop.Combat
                 return ship;
             }
             catch (Exception ex) { CoopLog.Error("MeleeVictim", ex); return local; }
+        }
+    }
+
+    // ===================================================================== incoming robot damage (0.8.2)
+    public static class HNet { public const short ShipHit = 215; } // J->H ShipHitMsg: a robot shot/splash hit my ship on my screen
+
+    /// A joiner's locally judged robot hit on its own ship; robotId names the shooter for stats/aggro (0xFFFF if unknown).
+    public class ShipHitMsg : MessageBase
+    {
+        public ushort robotId; public float damage, stun, pushForce, pushTorque; public byte type, weapon; public Vector3 pos, pushDir;
+        public override void Serialize(NetworkWriter w)
+        {
+            w.Write(robotId); w.Write(damage); w.Write(stun); w.Write(pushForce); w.Write(pushTorque);
+            w.Write(type); w.Write(weapon); w.Write(pos); w.Write(pushDir);
+        }
+        public override void Deserialize(NetworkReader r)
+        {
+            robotId = r.ReadUInt16(); damage = r.ReadSingle(); stun = r.ReadSingle(); pushForce = r.ReadSingle(); pushTorque = r.ReadSingle();
+            type = r.ReadByte(); weapon = r.ReadByte(); pos = r.ReadVector3(); pushDir = r.ReadVector3();
+        }
+    }
+
+    /// H1: whether a robot shot hit a ship is judged by the player flying it. The joiner's local copies of robot projectiles
+    /// (RNet.FireBatch, reliable) and their splash reach PlayerShip.ApplyDamage locally (the engine calls it, then returns at
+    /// its own !IsServer gate); the hit is reported to the host, which applies it to its copy of that ship - the hp ledger,
+    /// RpcApplyDamage and the death decision stay the host's. The host's own simulation stops damaging REMOTE ships with robot
+    /// projectiles/splash (each hit would land twice); melee keeps the host path (M1 routes it, Swinging marks it).
+    [HarmonyPatch(typeof(PlayerShip), "ApplyDamage")]
+    static class H1_ShipHitsJudgedByWhoTakesThem
+    {
+        static bool Prefix(PlayerShip __instance, DamageInfo di)
+        {
+            if (!CoopConfig.Active || GameplayManager.IsMultiplayer) return true;
+            var robot = di.robot_owner ?? (di.owner != null ? di.owner.GetComponent<Robot>() : null);
+            if (robot == null) return true; // lava, friendly fire, self damage, reactor turrets: stock path
+            if (OlCoop.Robots.CoopRobots.IsHost)
+            {
+                if (__instance.isLocalPlayer || M1_MeleeVictim.Swinging || CoopShipDamage.ApplyingReport) return true;
+                return false;
+            }
+            if (OlCoop.Robots.CoopRobots.IsJoiner && __instance.isLocalPlayer && !(bool)__instance.m_dead && !(bool)__instance.m_dying)
+                CoopShipDamage.SendHit(robot, di);
+            return true; // a client's ApplyDamage returns at its own !IsServer gate; nothing to block
+        }
+    }
+
+    public static class CoopShipDamage
+    {
+        public static bool ApplyingReport;
+        static int s_sent_logged, s_applied_logged;
+
+        /// Joiner: a robot's shot or splash hit our ship on our screen. The host owns the hp ledger, so send it the damage.
+        public static void SendHit(Robot robot, DamageInfo di)
+        {
+            var c = Client.GetClient();
+            if (c == null || !c.isConnected) return;
+            ushort id;
+            if (!OlCoop.Robots.CoopRobots.TryId(robot, out id)) id = 0xFFFF;
+            c.Send(HNet.ShipHit, new ShipHitMsg { robotId = id, damage = di.damage, type = (byte)di.type, weapon = (byte)di.weapon, stun = di.stun_multiplier,
+                pushForce = di.push_force, pushTorque = di.push_torque, pos = di.pos, pushDir = di.push_dir });
+            if (s_sent_logged++ < 20) CoopLog.Write("COMBAT", "joiner: robot " + (id == 0xFFFF ? "?" : id.ToString()) + " hit my ship for " + di.damage.ToString("F1") + " -> host");
+        }
+
+        /// Host: apply a joiner's reported robot hit to our copy of that joiner's ship.
+        public static void OnShipHit(NetworkMessage msg)
+        {
+            try
+            {
+                var m = msg.ReadMessage<ShipHitMsg>();
+                PlayerShip ship = null;
+                foreach (var p in Overload.NetworkManager.m_Players)
+                    if (p != null && p.connectionToClient != null && p.connectionToClient.connectionId == msg.conn.connectionId && p.c_player_ship != null) ship = p.c_player_ship;
+                if (ship == null) return;
+                Robot robot;
+                OlCoop.Robots.CoopRobots.ById.TryGetValue(m.robotId, out robot);
+                var di = new DamageInfo { damage = m.damage, type = (DamageType)m.type, weapon = (ProjPrefab)m.weapon, stun_multiplier = m.stun,
+                    push_force = m.pushForce, push_torque = m.pushTorque, pos = m.pos, push_dir = m.pushDir,
+                    owner = robot != null ? robot.gameObject : null, robot_owner = robot };
+                if (s_applied_logged++ < 20) CoopLog.Write("COMBAT", "host: netId=" + ship.c_player.netId.Value + " took " + m.damage.ToString("F1") + " from robot " + (m.robotId == 0xFFFF ? "?" : m.robotId.ToString()) + " (joiner judged)");
+                ApplyingReport = true;
+                try { ship.ApplyDamage(di); } finally { ApplyingReport = false; }
+            }
+            catch (Exception ex) { CoopLog.Error("CoopShipDamage.OnShipHit", ex); }
         }
     }
 
@@ -356,6 +448,7 @@ namespace OlCoop.Combat
             CoopConfig.EnsureInit();
             if (!CoopConfig.IsHost) return;
             NetworkServer.RegisterHandler(LNet.Loadout, CoopLoadout.OnLoadout);
+            NetworkServer.RegisterHandler(HNet.ShipHit, CoopShipDamage.OnShipHit);
         }
     }
 

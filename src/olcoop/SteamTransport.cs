@@ -10,9 +10,11 @@
 //           normal connect handler runs, which sends our co-op handshake as usual.
 //   Packet format: UNET bytes + 1 trailing byte = UNET channel id (Steam channel 0 for everything).
 //
-// Lobby/invites: the host creates a friends-only Steam lobby. Friends can be invited from the CO-OP screen (Steam sends them a chat
-// invite) or join from the CO-OP screen's friend list; accepting a Steam invite while the game runs joins automatically
-// (GameLobbyJoinRequested). The lobby owner is the host to connect to.
+// Lobby/invites: the host creates a public Steam lobby with a 4-character PIN. Anyone with the game can join - no Steam friendship
+// needed: the lobby is found through Steam's lobby search, either from the CO-OP screen's open-games list (lobbies with listed=1)
+// or by typing the host's PIN (lobby data filter). Friends can still be invited from the CO-OP screen (Steam sends them a chat
+// invite); accepting a Steam invite while the game runs joins automatically (GameLobbyJoinRequested). The lobby owner is the host
+// to connect to. Being in the lobby is what admits a peer's packets (Allowed), so the PIN/browser gate IS the access control.
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -96,9 +98,16 @@ namespace OlCoop.SteamNet
         static Callback<LobbyEnter_t> s_cbEnter;
 #pragma warning restore 414
         static CallResult<LobbyCreated_t> s_crCreated;
+        static CallResult<LobbyMatchList_t> s_crLobbyList;
         public static CSteamID Lobby = CSteamID.Nil;
         public static string LastStatus = "";
         static float s_next_stats;
+
+        /// 4-character session PIN, shown to the host; a joiner who types it finds the lobby. No 0/O/1/I - they read alike.
+        public static string Pin = "";
+        /// Host choice: show this session in everyone's open-games list (lobby data listed=1), or PIN only.
+        public static bool Listed = true;
+        const string PinAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
         public static void Init()
         {
@@ -110,6 +119,7 @@ namespace OlCoop.SteamNet
             s_cbJoinReq = Callback<GameLobbyJoinRequested_t>.Create(OnJoinRequested);
             s_cbEnter = Callback<LobbyEnter_t>.Create(OnLobbyEnter);
             s_crCreated = CallResult<LobbyCreated_t>.Create(OnLobbyCreated);
+            s_crLobbyList = CallResult<LobbyMatchList_t>.Create(OnLobbyList);
             CoopLog.Write("STEAM", "steam networking ready; me=" + SteamUser.GetSteamID().m_SteamID + " (" + SteamFriends.GetPersonaName() + ")");
             // Launched by a Steam invite while the game was closed: "+connect_lobby <id>"
             var args = Environment.GetCommandLineArgs();
@@ -137,10 +147,14 @@ namespace OlCoop.SteamNet
             if (!Available) return;
             Init();
             if (Lobby != CSteamID.Nil) { LeaveLobby(); }
-            var call = SteamMatchmaking.CreateLobby(ELobbyType.k_ELobbyTypeFriendsOnly, 4);
+            var pin = new char[4];
+            for (int i = 0; i < 4; i++) pin[i] = PinAlphabet[UnityEngine.Random.Range(0, PinAlphabet.Length)];
+            Pin = new string(pin);
+            // Public so the lobby search finds it; who may actually enter is decided by the PIN / listing, not by Steam friendship.
+            var call = SteamMatchmaking.CreateLobby(ELobbyType.k_ELobbyTypePublic, 4);
             s_crCreated.Set(call, OnLobbyCreated);
             LastStatus = "CREATING STEAM LOBBY...";
-            CoopLog.Write("STEAM", "creating friends-only lobby");
+            CoopLog.Write("STEAM", "creating public lobby, pin " + Pin);
         }
 
         static void OnLobbyCreated(LobbyCreated_t r, bool ioFailure)
@@ -159,10 +173,76 @@ namespace OlCoop.SteamNet
             Lobby = new CSteamID(r.m_ulSteamIDLobby);
             SteamMatchmaking.SetLobbyData(Lobby, "olcoop", CoopVersion.Full);
             SteamMatchmaking.SetLobbyData(Lobby, "protocol", CoopVersion.Protocol.ToString());
+            // shortcut: the pin rides in lobby data, so custom Steamworks code could list unlisted lobbies and read it; move the
+            // check into the co-op handshake if drive-by protection ever stops being enough.
+            SteamMatchmaking.SetLobbyData(Lobby, "pin", Pin);
+            SteamMatchmaking.SetLobbyData(Lobby, "host", SteamFriends.GetPersonaName());
+            SteamMatchmaking.SetLobbyData(Lobby, "listed", Listed ? "1" : "0");
             SteamFriends.SetRichPresence("connect", "+connect_lobby " + Lobby.m_SteamID);
             SteamFriends.SetRichPresence("status", "Hosting Overload co-op");
-            LastStatus = "HOSTING - FRIENDS CAN JOIN OR BE INVITED";
-            CoopLog.Write("STEAM", "lobby " + Lobby.m_SteamID + " created; friends can join");
+            LastStatus = "HOSTING - PIN " + Pin + (Listed ? ", LISTED FOR EVERYONE" : ", UNLISTED - SHARE THE PIN");
+            CoopLog.Write("STEAM", "lobby " + Lobby.m_SteamID + " created; pin " + Pin + " listed=" + Listed);
+        }
+
+        public static void SetListed(bool listed)
+        {
+            Listed = listed;
+            if (Lobby != CSteamID.Nil)
+            {
+                SteamMatchmaking.SetLobbyData(Lobby, "listed", listed ? "1" : "0");
+                LastStatus = "HOSTING - PIN " + Pin + (listed ? ", LISTED FOR EVERYONE" : ", UNLISTED - SHARE THE PIN");
+            }
+            CoopLog.Write("STEAM", "lobby listing " + (listed ? "on" : "off (pin only)"));
+        }
+
+        // ---------------------------------------------------------------- lobby search (PIN + open-games list)
+        public struct OpenGame { public CSteamID Lobby; public string HostName; public int Players, MaxPlayers; }
+        public static readonly List<OpenGame> OpenGames = new List<OpenGame>();
+        static string s_searching_pin; // non-null while a pin search runs; null = open-games refresh
+
+        /// Joiner typed the host's PIN: find that lobby through Steam's search and join it.
+        public static void JoinByPin(string pin)
+        {
+            if (!Available) return;
+            Init();
+            s_searching_pin = pin.ToUpperInvariant();
+            SteamMatchmaking.AddRequestLobbyListDistanceFilter(ELobbyDistanceFilter.k_ELobbyDistanceFilterWorldwide);
+            SteamMatchmaking.AddRequestLobbyListStringFilter("protocol", CoopVersion.Protocol.ToString(), ELobbyComparison.k_ELobbyComparisonEqual);
+            SteamMatchmaking.AddRequestLobbyListStringFilter("pin", s_searching_pin, ELobbyComparison.k_ELobbyComparisonEqual);
+            s_crLobbyList.Set(SteamMatchmaking.RequestLobbyList(), OnLobbyList);
+            LastStatus = "LOOKING FOR PIN " + s_searching_pin + "...";
+            CoopLog.Write("STEAM", "searching lobbies for pin " + s_searching_pin);
+        }
+
+        /// CO-OP screen: refresh the list of sessions whose hosts chose to be listed.
+        public static void RequestOpenGames()
+        {
+            if (!Available || s_searching_pin != null) return;
+            Init();
+            SteamMatchmaking.AddRequestLobbyListDistanceFilter(ELobbyDistanceFilter.k_ELobbyDistanceFilterWorldwide);
+            SteamMatchmaking.AddRequestLobbyListStringFilter("protocol", CoopVersion.Protocol.ToString(), ELobbyComparison.k_ELobbyComparisonEqual);
+            SteamMatchmaking.AddRequestLobbyListStringFilter("listed", "1", ELobbyComparison.k_ELobbyComparisonEqual);
+            s_crLobbyList.Set(SteamMatchmaking.RequestLobbyList(), OnLobbyList);
+        }
+
+        static void OnLobbyList(LobbyMatchList_t r, bool ioFailure)
+        {
+            string pin = s_searching_pin; s_searching_pin = null;
+            int n = ioFailure ? 0 : (int)r.m_nLobbiesMatching;
+            if (pin != null)
+            {
+                if (n == 0) { LastStatus = "NO GAME WITH PIN " + pin + " - CHECK THE PIN WITH THE HOST"; CoopLog.Write("STEAM", "pin " + pin + ": no lobby found io=" + ioFailure); return; }
+                JoinLobby(SteamMatchmaking.GetLobbyByIndex(0));
+                return;
+            }
+            OpenGames.Clear();
+            for (int i = 0; i < n; i++)
+            {
+                var l = SteamMatchmaking.GetLobbyByIndex(i);
+                if (l == Lobby) continue; // not our own session
+                OpenGames.Add(new OpenGame { Lobby = l, HostName = SteamMatchmaking.GetLobbyData(l, "host"),
+                    Players = SteamMatchmaking.GetNumLobbyMembers(l), MaxPlayers = SteamMatchmaking.GetLobbyMemberLimit(l) });
+            }
         }
 
         public static void Invite(CSteamID friend)

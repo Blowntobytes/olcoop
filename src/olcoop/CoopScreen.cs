@@ -21,27 +21,43 @@ namespace OlCoop.UI
         public static readonly MenuState msCoop = (MenuState)121;
         public static readonly UIElementType uiCoop = (UIElementType)123;
         public const int MainMenuItemId = 40;
-        const int ID_HOST = 0, ID_OVERLAY = 1, ID_LEAVE = 3, ID_READY = 4, ID_CAMPAIGN = 5, ID_CHALLENGE = 6, ID_PREV = 8, ID_NEXT = 9, ID_IP = 2, ID_IPFIELD = 7, ID_IPGO = 30, ID_FRIEND0 = 10, MAX_FRIENDS = 20, ID_BACK = 100;
+        const int ID_HOST = 0, ID_OVERLAY = 1, ID_LEAVE = 3, ID_READY = 4, ID_CAMPAIGN = 5, ID_CHALLENGE = 6, ID_PREV = 8, ID_NEXT = 9, ID_IP = 2, ID_IPFIELD = 7, ID_IPGO = 30, ID_LISTED = 31, ID_PIN = 32, ID_FRIEND0 = 10, MAX_FRIENDS = 20, ID_BACK = 100;
         static int s_page, s_per_page = 1;
         static readonly MethodInfo s_goBack = AccessTools.Method(typeof(MenuManager), "GoBack");
 
         static List<SteamLink.Friend> s_friends = new List<SteamLink.Friend>();
-        static float s_next_refresh;
+        static float s_next_refresh, s_next_games_refresh;
+        static string s_pin = "";
 
         static void Refresh()
         {
+            if (Time.realtimeSinceStartup >= s_next_games_refresh)
+            {
+                s_next_games_refresh = Time.realtimeSinceStartup + 5f;
+                try { SteamLink.RequestOpenGames(); } catch (Exception ex) { CoopLog.Error("open games", ex); }
+            }
             if (Time.realtimeSinceStartup < s_next_refresh) return;
             s_next_refresh = Time.realtimeSinceStartup + 2f;
             try { s_friends = SteamLink.Friends(); } catch (Exception ex) { CoopLog.Error("friends", ex); s_friends = new List<SteamLink.Friend>(); }
         }
 
-        /// The friends shown as buttons: hosting -> every online friend (INVITE); otherwise -> friends who are hosting (JOIN).
+        /// The rows shown as buttons: hosting -> every online friend (INVITE); otherwise -> every joinable session (JOIN):
+        /// friends who are hosting plus the listed open games from Steam's lobby search.
         static List<SteamLink.Friend> Rows()
         {
             var l = new List<SteamLink.Friend>();
             foreach (var f in s_friends)
             {
                 if (CoopConfig.IsHost || f.Lobby != CSteamID.Nil) l.Add(f);
+            }
+            if (!CoopConfig.IsHost)
+            {
+                foreach (var g in SteamLink.OpenGames)
+                {
+                    bool shownAsFriend = false;
+                    foreach (var f in l) if (f.Lobby == g.Lobby) { shownAsFriend = true; break; }
+                    if (!shownAsFriend) l.Add(new SteamLink.Friend { Name = g.HostName + " " + g.Players + "/" + g.MaxPlayers, Lobby = g.Lobby, InOverload = true, Online = true });
+                }
             }
             return l;
         }
@@ -50,7 +66,7 @@ namespace OlCoop.UI
         {
             if (CoopConfig.IsHost) return "YOU ARE HOSTING - START OR CONTINUE THE CAMPAIGN FROM THE MAIN MENU";
             if (CoopConfig.IsJoiner) return (OlCoop.Session.CoopClient.Welcomed ? "CONNECTED TO " : "JOINING ") + HostName();
-            return "CHOOSE: HOST A GAME, OR JOIN A FRIEND WHO IS HOSTING";
+            return "CHOOSE: HOST A GAME, OR JOIN ONE (OPEN GAME, PIN, OR A STEAM INVITE)";
         }
 
         static string HostName()
@@ -103,6 +119,11 @@ namespace OlCoop.UI
                 // 0.7.0: co-op challenge mode (the stock challenge level select)
                 uie.SelectAndDrawItem("PLAY CHALLENGE", pos, ID_CHALLENGE, false, 1f, 0.75f);
                 pos.y += 62f;
+                if (steam && SteamLink.Lobby != CSteamID.Nil)
+                {
+                    uie.SelectAndDrawItem(SteamLink.Listed ? "VISIBILITY: LISTED FOR EVERYONE" : "VISIBILITY: PIN ONLY", pos, ID_LISTED, false, 1f, 0.75f);
+                    pos.y += 62f;
+                }
             }
             bool hostRow = CoopConfig.IsHost;
             if (hostRow)
@@ -126,7 +147,9 @@ namespace OlCoop.UI
                 }
                 // 0.8.1 (user): CONNECT BY IP directly under INVITE THROUGH STEAM - shows the address / port forwarding info
                 uie.SelectAndDrawHalfItem(IpLink.Panel ? "HIDE IP INFO" : "CONNECT BY IP", new Vector2(440f, right), ID_IP, false);
-                pos.y = Mathf.Max(right + 62f, y + 20f);
+                if (steam && SteamLink.Lobby != CSteamID.Nil)
+                    uie.DrawStringSmall("PIN: " + SteamLink.Pin + " - ANYONE WITH IT CAN JOIN", new Vector2(440f, right + 44f), 0.42f, StringOffset.CENTER, UIManager.m_col_hi4, 1f, -1f);
+                pos.y = Mathf.Max(right + 70f, y + 20f);
             }
             if (OlCoop.World.PostLevel.ReadyButton)
             {
@@ -173,11 +196,17 @@ namespace OlCoop.UI
             else if (!CoopConfig.IsJoiner)
             {
                 Refresh();
+                if (!CoopConfig.IsHost)
+                {
+                    // select, then type the host's 4-character pin on the keyboard; the item shows what was typed so far
+                    uie.SelectAndDrawItem("JOIN WITH PIN: " + s_pin.PadRight(4, '_'), pos, ID_PIN, false, 1f, 0.75f);
+                    pos.y += 62f;
+                }
                 var rows = Rows();
-                uie.DrawStringSmall(CoopConfig.IsHost ? "INVITE A FRIEND:" : "FRIENDS HOSTING CO-OP:", pos + Vector2.up * 4f, 0.45f, StringOffset.CENTER, UIManager.m_col_ui2, 1f, -1f);
+                uie.DrawStringSmall(CoopConfig.IsHost ? "INVITE A FRIEND:" : "OPEN CO-OP GAMES:", pos + Vector2.up * 4f, 0.45f, StringOffset.CENTER, UIManager.m_col_ui2, 1f, -1f);
                 pos.y += 34f;
                 if (rows.Count == 0)
-                    uie.DrawStringSmall(CoopConfig.IsHost ? "NO FRIENDS ONLINE" : "NONE RIGHT NOW - ASK YOUR FRIEND TO HOST, OR ACCEPT THEIR STEAM INVITE",
+                    uie.DrawStringSmall(CoopConfig.IsHost ? "NO FRIENDS ONLINE" : "NONE RIGHT NOW - USE A PIN, JOIN BY IP, OR ACCEPT A STEAM INVITE",
                         pos, 0.4f, StringOffset.CENTER, UIManager.m_col_ui1, 1f, -1f);
                 // 0.6.12: pages - as many rows as fit above BACK (minus one row for the page buttons), PREV/NEXT to scroll
                 float room = (UIManager.UI_BOTTOM - 95f) - pos.y;
@@ -217,6 +246,19 @@ namespace OlCoop.UI
             return s.Length > 22 ? s.Substring(0, 21) + "." : s;
         }
 
+        /// Keyboard only, while JOIN WITH PIN is selected (VR/controller players use the open-games list instead):
+        /// typed letters/digits fill the pin, backspace deletes, the 4th character joins right away.
+        static void ReadPinKeys()
+        {
+            foreach (char c in Input.inputString)
+            {
+                if (c == '\b') { if (s_pin.Length > 0) s_pin = s_pin.Substring(0, s_pin.Length - 1); continue; }
+                if (!char.IsLetterOrDigit(c) || s_pin.Length >= 4) continue;
+                s_pin += char.ToUpperInvariant(c);
+                if (s_pin.Length == 4) { SteamLink.JoinByPin(s_pin); s_pin = ""; }
+            }
+        }
+
         public static void Update(ref float timer)
         {
             UIManager.MouseSelectUpdate();
@@ -233,11 +275,13 @@ namespace OlCoop.UI
                     }
                     break;
                 case MenuSubState.ACTIVE:
-                    // 0.8.1: typing in the JOIN BY IP field (letters must not move the menu selection)
+                    // 0.8.1: typing in the JOIN BY IP field / 0.8.2: in the JOIN WITH PIN field (letters must not move the menu selection)
                     bool typing = IpLink.Panel && !CoopConfig.Active && UIManager.m_menu_selection == ID_IPFIELD;
-                    Controls.m_disable_menu_letter_keys = typing;
+                    bool typingPin = !IpLink.Panel && !CoopConfig.Active && UIManager.m_menu_selection == ID_PIN;
+                    Controls.m_disable_menu_letter_keys = typing || typingPin;
                     if (typing && IpLink.ProcessInput()) { IpLink.Connect(); MenuManager.PlaySelectSound(); MenuManager.SetDefaultSelection(ID_LEAVE); break; }
                     UIManager.ControllerMenu();
+                    if (typingPin) ReadPinKeys();
                     if (!UIManager.PushedSelect(-1)) break;
                     int sel = UIManager.m_menu_selection;
                     if (sel == ID_BACK)
@@ -261,6 +305,13 @@ namespace OlCoop.UI
                     }
                     else if (sel == ID_IPGO) { IpLink.Connect(); MenuManager.PlaySelectSound(); if (CoopConfig.IsJoiner) MenuManager.SetDefaultSelection(ID_LEAVE); }
                     else if (sel == ID_OVERLAY) { SteamLink.OpenInviteOverlay(); MenuManager.PlaySelectSound(); }
+                    else if (sel == ID_LISTED) { SteamLink.SetListed(!SteamLink.Listed); MenuManager.PlaySelectSound(); }
+                    else if (sel == ID_PIN)
+                    {
+                        if (s_pin.Length == 4) { SteamLink.JoinByPin(s_pin); s_pin = ""; }
+                        else SteamLink.LastStatus = "TYPE THE HOST'S 4-CHARACTER PIN ON THE KEYBOARD";
+                        MenuManager.PlaySelectSound();
+                    }
                     else if (sel == ID_READY) { if (OlCoop.World.PostLevel.ReadyButton) OlCoop.World.PostLevel.PressReady(); MenuManager.PlaySelectSound(); MenuManager.SetDefaultSelection(ID_LEAVE); }
                     else if (sel == ID_LEAVE)
                     {

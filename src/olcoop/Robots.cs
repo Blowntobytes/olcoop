@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Reflection.Emit;
 using System.Text;
 using HarmonyLib;
 using Overload;
@@ -11,9 +12,11 @@ using UnityEngine.Networking.NetworkSystem;
 namespace OlCoop.Robots
 {
     /// <summary>
-    /// Robots (docs/phase2a-design.md): host-authoritative robots.
-    /// Host: runs robot AI, targets the nearest player, streams robot state/spawns/deaths/fire to joiners.
-    /// Joiner: robots are kinematic puppets driven by host state; local AI, damage, deaths, drops and matcen spawns are off.
+    /// Robots (docs/phase2a-design.md): host-authoritative robots, player-judged hits.
+    /// Host: runs robot AI, targets the nearest player, streams robot state/spawns/deaths/fire to joiners, owns hp and deaths.
+    /// Joiner: robots are kinematic puppets driven by host state; local AI, deaths, drops and matcen spawns are off.
+    /// Damage (0.8.2): each player judges their own hits on their own screen and sends them to the host (P6/P21), so hitting
+    /// a robot does not depend on ping. The host's re-simulated copies of joiner shots stopped being a damage source.
     /// </summary>
     public static class RNet
     {
@@ -24,7 +27,8 @@ namespace OlCoop.Robots
         public const short Spawn = 166;         // H->J reliable
         public const short Death = 167;         // H->J reliable
         public const short Explode = 168;       // H->J reliable
-        public const short FireBatch = 169;     // H->J unreliable
+        public const short FireBatch = 169;     // H->J reliable (joiners judge these shots' damage on their own ship since 0.8.2 - a lost shot would be damage immunity)
+        public const short Hit = 214;           // J->H RobotHitMsg (joiner's local hit on a robot)
 
         public const int ChReliable = 0, ChUnrelSeq = 1, ChUnrel = 2;
     }
@@ -104,6 +108,22 @@ namespace OlCoop.Robots
         public override void Deserialize(NetworkReader r) { id = r.ReadUInt16(); pos = r.ReadVector3(); }
     }
 
+    /// A joiner's locally judged hit on a robot: the DamageInfo fields the host needs to re-create it (owner is added there).
+    public class RobotHitMsg : MessageBase
+    {
+        public ushort id; public float damage, stun, pushForce, pushTorque; public byte type, weapon; public Vector3 pos, pushDir;
+        public override void Serialize(NetworkWriter w)
+        {
+            w.Write(id); w.Write(damage); w.Write(stun); w.Write(pushForce); w.Write(pushTorque);
+            w.Write(type); w.Write(weapon); w.Write(pos); w.Write(pushDir);
+        }
+        public override void Deserialize(NetworkReader r)
+        {
+            id = r.ReadUInt16(); damage = r.ReadSingle(); stun = r.ReadSingle(); pushForce = r.ReadSingle(); pushTorque = r.ReadSingle();
+            type = r.ReadByte(); weapon = r.ReadByte(); pos = r.ReadVector3(); pushDir = r.ReadVector3();
+        }
+    }
+
     public struct RFire { public ushort id; public int proj, team, upgrade; public float strength; public bool savePos; public Vector3 pos; public Quaternion rot; }
 
     public class FireBatchMsg : MessageBase
@@ -150,7 +170,7 @@ namespace OlCoop.Robots
         public static int HostDifficulty = -1;
 
         // counters (RSYNC log every 5 s)
-        public static int TxEntries, TxMsgs, TxBytes, RxEntries, RxUnknown, RxFire, TxFire, SuppressedSpews, Retargets, HostRobotHits, HostRobotFires;
+        public static int TxEntries, TxMsgs, TxBytes, RxEntries, RxUnknown, RxFire, TxFire, SuppressedSpews, Retargets, HostRobotHits, HostRobotFires, TxHits, RxHits;
         static float s_next_report;
 
         static readonly FieldInfo f_explosion_type = AccessTools.Field(typeof(Robot), "m_explosion_type");
@@ -211,10 +231,10 @@ namespace OlCoop.Robots
             if (now < s_next_report) return;
             s_next_report = now + 5f;
             if (IsHost)
-                CoopLog.Write("RSYNC", "host tx entries=" + TxEntries + " msgs=" + TxMsgs + " bytes/s=" + (TxBytes / 5) + " fire=" + TxFire + " robotShots=" + HostRobotFires + " robotHitsTaken=" + HostRobotHits + " retargets=" + Retargets + " registered=" + ById.Count);
+                CoopLog.Write("RSYNC", "host tx entries=" + TxEntries + " msgs=" + TxMsgs + " bytes/s=" + (TxBytes / 5) + " fire=" + TxFire + " robotShots=" + HostRobotFires + " robotHitsTaken=" + HostRobotHits + " joinerHits=" + RxHits + " retargets=" + Retargets + " registered=" + ById.Count);
             else if (IsJoiner)
-                CoopLog.Write("RSYNC", "joiner rx entries=" + RxEntries + " unknownId=" + RxUnknown + " fire=" + RxFire + " suppressedSpews=" + SuppressedSpews + " registered=" + ById.Count + " dying=" + LocallyDying.Count);
-            TxEntries = TxMsgs = TxBytes = RxEntries = RxUnknown = RxFire = TxFire = SuppressedSpews = Retargets = HostRobotHits = HostRobotFires = 0;
+                CoopLog.Write("RSYNC", "joiner rx entries=" + RxEntries + " unknownId=" + RxUnknown + " fire=" + RxFire + " hitsSent=" + TxHits + " suppressedSpews=" + SuppressedSpews + " registered=" + ById.Count + " dying=" + LocallyDying.Count);
+            TxEntries = TxMsgs = TxBytes = RxEntries = RxUnknown = RxFire = TxFire = SuppressedSpews = Retargets = HostRobotHits = HostRobotFires = TxHits = RxHits = 0;
         }
 
         // ---------- joiner-side helpers
@@ -454,7 +474,7 @@ namespace OlCoop.Robots
                 for (int i = 0; i < s_fire.Count; i += 30)
                 {
                     var m = new FireBatchMsg(); m.e.AddRange(s_fire.GetRange(i, Math.Min(30, s_fire.Count - i)));
-                    SendAll(RNet.FireBatch, m, RNet.ChUnrel);
+                    SendAll(RNet.FireBatch, m, RNet.ChReliable);
                     CoopRobots.TxFire += m.e.Count;
                 }
                 s_fire.Clear();
@@ -490,6 +510,29 @@ namespace OlCoop.Robots
         public static void ResetForLevel() { s_last.Clear(); s_fire.Clear(); s_pending_spawn.Clear(); CoopTargets.Clear(); HostAnimators.Reset(); }
 
         // ---- handlers
+        public static bool ApplyingJoinerHit;
+
+        /// Host: apply a joiner's locally judged robot hit, credited to that joiner's ship (same pattern as CoopWorld.OnHit).
+        /// A robot already dead or dying here means the joiner shot a corpse it had not seen die yet - dropped silently.
+        public static void OnHit(NetworkMessage msg)
+        {
+            try
+            {
+                var m = msg.ReadMessage<RobotHitMsg>();
+                Robot r;
+                if (!CoopRobots.ById.TryGetValue(m.id, out r) || r == null || !r.alive || r.m_dying) return;
+                GameObject owner = null;
+                foreach (var p in Overload.NetworkManager.m_Players)
+                    if (p != null && p.connectionToClient != null && p.connectionToClient.connectionId == msg.conn.connectionId && p.c_player_ship != null) owner = p.c_player_ship.gameObject;
+                var di = new DamageInfo { damage = m.damage, type = (DamageType)m.type, weapon = (ProjPrefab)m.weapon, stun_multiplier = m.stun,
+                    push_force = m.pushForce, push_torque = m.pushTorque, pos = m.pos, push_dir = m.pushDir, owner = owner };
+                CoopRobots.RxHits++;
+                ApplyingJoinerHit = true;
+                try { r.ApplyDamage(di); } finally { ApplyingJoinerHit = false; }
+            }
+            catch (Exception ex) { CoopLog.Error("RobotHostNet.OnHit", ex); }
+        }
+
         /// The joiner discards its own robots and rebuilds the host's exact current set (works for saves, mid-level joins, NG+).
         public static void OnRegistryReady(NetworkMessage msg)
         {
@@ -523,6 +566,19 @@ namespace OlCoop.Robots
             c.Send(RNet.RegistryReady, new RegistryReadyMsg { hash = CoopRobots.Hash, count = CoopRobots.PlacedCount });
             CoopLog.Write("RSYNC", "registry ready sent hash=" + CoopRobots.Hash.ToString("X8") + " n=" + CoopRobots.PlacedCount);
         }
+
+        /// Joiner: our shot hit a robot on our screen. The host owns hp and deaths, so send it the hit.
+        public static void SendHit(Robot r, DamageInfo di)
+        {
+            ushort id;
+            var c = Client.GetClient();
+            if (c == null || !CoopRobots.TryId(r, out id)) return;
+            c.Send(RNet.Hit, new RobotHitMsg { id = id, damage = di.damage, type = (byte)di.type, weapon = (byte)di.weapon, stun = di.stun_multiplier,
+                pushForce = di.push_force, pushTorque = di.push_torque, pos = di.pos, pushDir = di.push_dir });
+            CoopRobots.TxHits++;
+            if (s_hits_logged++ < 20) CoopLog.Write("RSYNC", "joiner: hit robot " + id + " dmg=" + di.damage.ToString("F1") + " weapon=" + di.weapon + " -> host");
+        }
+        static int s_hits_logged;
 
         public static void OnLevelInfo(NetworkMessage msg)
         {
@@ -760,6 +816,7 @@ namespace OlCoop.Robots
             CoopConfig.EnsureInit();
             if (!CoopConfig.IsHost) return;
             NetworkServer.RegisterHandler(RNet.RegistryReady, RobotHostNet.OnRegistryReady);
+            NetworkServer.RegisterHandler(RNet.Hit, RobotHostNet.OnHit);
         }
     }
 
@@ -907,17 +964,77 @@ namespace OlCoop.Robots
         public static void Reset() { s_done.Clear(); }
     }
 
-    /// P6: joiner never applies damage to robots (host is authoritative). Keep a little hit flash for feedback.
+    /// P6 (0.8.2): a robot hit is judged by the player who sees it. The joiner's own shots and splash reach this prefix
+    /// locally (P21 widens the engine's server gate), get forwarded to the host, and never change local hp - the host owns
+    /// hp and deaths and its state stream carries the result back. The host in turn stops taking its re-simulated copies of
+    /// joiner shots as a damage source (every hit would land twice), EXCEPT the nova/devastator bomblets: Projectile.Explode
+    /// spawns those only where Server.IsActive(), so they never exist on a joiner and stay host-judged.
     [HarmonyPatch(typeof(Robot), "ApplyDamage")]
-    static class P6_NoJoinerRobotDamage
+    static class P6_HitsJudgedByWhoSeesThem
     {
         static bool Prefix(Robot __instance, DamageInfo di, ref bool __result)
         {
-            if (CoopRobots.IsHost) { CoopRobots.HostRobotHits++; CoopTargets.NoteHit(__instance, di.owner); return true; }
+            if (CoopRobots.IsHost)
+            {
+                CoopRobots.HostRobotHits++; CoopTargets.NoteHit(__instance, di.owner);
+                if (!RobotHostNet.ApplyingJoinerHit && IsJoinerShot(di)) { __result = false; return false; }
+                return true;
+            }
             if (!CoopRobots.IsPuppet(__instance)) return true;
             __instance.m_dmg_flash = Mathf.Min(1f, __instance.m_dmg_flash + 0.1f);
+            if (IsMyShot(di) && !__instance.m_dying) RobotJoinNet.SendHit(__instance, di);
             __result = false;
             return false;
+        }
+
+        /// Other players' shots are drawn here too (msg 70); each player reports only their own.
+        static bool IsMyShot(DamageInfo di)
+        {
+            var me = GameManager.m_player_ship;
+            return me != null && di.owner != null && (di.owner == me.gameObject || di.owner.transform.IsChildOf(me.transform));
+        }
+
+        static bool IsJoinerShot(DamageInfo di)
+        {
+            if (di.weapon == ProjPrefab.missile_smart_mini || di.weapon == ProjPrefab.missile_devastator_mini) return false;
+            if (di.owner == null) return false;
+            var ship = di.owner.GetComponent<PlayerShip>() ?? di.owner.GetComponentInParent<PlayerShip>();
+            return ship != null && !ship.isLocalPlayer;
+        }
+    }
+
+    /// P21 (0.8.2): the engine applies projectile impact damage only on the server (NetworkManager.IsServer() around the
+    /// SendMessage in ProcessCollision and OnTriggerEnter), so a joiner could never judge its own hits. Widen the gate to
+    /// co-op joiners; every receiver the message can reach is already intercepted there: Robot -> P6 (forward to host),
+    /// Destroyable -> W2 (forward to host), PlayerShip -> its own server gate + Combat.cs H1, SimpleShield and RobotDebris
+    /// are purely cosmetic.
+    [HarmonyPatch]
+    static class P21_JoinerImpactsApplyDamage
+    {
+        static IEnumerable<MethodBase> TargetMethods()
+        {
+            yield return AccessTools.Method(typeof(Projectile), "ProcessCollision");
+            yield return AccessTools.Method(typeof(Projectile), "OnTriggerEnter");
+        }
+
+        static readonly MethodInfo m_is_server = AccessTools.Method(typeof(Overload.NetworkManager), "IsServer");
+        static readonly MethodInfo m_widened = AccessTools.Method(typeof(P21_JoinerImpactsApplyDamage), nameof(ServerOrCoopJoiner));
+        public static bool ServerOrCoopJoiner() { return Overload.NetworkManager.IsServer() || CoopRobots.IsJoiner; }
+
+        static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase __originalMethod)
+        {
+            int n = 0;
+            foreach (var ins in instructions)
+            {
+                if (ins.opcode == OpCodes.Call && Equals(ins.operand, m_is_server))
+                {
+                    yield return new CodeInstruction(OpCodes.Call, m_widened) { labels = ins.labels, blocks = ins.blocks };
+                    n++;
+                    continue;
+                }
+                yield return ins;
+            }
+            CoopLog.Write("INIT", "joiner-judged hits: " + __originalMethod.Name + " " + n + " server gate(s) widened");
         }
     }
 
@@ -977,7 +1094,7 @@ namespace OlCoop.Robots
         }
     }
 
-    /// P10: host forwards every robot shot so joiners see it (cosmetic there; damage is host-side).
+    /// P10: host forwards every robot shot so joiners see it (and, since 0.8.2, judge its damage on their own ship - Combat.cs H1).
     [HarmonyPatch(typeof(ProjectileManager), "FireProjectileRobot")]
     static class P10_HostRobotFire
     {
