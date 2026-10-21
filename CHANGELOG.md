@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.3-alpha (2026-10-20) - VR: waiting screen visible in the headset, UNTESTED build (all players must run 0.8.3-alpha; protocol 31)
+User: in VR, after the host presses PLAY (and probably a joiner's READY UP), the headset shows only black until everyone is ready.
+- Fix: while the next level waits for players, the waiting text ("WAITING FOR PLAYERS - 1 OF 2 READY", "WAITING FOR THE HOST'S NEXT
+  LEVEL") is now also drawn on the menu surface in VR. It used to be drawn only on the game's overlay layer, which a VR headset
+  doesn't show, and nothing else is on screen at that moment (logs: elements=0, background faded to black). Flat-screen play is
+  unchanged.
+
 ## 0.8.2-alpha (2026-10-20) - secret levels in co-op, UNTESTED build (all players must run 0.8.2-alpha; protocol 31)
 User: finding a secret level broke the game for all three players. Host log (19:22:53, sp_outer_02): DoneLevel reason=Secret, then
 "WAITING FOR PLAYERS - 0 OF 2 READY" forever. The joiners were never told anything and were still flying in sp_outer_02; the host's

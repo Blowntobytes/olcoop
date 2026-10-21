@@ -93,3 +93,4 @@ Targets unless noted: Overload 1.1.1886, olmod 0.5.14.
 | 0.8.0-alpha | 30 | 10-10 | tested (user: "that worked") | - | - | NEW PHASE: standalone (bundled olmod 0.5.14, installs to Overload\olcoop); tag v0.8.0-alpha, build-standalone, dist/olcoop-0.8.0-alpha.zip |
 | 0.8.1-alpha | 30 | 10-10 | untested | - | - | CONNECT BY IP / JOIN BY IP; tag v0.8.1-alpha, build-standalone, dist/olcoop-0.8.1-alpha.zip |
 | 0.8.2-alpha | 31 | 10-20 | untested | - | - | secret levels in co-op; tag v0.8.2-alpha, build-standalone, dist/olcoop-0.8.2-alpha.zip |
+| 0.8.3-alpha | 31 | 10-20 | untested | - | - | VR waiting screen; tag v0.8.3-alpha, build-standalone, dist/olcoop-0.8.3-alpha.zip |

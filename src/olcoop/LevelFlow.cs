@@ -993,7 +993,31 @@ namespace OlCoop.World
             CoopLog.Write("HUD", "status banner: " + text);
             Ensure();
         }
-        public static void Clear() { Code = -1; s_text = null; Ensure(); }
+        public static void Clear() { Code = -1; s_text = null; Ensure(); HidePanel(); }
+
+        // 0.8.3 (user, VR): the banner is an overlay element, drawn by the overlay camera, which a VR headset doesn't show. While the
+        // ready gate holds PLAY_GAME there is no other UI element, so the headset showed only black until everyone was ready. In VR
+        // the same text is also drawn as a normal menu element (the menu surface the headset does show) for as long as the gate holds.
+        public static readonly UIElementType uiStatusPanel = (UIElementType)125;
+        static bool s_panel_logged;
+        public static void ShowPanel()
+        {
+            if (!GameplayManager.VRActive || s_text == null || UIManager.TypeExists(uiStatusPanel)) return;
+            UIManager.CreateUIElement(UIManager.SCREEN_CENTER, 7000, uiStatusPanel);
+            if (!s_panel_logged) { s_panel_logged = true; CoopLog.Write("HUD", "VR: status banner also shown on the menu surface (headset can't see the overlay)"); }
+        }
+        public static void HidePanel()
+        {
+            try { if (UIManager.TypeExists(uiStatusPanel)) UIManager.DestroyType(uiStatusPanel, true); } catch { }
+            s_panel_logged = false;
+        }
+        public static void DrawPanel(UIElement uie)
+        {
+            if (s_text == null) return;
+            float pulse = 0.75f + 0.25f * Mathf.Sin(Time.realtimeSinceStartup * 3f);
+            uie.DrawStringSmall(s_text, new Vector2(0f, -200f), 0.75f, StringOffset.CENTER, UIManager.m_col_hi5, pulse, -1f);
+            uie.DrawStringSmall(CoopVersion.Full.ToUpperInvariant() + " - CO-OP", new Vector2(0f, -160f), 0.4f, StringOffset.CENTER, UIManager.m_col_ui2, 1f, -1f);
+        }
         public static void Ensure()
         {
             bool want = s_text != null;
@@ -1034,6 +1058,7 @@ namespace OlCoop.World
     {
         static void Postfix(UIElement __instance)
         {
+            if (__instance.m_type == CoopStatus.uiStatusPanel) { try { CoopStatus.DrawPanel(__instance); } catch (Exception ex) { CoopLog.Error("F13 panel", ex); } return; }
             if (__instance.m_type != CoopStatus.uiStatusOverlay) return;
             try { CoopStatus.Draw(__instance); } catch (Exception ex) { CoopLog.Error("F13", ex); }
         }

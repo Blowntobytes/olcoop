@@ -184,6 +184,7 @@ namespace OlCoop.World
             // The level-retry tick (CoopClient.AwaitTick) normally runs from GameplayManager.Update, which doesn't tick in the menus
             // (09:44 run: both joiners sat on this screen with no retries). Run it from here while waiting.
             Session.CoopClient.AwaitTick();
+            CoopStatus.ShowPanel(); // 0.8.3: VR
             return false;
         }
     }
@@ -320,6 +321,7 @@ namespace OlCoop.World
                 s_on = false; s_released = true; CoopStatus.Clear();
                 return true;
             }
+            CoopStatus.ShowPanel(); // 0.8.3: VR
             if (ready != s_shown_ready || total != s_shown_total)
             {
                 s_shown_ready = ready; s_shown_total = total;

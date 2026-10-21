@@ -15,7 +15,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.8.2 alpha"). Protocol = 31 (in build.sh). Message ids used so far: 160-213 (0.7.6 extended msg 194 ObjMsg; 0.7.9 status code 4 on FNet.Status). Current build folder: build-standalone (since 0.8.0; build-alpha holds 0.7.9-0.7.20) (USER 2026-10-07: "it is still an alpha" - releases are named -alpha again from 0.7.9; build-challenge holds 0.7.8-challenge, the last "challenge"-named build).
+  `VERSION` ("0.8.3 alpha"). Protocol = 31 (in build.sh). Message ids used so far: 160-213 (0.7.6 extended msg 194 ObjMsg; 0.7.9 status code 4 on FNet.Status). Current build folder: build-standalone (since 0.8.0; build-alpha holds 0.7.9-0.7.20) (USER 2026-10-07: "it is still an alpha" - releases are named -alpha again from 0.7.9; build-challenge holds 0.7.8-challenge, the last "challenge"-named build).
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 303 patches, 0 problems, 0.8.2;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-challenge (0.7.0-0.7.8), build-alpha (0.7.9-0.7.20), build-standalone (current, 0.8.0+).
@@ -1077,3 +1077,12 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 - Watch in the next test: joiner loadout in the secret level (stock gives secret weapons in InitChallengeForPlayer to the temporary
   ship; the networked ship replaces it ~0.1 s later), joiner deaths in the secret level (host ship m_cannot_die; joiners use co-op
   death modes), return position/state. Need all three logs.
+
+## 0.8.3-alpha status (2026-10-20) - build-standalone, UNTESTED. Protocol 31.
+- User (VR): black headset after the host's PLAY / joiner READY UP until all are ready. Cause: P1 gate holds PlayGameUpdate INIT before
+  its LOADING element is created (log: elements=0 bgFade=1.00); CoopStatus is an OVERLAY element (slot 3) drawn by
+  UIManager.m_overlay_camera, which the headset doesn't render (stock DrawOverlay also skips its fades when VRActive).
+- Fix: CoopStatus.ShowPanel (UI element type 125, url[0] menu surface) only when GameplayManager.VRActive, created from the host gate's
+  hold path and the joiner gate's wait path; removed by CoopStatus.Clear (host release) and C1's UIManager.DestroyAll (joiner).
+  Log line: "VR: status banner also shown on the menu surface". Other overlay-only texts (respawn countdown, spectating label?) may
+  have the same VR problem - not reported yet; check in VR.
