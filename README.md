@@ -20,6 +20,7 @@ expect rough edges. Download the latest zip from [Releases](https://github.com/B
 
 ## Known issues
 - Pickups don't always show up for everyone(WIP).
+- Secret levels: supported since 0.8.2 (the whole team goes and comes back together) but not tested yet.
 - If the main menu shows a red "WARNING: OLMOD IS NOT THE BUNDLED 0.5.14", the game was started through another olmod: use the olcoop shortcut. Upgrading from 0.7.x: old logs stay in `Overload\olcoop_logs`, new ones go to `Overload\olcoop\olcoop_logs`.
 - INVITE THROUGH STEAM opens the Steam friends list on your desktop (the Steam overlay isn't available when the game runs
   through olmod): right-click a friend > Invite to Game. The INVITE button next to each friend on the CO-OP screen works in-game.

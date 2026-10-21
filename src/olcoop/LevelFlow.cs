@@ -26,7 +26,8 @@ namespace OlCoop.World
         public const short Ready = 189;       // J->H IntegerMessage 1: end-of-level screens done, ready for the next level
         public const short Offer = 206;       // H->J UpgradeOfferMsg: host's next level + its upgrade points (with status 3 after a level end)
         public const short Status = 188;      // H->J IntegerMessage: 1 = host on the level summary, 2 = host loading the next level, 3 = host waiting for you to ready up
-        public const byte KindDoor = 0, KindWarp = 1, KindTeleport = 2;
+        public const byte KindDoor = 0, KindWarp = 1, KindTeleport = 2, KindSecret = 3; // 0.8.2: 3 = joiner found the secret level
+        // Status 5 (0.8.2): host switching to / back from a secret level
     }
 
     public class PoseMsg : MessageBase
@@ -181,7 +182,7 @@ namespace OlCoop.World
                 if (c != null && c.connectionId != 0 && c.isConnected && Session.CoopHost.Verified.Contains(c.connectionId)) c.Send(type, m);
         }
 
-        static string KindName(byte k) { return k == FNet.KindDoor ? "exit door" : k == FNet.KindWarp ? "alien warp" : "teleport"; }
+        static string KindName(byte k) { return k == FNet.KindDoor ? "exit door" : k == FNet.KindWarp ? "alien warp" : k == FNet.KindSecret ? "the secret level" : "teleport"; }
 
         // ------------------------------------------------------------ audio logs
         public static void HostLogPicked()
@@ -219,6 +220,7 @@ namespace OlCoop.World
             {
                 byte kind = (byte)msg.ReadMessage<IntegerMessage>().value;
                 CoopLog.Write("FLOW", "host: joiner conn " + msg.conn.connectionId + " reached " + KindName(kind) + "; gameplay=" + GameplayManager.m_gameplay_state + " hostAlive=" + LocalAlive());
+                if (kind == FNet.KindSecret) { CoopSecret.HostRequest(msg.conn.connectionId); return; }
                 if (GameplayManager.m_gameplay_state == GameplayState.EXIT || s_exit_sent) return;
                 PlayerShip anchor = null;
                 foreach (var p in Overload.NetworkManager.m_Players)
@@ -424,7 +426,7 @@ namespace OlCoop.World
         {
             if (!CoopWorld.IsHost) return;
             SendAll(FNet.Status, new IntegerMessage(code));
-            CoopLog.Write("FLOW", "host: told joiners status " + code + (code == 1 ? " (level summary)" : code == 4 ? " (host quit the level to the main menu)" : " (loading next level)"));
+            CoopLog.Write("FLOW", "host: told joiners status " + code + (code == 1 ? " (level summary)" : code == 4 ? " (host quit the level to the main menu)" : code == 5 ? " (secret level switch)" : " (loading next level)"));
         }
 
         public static void OnStatus(NetworkMessage msg)
@@ -443,6 +445,7 @@ namespace OlCoop.World
                     GameplayManager.AddHUDMessage("CO-OP: THE HOST QUIT TO THE MAIN MENU", -1, true);
                     return;
                 }
+                if (code == 5) { CoopSecret.OnHostSwitch(); return; }
                 if (code == 3)
                 {
                     if (!PostLevel.HostWaiting) CoopLog.Write("FLOW", "joiner: the host is waiting for players to ready up" + (PostLevel.ReadyButton ? " (READY UP button shown)" : ""));
@@ -1083,6 +1086,12 @@ namespace OlCoop.World
             if (CoopWorld.IsHost && reason == GameplayManager.DoneReason.Quit && OlCoop.SteamNet.SessionEnd.FromPauseMenu && !OlCoop.SteamNet.SessionEnd.Leaving)
             {
                 try { CoopFlow.HostSendStatus(4); } catch (Exception ex) { CoopLog.Error("F15 quit", ex); }
+                return;
+            }
+            // 0.8.2: secret level in or out - joiners follow the host's next scene, no results screens and no ready check
+            if (CoopWorld.IsHost && reason == GameplayManager.DoneReason.Secret)
+            {
+                try { CoopFlow.HostSendStatus(5); HostReady.SkipGateForSecret(); } catch (Exception ex) { CoopLog.Error("F15 secret", ex); }
                 return;
             }
             if (!CoopWorld.IsHost || reason != GameplayManager.DoneReason.Escaped) return;

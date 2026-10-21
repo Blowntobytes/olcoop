@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.8.2-alpha (2026-10-20) - secret levels in co-op, UNTESTED build (all players must run 0.8.2-alpha; protocol 31)
+User: finding a secret level broke the game for all three players. Host log (19:22:53, sp_outer_02): DoneLevel reason=Secret, then
+"WAITING FOR PLAYERS - 0 OF 2 READY" forever. The joiners were never told anything and were still flying in sp_outer_02; the host's
+ready check (meant for a new level from the menus) held the secret level until they pressed a READY UP they could never see.
+A joiner couldn't have loaded the secret level anyway: secret levels are a separate list in the campaign.
+- Fix: entering or leaving a secret level, the host tells the joiners (new status 5) and skips the ready check; joiners follow the
+  host's scene straight away ("THE TEAM FOUND A SECRET LEVEL - FOLLOWING THE HOST...").
+- Fix: joiners load the secret level from the campaign's secret-level list, with the stock secret rules (countdown, "destroy the
+  operators"); the timer and score are the host's (co-op challenge sync).
+- Fix: when the secret level ends, joiners no longer run the game's own "return from secret" (it loads secret.dat, a save only the
+  host has); they wait on a black screen for the host's main level.
+- Fix: back in the main level, joiners get the host's opened doors, destroyed objects and keys from before the secret level (the
+  host keeps its catch-up lists across the secret level).
+- Fix: a joiner who touches the secret trigger asks the host, and the whole team goes (like the shared exits).
+- Protocol 31 (new status code and exit-request kind).
+
 ## 0.8.1-alpha (2026-10-10) - CONNECT BY IP (port forwarding), UNTESTED build (all players must run 0.8.1-alpha; protocol 30)
 User: add a connect-by-IP system that uses port forwarding; the button directly under INVITE THROUGH STEAM.
 - New (host): CONNECT BY IP, directly under INVITE THROUGH STEAM on the CO-OP screen. It shows the address to give friends

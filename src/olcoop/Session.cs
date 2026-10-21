@@ -753,6 +753,15 @@ namespace OlCoop.Session
             int idx = story.FindLevelIndex(name);
             if (idx < 0)
             {
+                // 0.8.2: a secret level of the campaign (Mission.SecretLevels, not in Levels)
+                if (OlCoop.World.CoopSecret.FindSecret(story, name) != null)
+                {
+                    if (name == s_last_scene && Time.realtimeSinceStartup - s_last_scene_at < 6f) { CoopLog.Write("JOIN", "ignoring duplicate LoadScene '" + name + "' (already loading it)"); return false; }
+                    s_last_scene = name; s_last_scene_at = Time.realtimeSinceStartup;
+                    CoopClient.LevelArrived();
+                    bool inSec = GameManager.m_game_state == GameManager.GameState.GAMEPLAY || GameplayManager.LevelIsLoaded;
+                    return !OlCoop.World.CoopSecret.TryLoad(name, inSec);
+                }
                 // 0.7.0: a challenge level
                 bool inLvl = GameManager.m_game_state == GameManager.GameState.GAMEPLAY || GameplayManager.LevelIsLoaded;
                 if (GameManager.ChallengeMission == null || GameManager.ChallengeMission.FindLevelIndex(name) < 0) return true;

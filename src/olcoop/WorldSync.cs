@@ -110,6 +110,25 @@ namespace OlCoop.World
 
         static bool InScene(Component c) { return c != null && c.gameObject.scene.IsValid() && c.gameObject.scene.isLoaded; }
 
+        // 0.8.2: the host's catch-up lists survive a secret level. The stock game saves the main level to secret.dat and reloads it on
+        // return; without these, returning joiners get a fresh copy of the level (closed doors, no keys) next to a restored host.
+        static List<ushort> s_stash_history; static HashSet<ushort> s_stash_destroyed; static int s_stash_keys = -1; static string s_stash_scene;
+        public static void StashForSecret(string scene)
+        {
+            s_stash_history = new List<ushort>(s_history); s_stash_destroyed = new HashSet<ushort>(s_destroyed); s_stash_keys = s_team_keys; s_stash_scene = scene;
+            CoopLog.Write("WORLD", "host: kept the catch-up lists of '" + scene + "' for the return from the secret level (scripts=" + s_history.Count + " destroyed=" + s_destroyed.Count + " keys=" + s_team_keys + ")");
+        }
+        static void MaybeRestoreStash()
+        {
+            if (s_stash_scene == null || !IsHost || GameplayManager.Level == null || GameplayManager.Level.IsSecret) return;
+            if (string.Compare(GameplayManager.Level.FileName, s_stash_scene, true) == 0)
+            {
+                s_history.AddRange(s_stash_history); foreach (var d in s_stash_destroyed) s_destroyed.Add(d); s_team_keys = s_stash_keys;
+                CoopLog.Write("WORLD", "host: back from the secret level in '" + s_stash_scene + "'; restored catch-up lists (scripts=" + s_history.Count + " destroyed=" + s_destroyed.Count + " keys=" + s_team_keys + ")");
+            }
+            s_stash_scene = null; s_stash_history = null; s_stash_destroyed = null; s_stash_keys = -1;
+        }
+
         public static void ResetForLevel()
         {
             s_scripts.Clear(); s_script_id.Clear(); s_destroy.Clear(); s_destroy_id.Clear();
@@ -133,6 +152,7 @@ namespace OlCoop.World
             }
             Hash = h;
             CoopLog.Write("WORLD", "registry scripts=" + ns + " destroyables=" + nd + " hash=" + Hash.ToString("X8") + " role=" + (CoopConfig.IsHost ? "host" : "joiner"));
+            MaybeRestoreStash();
         }
 
         public static bool TryScriptId(ScriptBase s, out ushort id) { id = 0; return s != null && s_script_id.TryGetValue(s.GetInstanceID(), out id); }

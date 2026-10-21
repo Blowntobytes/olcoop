@@ -15,8 +15,8 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.8.1 alpha"). Protocol = 30 (in build.sh). Message ids used so far: 160-213 (0.7.6 extended msg 194 ObjMsg; 0.7.9 status code 4 on FNet.Status). Current build folder: build-standalone (since 0.8.0; build-alpha holds 0.7.9-0.7.20) (USER 2026-10-07: "it is still an alpha" - releases are named -alpha again from 0.7.9; build-challenge holds 0.7.8-challenge, the last "challenge"-named build).
-- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 300 patches, 0 problems, 0.8.1;
+  `VERSION` ("0.8.2 alpha"). Protocol = 31 (in build.sh). Message ids used so far: 160-213 (0.7.6 extended msg 194 ObjMsg; 0.7.9 status code 4 on FNet.Status). Current build folder: build-standalone (since 0.8.0; build-alpha holds 0.7.9-0.7.20) (USER 2026-10-07: "it is still an alpha" - releases are named -alpha again from 0.7.9; build-challenge holds 0.7.8-challenge, the last "challenge"-named build).
+- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 303 patches, 0 problems, 0.8.2;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-challenge (0.7.0-0.7.8), build-alpha (0.7.9-0.7.20), build-standalone (current, 0.8.0+).
   Bug fixes overwrite the current phase folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
@@ -1060,3 +1060,20 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 - The host side needed no change: H1_ServerListen already makes the host listen on UDP CoopConfig.Port next to Steam.
 - Untested: whether the UNET UDP listen accepts internet joiners through a forwarded port (only same-PC/LAN IP joins were
   ever tested, in phases 1-2). Ask for host + joiner logs ([IP], [JOIN], [HOST] lines).
+
+## 0.8.2-alpha status (2026-10-20) - build-standalone, UNTESTED. Protocol 31.
+- User 10-20 (3 players, 0.8.1): a secret level broke the game for everyone. Host log olcoop-20261020-185141: 19:22:53 [OBJ] DoneLevel
+  reason=Secret -> HostReady.Gate (PlayGameUpdate INIT) "starting a level with 2 joiner(s)... waiting" -> WAITING 0 OF 2 forever.
+  Joiners got no status (F15 only handled Escaped/Quit) and READY UP needs GameState.MENU. Joiner logs were not collected.
+- Stock: SwitchToSecret (ScriptSecretLevel link) saves secret.dat, DoneLevel(Secret), Mission.OpenSecretLevel(Level.SecretLevel)
+  from the PRIVATE Mission.SecretLevels (FindLevelIndex only searches Levels), SetPendingLevelLoad, InitCMLevelForSecret (GameType
+  CHALLENGE, countdown), PLAY_GAME. End: ChallengeManager countdown/quick exit -> TeleportSequenceStart -> TeleportSequenceUpdate ->
+  ReturnFromSecret (DoneLevel(Secret), LoadGame secret.dat, PLAY_GAME_RETURN_FROM_SECRET; Gate(returning=true) already passes).
+- Secret.cs: F15 Secret -> status 5 + HostReady.SkipGateForSecret; joiner status 5 -> CoopSecret.OnHostSwitch (AwaitLevel);
+  C1 -> CoopSecret.TryLoad (FieldInfo Mission.SecretLevels, SetPendingLevelLoad by reflection, m_player_data, InitCMLevelForSecret);
+  SW1 joiner SwitchToSecret -> ExitRequest kind 3 (host: CoopSecret.HostRequest -> SwitchToSecret(null)); host SW1 stashes
+  CoopWorld history/destroyed/keys (WorldSync.StashForSecret), restored after BuildRegistry of the same scene; SW2 joiner
+  ReturnFromSecret blocked (black screen, waits). F5 still sends the host's end-of-secret teleport to joiners (that's what runs SW2).
+- Watch in the next test: joiner loadout in the secret level (stock gives secret weapons in InitChallengeForPlayer to the temporary
+  ship; the networked ship replaces it ~0.1 s later), joiner deaths in the secret level (host ship m_cannot_die; joiners use co-op
+  death modes), return position/state. Need all three logs.
