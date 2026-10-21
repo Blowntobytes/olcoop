@@ -24,6 +24,7 @@ Play
              (PLAY MISSION / LOAD SAVED GAME) as usual.
      Friend: accept the host's Steam invite (game already running), or open CO-OP and pick the friend who is hosting.
              You are taken into the host's level automatically.
+     Anyone:  CO-OP > pick the host under OPEN CO-OP GAMES, or select JOIN WITH PIN and type the host's 4-character PIN.
   No port forwarding is needed: the connection goes through Steam.
   Without Steam invites: the host opens CONNECT BY IP (under INVITE THROUGH STEAM) and forwards UDP port 7777 in the
   router to the PC it shows; friends choose JOIN BY IP and type the host's address. Share your IP only with people you trust.

@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.9.0-alpha (2026-10-21) - play with anyone (PIN + open-games list), ping-proof hits, UNTESTED build (all players must run 0.9.0-alpha; protocol 32)
+Contributed by Lukas Denda (written against 0.8.1 as "0.8.2-alpha"; brought in on top of 0.8.3 as 0.9.0, protocol 32 - our 0.8.2 already used 31).
+No Steam friendship needed any more, and hitting (or dodging) no longer depends on ping. NOT yet tested in game - needs a 2-PC run.
+- Feature: the host's Steam lobby is public with a 4-character PIN (shown on the CO-OP screen and in the status line). Anyone
+  who owns the game can join: type the PIN under JOIN WITH PIN (keyboard; the 4th character joins), or click a session in the
+  new OPEN CO-OP GAMES list. A VISIBILITY item on the host's CO-OP screen switches between LISTED FOR EVERYONE and PIN ONLY
+  (default: listed). Friend invites and +connect_lobby keep working unchanged. Lobby search filters on the protocol number, so
+  only compatible sessions appear. (SteamTransport.cs, CoopScreen.cs)
+- Feature: a player's shots are judged on that player's own screen. The engine only applies projectile impact damage on the
+  server (P21 widens that gate to joiners); the joiner's local hit on a robot reaches P6 with the engine's own DamageInfo and
+  is sent to the host (msg 214), which owns hp and deaths. The host's re-simulated copies of joiner shots stopped being a
+  damage source (every hit would have landed twice) - except nova/devastator bomblets, which only exist on the host and stay
+  host-judged. Before, a joiner aimed at robots drawn ~0.1 s + ping in the past while the host judged its re-simulated shot
+  against the robots' present; at 80-100 ms ping leading targets was guesswork. (Robots.cs P6/P21, msg 214)
+- Feature: incoming robot fire is judged by the player it hits. The joiner's local copies of robot shots (and their splash)
+  damage its own ship on its own screen and the damage is reported to the host (msg 215); the hp ledger, RpcApplyDamage and
+  the death decision stay the host's. A shot you visibly dodged can no longer hit you through the host's half-a-ping-stale
+  copy of your ship. Melee stays host-judged (no robot AI runs on a joiner). Robot fire replication (msg 169) moved to the
+  reliable channel - a lost shot would now be damage immunity, not a missing visual. (Combat.cs H1, Robots.cs)
+- Test points for the next 2-PC run: robot death explosions must still hurt a nearby joiner (the joiner's local death burst
+  carries the damage now); destroyable buttons must not take double damage from a joiner (they should not - the host never
+  applied joiner shots to them itself); nova/devastator fired by a joiner must still damage robots (bomblets are host-judged).
+- VR: the PIN is typed on a physical keyboard; the OPEN CO-OP GAMES list works with the controllers.
+
 ## 0.8.3-alpha (2026-10-20) - VR: waiting screen visible in the headset, UNTESTED build (all players must run 0.8.3-alpha; protocol 31)
 User: in VR, after the host presses PLAY (and probably a joiner's READY UP), the headset shows only black until everyone is ready.
 - Fix: while the next level waits for players, the waiting text ("WAITING FOR PLAYERS - 1 OF 2 READY", "WAITING FOR THE HOST'S NEXT

@@ -15,8 +15,8 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.8.3 alpha"). Protocol = 31 (in build.sh). Message ids used so far: 160-213 (0.7.6 extended msg 194 ObjMsg; 0.7.9 status code 4 on FNet.Status). Current build folder: build-standalone (since 0.8.0; build-alpha holds 0.7.9-0.7.20) (USER 2026-10-07: "it is still an alpha" - releases are named -alpha again from 0.7.9; build-challenge holds 0.7.8-challenge, the last "challenge"-named build).
-- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 303 patches, 0 problems, 0.8.2;
+  `VERSION` ("0.9.0 alpha"). Protocol = 32 (in build.sh). Message ids used so far: 160-215 (0.7.6 extended msg 194 ObjMsg; 0.7.9 status code 4 on FNet.Status). Current build folder: build-standalone (since 0.8.0; build-alpha holds 0.7.9-0.7.20) (USER 2026-10-07: "it is still an alpha" - releases are named -alpha again from 0.7.9; build-challenge holds 0.7.8-challenge, the last "challenge"-named build).
+- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 306 patches, 0 problems, 0.9.0;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-challenge (0.7.0-0.7.8), build-alpha (0.7.9-0.7.20), build-standalone (current, 0.8.0+).
   Bug fixes overwrite the current phase folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
@@ -1086,3 +1086,17 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   hold path and the joiner gate's wait path; removed by CoopStatus.Clear (host release) and C1's UIManager.DestroyAll (joiner).
   Log line: "VR: status banner also shown on the menu surface". Other overlay-only texts (respawn countdown, spectating label?) may
   have the same VR problem - not reported yet; check in VR.
+
+## 0.9.0-alpha status (2026-10-21) - build-standalone, UNTESTED. Protocol 32.
+- Contributor patch by Lukas Denda ("0.8.2-alpha: play with anyone ... + hits judged by the player who sees them", written on 0.8.1).
+  User: "bring in the whole patch", numbered 0.9.0. Applied with git am (author kept: Lukas Denda; committer Blowntobytes); code
+  applied without conflicts on 0.8.3, docs/VERSION resolved by hand, protocol 31 -> 32 (ours used 31 for secret levels).
+- New msgs: 214 RobotHit J->H (Robots.cs P6/RobotHostNet.OnHit), 215 ShipHit J->H (Combat.cs H1/CoopShipDamage). Msg 169 FireBatch
+  now on the RELIABLE channel. P21 transpiles Projectile.ProcessCollision/OnTriggerEnter: NetworkManager.IsServer() -> IsServer()||joiner.
+- Steam lobby is now k_ELobbyTypePublic with lobby data pin/host/listed/protocol; CO-OP screen ids 31 (VISIBILITY), 32 (JOIN WITH PIN).
+- Test points (from the contributor): robot death explosions still hurt a nearby joiner; destroyable buttons take no double damage
+  from a joiner; nova/devastator fired by a joiner still damage robots (bomblets stay host-judged). Also watch: lag spikes under
+  heavy robot fire with packet loss (reliable channel 0 shared with spawns/deaths/world), joiners never immune to robot shots,
+  friends' Steam invites still work, open-games list shows the session, PIN join, PIN typing with a physical keyboard in VR.
+- Trust note: joiner-reported hits are trusted (fine for friends; a modified client in a public lobby could cheat).
+- User idea: a VR pop-up keyboard for the PIN (like the RoR2 VR mod) - not built.
