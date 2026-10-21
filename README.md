@@ -46,11 +46,11 @@ modified olmod can't break co-op. Your own olmod, if you have one, is left alone
    - Host: HOST A CO-OP GAME, invite friends from the list, then BACK and start or continue the campaign.
    - Friend: accept the host's Steam invite while the game is running, or open CO-OP and pick the friend who is hosting.
    - Anyone else with the game: pick the host's session under OPEN CO-OP GAMES, or select JOIN WITH PIN and type the host's
-     4-character PIN (shown on the host's CO-OP screen). The host's VISIBILITY item switches between listed for everyone and PIN only.
+     4-character PIN (shown on the host's CO-OP screen). The host's PUBLIC / PRIVATE button switches between listed for everyone and PIN only.
    - Without Steam friends: the host forwards UDP port 7777 in their router to their PC and gives you the address shown under
      CO-OP > CONNECT BY IP; you choose JOIN BY IP and type it. Only share your IP with people you trust.
    Co-op saves: each level start is saved for the exact group of players. Next time, when exactly the same players are in the
-   session, the host's CO-OP screen offers LOAD CO-OP GAME: that level from the beginning, everyone with the loadout they had.
+   session, the host's CO-OP screen's LOAD GAME button starts that level from the beginning, everyone with the loadout they had.
    (The game's own LOAD SAVED GAME is off in co-op.)
 5. To remove it, run `uninstall.bat`. Your own olmod and the game files are never modified.
 

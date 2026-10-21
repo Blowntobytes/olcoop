@@ -119,15 +119,6 @@ namespace OlCoop.UI
                 // 0.7.0: co-op challenge mode (the stock challenge level select)
                 uie.SelectAndDrawItem("PLAY CHALLENGE", pos, ID_CHALLENGE, false, 1f, 0.75f);
                 pos.y += 62f;
-                // 0.10.1: the exact group's co-op save (start of the level, everyone's loadout)
-                var save = OlCoop.Combat.CoopSaves.SaveForSession();
-                uie.SelectAndDrawItem(save != null ? "LOAD CO-OP GAME: " + (save.LevelName ?? save.LevelFile ?? "?").ToUpperInvariant() : "LOAD CO-OP GAME (NONE FOR THESE PLAYERS)", pos, ID_LOADCOOP, save == null, 1f, 0.75f);
-                pos.y += 62f;
-                if (steam && SteamLink.Lobby != CSteamID.Nil)
-                {
-                    uie.SelectAndDrawItem(SteamLink.Listed ? "VISIBILITY: LISTED FOR EVERYONE" : "VISIBILITY: PIN ONLY", pos, ID_LISTED, false, 1f, 0.75f);
-                    pos.y += 62f;
-                }
             }
             bool hostRow = CoopConfig.IsHost;
             if (hostRow)
@@ -143,16 +134,27 @@ namespace OlCoop.UI
                     uie.DrawStringSmall(OlCoop.Session.CoopLobby.Line(e), new Vector2(left, y), 0.4f, StringOffset.LEFT, e.host ? UIManager.m_col_hi4 : UIManager.m_col_ui1, 1f, -1f);
                     y += 26f;
                 }
+                // 0.10.2 (user): right column, top to bottom: LOAD GAME, INVITE THROUGH STEAM, CONNECT BY IP, PUBLIC/PRIVATE, PIN
                 float right = top;
-                if (steam && SteamLink.Lobby != CSteamID.Nil)
+                bool lobby = steam && SteamLink.Lobby != CSteamID.Nil;
+                // the exact group's co-op save (start of the level, everyone's loadout); greyed when the players don't match one
+                var save = OlCoop.Combat.CoopSaves.SaveForSession();
+                uie.SelectAndDrawHalfItem("LOAD GAME", new Vector2(440f, right), ID_LOADCOOP, save == null);
+                right += 50f;
+                if (lobby)
                 {
-                    uie.SelectAndDrawHalfItem("INVITE THROUGH STEAM", new Vector2(440f, top), ID_OVERLAY, false); // 0.7.20: 5% further right (was 419)
+                    uie.SelectAndDrawHalfItem("INVITE THROUGH STEAM", new Vector2(440f, right), ID_OVERLAY, false); // 0.7.20: 5% further right (was 419)
                     right += 50f;
                 }
                 // 0.8.1 (user): CONNECT BY IP directly under INVITE THROUGH STEAM - shows the address / port forwarding info
                 uie.SelectAndDrawHalfItem(IpLink.Panel ? "HIDE IP INFO" : "CONNECT BY IP", new Vector2(440f, right), ID_IP, false);
-                if (steam && SteamLink.Lobby != CSteamID.Nil)
+                if (lobby)
+                {
+                    right += 50f;
+                    uie.SelectAndDrawHalfItem(SteamLink.Listed ? "PUBLIC" : "PRIVATE", new Vector2(440f, right), ID_LISTED, false);
                     uie.DrawStringSmall("PIN: " + SteamLink.Pin + " - ANYONE WITH IT CAN JOIN", new Vector2(440f, right + 44f), 0.42f, StringOffset.CENTER, UIManager.m_col_hi4, 1f, -1f);
+                }
+                if (save != null) uie.DrawStringSmall("SAVED: " + (save.LevelName ?? save.LevelFile ?? "?").ToUpperInvariant(), new Vector2(440f, top - 30f), 0.36f, StringOffset.CENTER, UIManager.m_col_ui2, 1f, -1f);
                 pos.y = Mathf.Max(right + 70f, y + 20f);
             }
             if (OlCoop.World.PostLevel.ReadyButton)

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.10.2-alpha (2026-10-21) - host CO-OP screen buttons, UNTESTED build (all players must run 0.10.2-alpha; protocol 33)
+- Change (user): LOAD CO-OP GAME is now LOAD GAME, a small button on the right just above INVITE THROUGH STEAM; greyed out when
+  the players in the session don't match a saved game (when they do, the saved level's name shows just above it).
+- Change (user): VISIBILITY is now PUBLIC / PRIVATE, a small button on the right under CONNECT BY IP (PUBLIC = in everyone's open-games
+  list, PRIVATE = PIN only); the PIN line is under it.
+
 ## 0.10.1-alpha (2026-10-21) - co-op saves for an exact group of players, UNTESTED build (all players must run 0.10.1-alpha; protocol 33)
 User: no between-level save; loading always starts everyone at the beginning of the level with the loadout they had at the beginning
 of it; the players must match exactly (Bits/Josh/Void last night does not load for Bits/Josh today; a group that never played

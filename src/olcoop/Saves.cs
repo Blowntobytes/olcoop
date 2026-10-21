@@ -327,9 +327,9 @@ namespace OlCoop.Combat
         static bool Prefix(MenuState new_state)
         {
             if (new_state != MenuState.LOAD_MENU || !CoopConfig.Active || !CoopSaves.StockLoadBlocked) return true;
-            if (!s_logged) { s_logged = true; CoopLog.Write("SAVE", "stock LOAD SAVED GAME blocked in a co-op session (host: CO-OP > LOAD CO-OP GAME)"); }
-            OlCoop.SteamNet.SteamLink.LastStatus = "IN CO-OP USE CO-OP > LOAD CO-OP GAME";
-            GameplayManager.AddHUDMessage("CO-OP: USE CO-OP > LOAD CO-OP GAME", -1, true);
+            if (!s_logged) { s_logged = true; CoopLog.Write("SAVE", "stock LOAD SAVED GAME blocked in a co-op session (host: CO-OP > LOAD GAME)"); }
+            OlCoop.SteamNet.SteamLink.LastStatus = "IN CO-OP USE CO-OP > LOAD GAME";
+            GameplayManager.AddHUDMessage("CO-OP: USE CO-OP > LOAD GAME", -1, true);
             return false;
         }
     }
