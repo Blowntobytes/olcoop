@@ -290,6 +290,9 @@ namespace OlCoop.Combat
             CoopLog.Write("COMBAT", "joiner: sent loadout to host: " + m.Describe());
         }
 
+        public static LoadoutMsg CaptureOf(Player p) { return Capture(p); }
+        /// 0.10.0: the joiner's loadout from the host's saved game (replaces the level's default loadout).
+        public static void ApplyLocal(Player p, LoadoutMsg m) { Apply(p, m, true); p.m_energy = Math.Min(p.m_energy, OlCoop.World.CoopCaps.Max); s_carry = null; }
         static LoadoutMsg Capture(Player p)
         {
             var m = new LoadoutMsg
@@ -416,6 +419,7 @@ namespace OlCoop.Combat
                 if (target == null) { CoopLog.Write("COMBAT", "host: loadout from conn " + msg.conn.connectionId + " but no player for it yet"); return; }
                 Apply(target, m, false);
                 CoopLog.Write("COMBAT", "host: applied loadout of conn " + msg.conn.connectionId + " to netId=" + target.netId.Value + ": " + m.Describe());
+                try { CoopSaves.HostOnLoadout(msg.conn); } catch (Exception ex) { CoopLog.Error("CoopSaves restore", ex); }
             }
             catch (Exception ex) { CoopLog.Error("OnLoadout", ex); }
         }

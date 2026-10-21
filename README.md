@@ -49,6 +49,8 @@ modified olmod can't break co-op. Your own olmod, if you have one, is left alone
      4-character PIN (shown on the host's CO-OP screen). The host's VISIBILITY item switches between listed for everyone and PIN only.
    - Without Steam friends: the host forwards UDP port 7777 in their router to their PC and gives you the address shown under
      CO-OP > CONNECT BY IP; you choose JOIN BY IP and type it. Only share your IP with people you trust.
+   Saved games: when the host's game saves, every player's loadout is saved with it. Rehost, LOAD SAVED GAME, and the same
+   players get their weapons, missiles and upgrades back when they join.
 5. To remove it, run `uninstall.bat`. Your own olmod and the game files are never modified.
 
 Same-PC testing (developers): `installer/olcoop-host.bat` and `installer/olcoop-join.bat [ip]` start a host and joiners that

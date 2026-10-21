@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.10.0-alpha (2026-10-21) - co-op saved loadouts (like ProperSave), UNTESTED build (all players must run 0.10.0-alpha; protocol 33)
+User: like ProperSave in the Risk of Rain 2 mod - the host leaves, rehosts, the same players join, the level starts from the
+beginning and every player has the loadout they had.
+- New: whenever the host's game saves (the autosave between levels, a quicksave, a checkpoint or a save slot), the host also stores
+  every joiner's loadout - weapons and their levels, missiles, ammo, energy, ship upgrades, upgrade points - in
+  Overload\olcoop\olcoop-saves\<pilot>-slot<N>.txt, read from the host's own copy of each joiner's ship.
+- New: the host rehosts and picks LOAD SAVED GAME with that slot; each returning player gets their saved loadout back as soon as
+  their ship starts ("CO-OP: YOUR LOADOUT FROM THE SAVED GAME IS BACK"). Players are matched by Steam account (IP joiners: by pilot
+  name). Someone who wasn't in the save starts with the level's normal loadout. The between-level autosave starts at the
+  beginning of the next level, like the host's own ship; a quicksave/checkpoint continues mid-level.
+- Log lines: [SAVE] host saved slot ... with N joiner loadout(s) / loaded slot ... / gave <player> its loadout; joiner: applied.
+
 ## 0.9.0-alpha (2026-10-21) - play with anyone (PIN + open-games list), ping-proof hits, UNTESTED build (all players must run 0.9.0-alpha; protocol 32)
 Contributed by Lukas Denda (written against 0.8.1 as "0.8.2-alpha"; brought in on top of 0.8.3 as 0.9.0, protocol 32 - our 0.8.2 already used 31).
 No Steam friendship needed any more, and hitting (or dodging) no longer depends on ping. NOT yet tested in game - needs a 2-PC run.
