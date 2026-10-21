@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.10.3-alpha (2026-10-21) - more friends per page on the host's CO-OP screen, UNTESTED build (all players must run 0.10.3-alpha; protocol 33)
+- Fix (user): only 2 friends fit on a page. The friend list started below the right-hand button column, which 0.10.2 made 4 buttons
+  tall; it now starts right under the centred items (the rows fit between the session players and the buttons), so about 6
+  friends fit per page. With the IP info open it still starts below the buttons.
+
 ## 0.10.2-alpha (2026-10-21) - host CO-OP screen buttons, UNTESTED build (all players must run 0.10.2-alpha; protocol 33)
 - Change (user): LOAD CO-OP GAME is now LOAD GAME, a small button on the right just above INVITE THROUGH STEAM; greyed out when
   the players in the session don't match a saved game (when they do, the saved level's name shows just above it).

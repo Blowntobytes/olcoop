@@ -15,7 +15,7 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.10.2 alpha"). Protocol = 33 (in build.sh). Message ids used so far: 160-216 (0.7.6 extended msg 194 ObjMsg; 0.7.9 status code 4 on FNet.Status). Current build folder: build-standalone (since 0.8.0; build-alpha holds 0.7.9-0.7.20) (USER 2026-10-07: "it is still an alpha" - releases are named -alpha again from 0.7.9; build-challenge holds 0.7.8-challenge, the last "challenge"-named build).
+  `VERSION` ("0.10.3 alpha"). Protocol = 33 (in build.sh). Message ids used so far: 160-216 (0.7.6 extended msg 194 ObjMsg; 0.7.9 status code 4 on FNet.Status). Current build folder: build-standalone (since 0.8.0; build-alpha holds 0.7.9-0.7.20) (USER 2026-10-07: "it is still an alpha" - releases are named -alpha again from 0.7.9; build-challenge holds 0.7.8-challenge, the last "challenge"-named build).
 - Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 311 patches, 0 problems, 0.10.1;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-challenge (0.7.0-0.7.8), build-alpha (0.7.9-0.7.20), build-standalone (current, 0.8.0+).
@@ -1134,3 +1134,8 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 - User: host right column (half items, x 440, 50 apart): LOAD GAME (ID 33, faded when SaveForSession()==null; "SAVED: <LEVEL>"
   at top-30 when there is one), INVITE THROUGH STEAM (1), CONNECT BY IP (2), PUBLIC/PRIVATE (31, SteamLink.Listed), PIN line +44.
   The centred LOAD CO-OP GAME and VISIBILITY items are gone.
+
+## 0.10.3-alpha status (2026-10-21) - build-standalone, UNTESTED. Protocol 33.
+- User: 2 friends per page. Host pos.y after the roster row was max(right column bottom + 70, roster + 20); the 4-button right column
+  pushed the list ~220 px down. Now pos.y = top + 10 (IP panel open: old rule). Expected: top = -44, rows from y 0, fit = 6
+  (room 289 / 50 + 1). Rows +-272 wide vs right column half items at x 440 and roster text from x -630.

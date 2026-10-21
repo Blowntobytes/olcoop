@@ -155,7 +155,10 @@ namespace OlCoop.UI
                     uie.DrawStringSmall("PIN: " + SteamLink.Pin + " - ANYONE WITH IT CAN JOIN", new Vector2(440f, right + 44f), 0.42f, StringOffset.CENTER, UIManager.m_col_hi4, 1f, -1f);
                 }
                 if (save != null) uie.DrawStringSmall("SAVED: " + (save.LevelName ?? save.LevelFile ?? "?").ToUpperInvariant(), new Vector2(440f, top - 30f), 0.36f, StringOffset.CENTER, UIManager.m_col_ui2, 1f, -1f);
-                pos.y = Mathf.Max(right + 70f, y + 20f);
+                // 0.10.3 (user): the friend rows sit in the centre, between the session players (left) and the right column, so they
+                // start right under the centred items instead of under the (now 4-button) right column: room for more friends per page.
+                // The IP info panel's lines are wide, so it still starts below the right column.
+                pos.y = IpLink.Panel ? Mathf.Max(right + 70f, y + 20f) : top + 10f;
             }
             if (OlCoop.World.PostLevel.ReadyButton)
             {
