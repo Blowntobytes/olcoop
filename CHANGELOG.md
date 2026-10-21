@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.11.0-alpha (2026-10-21) - co-op saves for an exact group of players, UNTESTED build (all players must run 0.11.0-alpha; protocol 33)
+User: no between-level save; loading always starts everyone at the beginning of the level with the loadout they had at the beginning
+of it; the players must match exactly (Bits/Josh/Void last night does not load for Bits/Josh today; a group that never played
+together has nothing to load). Replaces the 0.10.0 save-slot version.
+- New: at the start of every campaign level the host saves the group's game: the level, the difficulty, and every player's loadout
+  as the level began (weapons and levels, missiles, ammo, energy, ship upgrades, upgrade points) - the host's own one too. One save
+  per exact group of players (Steam accounts; IP joiners by pilot name), in Overload\olcoop\olcoop-saves\party-*.txt. A player
+  who joins after the level started isn't part of that level's group.
+- New: CO-OP screen (host) > LOAD CO-OP GAME: <LEVEL>. Shown only when the players in the session are exactly a saved group
+  (otherwise greyed: "NONE FOR THESE PLAYERS"). It starts that level from the beginning; every player gets their start-of-level
+  loadout back as their ship starts ("CO-OP: SAVED GAME LOADED - YOUR LOADOUT IS BACK").
+- Change: the game's own LOAD SAVED GAME (main menu) and LOAD GAME (pause menu) are greyed out and blocked in a co-op session with
+  joiners - they are single-player saves.
+- Not saved: secret levels, challenge mode, and the return from a secret level (that's mid-level).
+
 ## 0.10.0-alpha (2026-10-21) - co-op saved loadouts (like ProperSave), UNTESTED build (all players must run 0.10.0-alpha; protocol 33)
 User: like ProperSave in the Risk of Rain 2 mod - the host leaves, rehosts, the same players join, the level starts from the
 beginning and every player has the loadout they had.

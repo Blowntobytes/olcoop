@@ -419,7 +419,7 @@ namespace OlCoop.Combat
                 if (target == null) { CoopLog.Write("COMBAT", "host: loadout from conn " + msg.conn.connectionId + " but no player for it yet"); return; }
                 Apply(target, m, false);
                 CoopLog.Write("COMBAT", "host: applied loadout of conn " + msg.conn.connectionId + " to netId=" + target.netId.Value + ": " + m.Describe());
-                try { CoopSaves.HostOnLoadout(msg.conn); } catch (Exception ex) { CoopLog.Error("CoopSaves restore", ex); }
+                try { CoopSaves.HostOnLoadout(msg.conn, m); } catch (Exception ex) { CoopLog.Error("CoopSaves restore", ex); }
             }
             catch (Exception ex) { CoopLog.Error("OnLoadout", ex); }
         }

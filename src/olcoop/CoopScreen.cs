@@ -21,7 +21,7 @@ namespace OlCoop.UI
         public static readonly MenuState msCoop = (MenuState)121;
         public static readonly UIElementType uiCoop = (UIElementType)123;
         public const int MainMenuItemId = 40;
-        const int ID_HOST = 0, ID_OVERLAY = 1, ID_LEAVE = 3, ID_READY = 4, ID_CAMPAIGN = 5, ID_CHALLENGE = 6, ID_PREV = 8, ID_NEXT = 9, ID_IP = 2, ID_IPFIELD = 7, ID_IPGO = 30, ID_LISTED = 31, ID_PIN = 32, ID_FRIEND0 = 10, MAX_FRIENDS = 20, ID_BACK = 100;
+        const int ID_HOST = 0, ID_OVERLAY = 1, ID_LEAVE = 3, ID_READY = 4, ID_CAMPAIGN = 5, ID_CHALLENGE = 6, ID_PREV = 8, ID_NEXT = 9, ID_IP = 2, ID_IPFIELD = 7, ID_IPGO = 30, ID_LISTED = 31, ID_PIN = 32, ID_LOADCOOP = 33, ID_FRIEND0 = 10, MAX_FRIENDS = 20, ID_BACK = 100;
         static int s_page, s_per_page = 1;
         static readonly MethodInfo s_goBack = AccessTools.Method(typeof(MenuManager), "GoBack");
 
@@ -118,6 +118,10 @@ namespace OlCoop.UI
                 pos.y += 62f;
                 // 0.7.0: co-op challenge mode (the stock challenge level select)
                 uie.SelectAndDrawItem("PLAY CHALLENGE", pos, ID_CHALLENGE, false, 1f, 0.75f);
+                pos.y += 62f;
+                // 0.11.0: the exact group's co-op save (start of the level, everyone's loadout)
+                var save = OlCoop.Combat.CoopSaves.SaveForSession();
+                uie.SelectAndDrawItem(save != null ? "LOAD CO-OP GAME: " + (save.LevelName ?? save.LevelFile ?? "?").ToUpperInvariant() : "LOAD CO-OP GAME (NONE FOR THESE PLAYERS)", pos, ID_LOADCOOP, save == null, 1f, 0.75f);
                 pos.y += 62f;
                 if (steam && SteamLink.Lobby != CSteamID.Nil)
                 {
@@ -320,6 +324,11 @@ namespace OlCoop.UI
                         CoopConfig.ClearRole();
                         SteamLink.LastStatus = "LEFT CO-OP";
                         MenuManager.PlaySelectSound();
+                    }
+                    else if (sel == ID_LOADCOOP)
+                    {
+                        if (OlCoop.Combat.CoopSaves.Load()) MenuManager.PlaySelectSound();
+                        else SteamLink.LastStatus = "NO CO-OP SAVE FOR EXACTLY THESE PLAYERS";
                     }
                     else if (sel == ID_CAMPAIGN)
                     {

@@ -15,8 +15,8 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
 
 ## Build + delivery rules (user is strict about these)
 - Build: `./build.sh` (Mono mcs; mcs can't compile Harmony's AccessTools.FieldRef ref-returns - use FieldInfo). Version comes from
-  `VERSION` ("0.10.0 alpha"). Protocol = 33 (in build.sh). Message ids used so far: 160-216 (0.7.6 extended msg 194 ObjMsg; 0.7.9 status code 4 on FNet.Status). Current build folder: build-standalone (since 0.8.0; build-alpha holds 0.7.9-0.7.20) (USER 2026-10-07: "it is still an alpha" - releases are named -alpha again from 0.7.9; build-challenge holds 0.7.8-challenge, the last "challenge"-named build).
-- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 312 patches, 0 problems, 0.10.0;
+  `VERSION` ("0.11.0 alpha"). Protocol = 33 (in build.sh). Message ids used so far: 160-216 (0.7.6 extended msg 194 ObjMsg; 0.7.9 status code 4 on FNet.Status). Current build folder: build-standalone (since 0.8.0; build-alpha holds 0.7.9-0.7.20) (USER 2026-10-07: "it is still an alpha" - releases are named -alpha again from 0.7.9; build-challenge holds 0.7.8-challenge, the last "challenge"-named build).
+- Verify: compile tools/VerifyPatches.cs and run it against the DLL — must report 0 problems (last: 311 patches, 0 problems, 0.11.0;
   it needs ALL of Overload_Data\Managed staged (e.g. UnityEngine.AnimationModule), not just the build references; run `mono vp.exe <dll> <Managed dir> <game dir>`).
 - ONE build folder per phase: build-phase0, build-phase1, build-phase2a, build-coop-options, build-phase2b, build-online, build-challenge (0.7.0-0.7.8), build-alpha (0.7.9-0.7.20), build-standalone (current, 0.8.0+).
   Bug fixes overwrite the current phase folder with a bumped version. Never create per-fix folders. New phase = new folder, announced.
@@ -1113,3 +1113,19 @@ Read this first in a new session, then CHANGELOG.md, docs/, tests/.
   it. CoopLoadout.OnLoadout -> CoopSaves.HostOnLoadout: first report per id in the saved level -> msg 216 (H->J LoadoutMsg);
   joiner OnRestore -> CoopLoadout.ApplyLocal (Apply local, energy cap, drops carry) + SendSoon (host copy updated by msg 170).
 - Not done: challenge mode (skipped), restoring the joiner's ship POSITION for mid-level saves (they spawn next to the host).
+
+## 0.11.0-alpha status (2026-10-21) - build-standalone, UNTESTED. Protocol 33 (msg 216 unchanged).
+- User redesign of 0.10.0: NO between-level save; any load = beginning of the level with everyone's start-of-level loadout; the
+  group must match EXACTLY (subset/superset = no save; a new group = nothing to load).
+- Saves.cs rewritten: record per level start (Recordable = host, mission, not challenge/secret/_EDITOR). Host data =
+  GameplayManager.m_level_start_player_data (RESTART LEVEL's snapshot, JSON, base64 in file); joiner data = first msg-170 report of
+  the level (CoopLoadout.OnLoadout -> CoopSaves.HostOnLoadout(conn, m)). Written once when every verified joiner reported, or at 20 s.
+  Key = sorted ids (host MyId = steam:<own id> / pilot:<NAME>; joiners IdOf), file olcoop-saves\party-<fnv32(key)>.txt (key stored
+  inside and checked). Skipped right after a return from a secret level (SV6 prefix sees Level.IsSecret).
+- Load: CO-OP screen ID_LOADCOOP (33) "LOAD CO-OP GAME: <LEVEL>" (SaveForSession re-checks the group every 0.5 s) -> CoopSaves.Load:
+  GameManager.OpenMission(mission), DifficultyLevel, CreateNewGame(mission, idx), PLAY_GAME (ready gate as usual). Host: HostTick ->
+  HostShipStarted -> m_local_player.Deserialize(saved JSON) once m_level_start_player_data exists (also replaces it, so RESTART LEVEL
+  keeps the restored loadout). Joiners: msg 216 on their first report (unchanged). No recording in a level loaded from the save.
+- SV8 greys main menu 5 / pause 4, SV9 blocks ChangeMenuState(LOAD_MENU) (param name new_state - VerifyPatches caught "state").
+- Untested points: host Deserialize after StartLevel (weapons selection, hp), joiner IdOf for IP joiners before their name arrives
+  (key null -> button greyed until it does), NG+ mission lookup (OpenMission by file name).
