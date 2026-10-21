@@ -119,7 +119,7 @@ namespace OlCoop.UI
                 // 0.7.0: co-op challenge mode (the stock challenge level select)
                 uie.SelectAndDrawItem("PLAY CHALLENGE", pos, ID_CHALLENGE, false, 1f, 0.75f);
                 pos.y += 62f;
-                // 0.11.0: the exact group's co-op save (start of the level, everyone's loadout)
+                // 0.10.1: the exact group's co-op save (start of the level, everyone's loadout)
                 var save = OlCoop.Combat.CoopSaves.SaveForSession();
                 uie.SelectAndDrawItem(save != null ? "LOAD CO-OP GAME: " + (save.LevelName ?? save.LevelFile ?? "?").ToUpperInvariant() : "LOAD CO-OP GAME (NONE FOR THESE PLAYERS)", pos, ID_LOADCOOP, save == null, 1f, 0.75f);
                 pos.y += 62f;

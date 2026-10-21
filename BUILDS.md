@@ -95,5 +95,5 @@ Targets unless noted: Overload 1.1.1886, olmod 0.5.14.
 | 0.8.2-alpha | 31 | 10-20 | untested | - | - | secret levels in co-op; tag v0.8.2-alpha, build-standalone, dist/olcoop-0.8.2-alpha.zip |
 | 0.8.3-alpha | 31 | 10-20 | untested | - | - | VR waiting screen; tag v0.8.3-alpha, build-standalone, dist/olcoop-0.8.3-alpha.zip |
 | 0.9.0-alpha | 32 | 10-21 | untested | - | - | contributor patch (Lukas Denda): public lobby + PIN + open games, player-judged hits; tag v0.9.0-alpha, build-standalone, dist/olcoop-0.9.0-alpha.zip |
-| 0.10.0-alpha | 33 | 10-21 | not tested (replaced by 0.11.0, user changed the design) | - | - | co-op saved loadouts (ProperSave-style); tag v0.10.0-alpha, build-standalone, dist/olcoop-0.10.0-alpha.zip |
-| 0.11.0-alpha | 33 | 10-21 | untested | - | - | co-op saves per exact group, level start; tag v0.11.0-alpha, build-standalone, dist/olcoop-0.11.0-alpha.zip |
+| 0.10.0-alpha | 33 | 10-21 | not tested (replaced by 0.10.1, user changed the design) | - | - | co-op saved loadouts (ProperSave-style); tag v0.10.0-alpha, build-standalone, dist/olcoop-0.10.0-alpha.zip |
+| 0.10.1-alpha | 33 | 10-21 | untested | - | - | co-op saves per exact group, level start; tag v0.10.1-alpha, build-standalone, dist/olcoop-0.10.1-alpha.zip |

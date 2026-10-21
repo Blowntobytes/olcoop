@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.11.0-alpha (2026-10-21) - co-op saves for an exact group of players, UNTESTED build (all players must run 0.11.0-alpha; protocol 33)
+## 0.10.1-alpha (2026-10-21) - co-op saves for an exact group of players, UNTESTED build (all players must run 0.10.1-alpha; protocol 33)
 User: no between-level save; loading always starts everyone at the beginning of the level with the loadout they had at the beginning
 of it; the players must match exactly (Bits/Josh/Void last night does not load for Bits/Josh today; a group that never played
 together has nothing to load). Replaces the 0.10.0 save-slot version.

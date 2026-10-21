@@ -1,4 +1,4 @@
-// 0.11.0: co-op saves for an exact group of players (user, 10-21; replaces the 0.10.0 slot-based version):
+// 0.10.1: co-op saves for an exact group of players (user, 10-21; replaces the 0.10.0 slot-based version):
 //  - No between-level save. At the start of every campaign level the host records every player's loadout as the level began
 //    (the host's own GameplayManager.m_level_start_player_data - the same snapshot RESTART LEVEL uses - and each joiner's first
 //    loadout report of the level, which already includes the carry-over and the upgrades bought between levels).
